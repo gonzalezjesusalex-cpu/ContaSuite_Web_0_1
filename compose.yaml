@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: contasuite
+      POSTGRES_USER: contasuite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura .env con el script de inicio}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - contasuite_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contasuite -d contasuite"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+volumes:
+  contasuite_pg:

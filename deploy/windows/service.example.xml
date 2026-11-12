@@ -1,0 +1,15 @@
+<!-- Plantilla WinSW; NO registra ni inicia servicios. Aprovisionar entorno fuera del paquete.
+     Crear servicios separados para API y alertas. Indexación deshabilitada hasta autorizar raíces.
+     Cuenta Windows dedicada, permisos mínimos y carpetas de datos/logs con ACL privada. -->
+<service>
+  <id>ContaSuiteApi</id>
+  <name>ContaSuite API</name>
+  <description>API local; migraciones explícitas fuera del arranque</description>
+  <executable>C:\ContaSuite\venv\Scripts\python.exe</executable>
+  <arguments>-B C:\ContaSuite\app\scripts\service_runtime.py --data-dir C:\ProgramData\ContaSuite\data --mode api</arguments>
+  <workingdirectory>C:\ContaSuite\app</workingdirectory>
+  <logpath>C:\ProgramData\ContaSuite\logs</logpath>
+  <log mode="roll-by-size"><sizeThreshold>10240</sizeThreshold><keepFiles>8</keepFiles></log>
+  <onfailure action="restart" delay="15 sec"/>
+  <stoptimeout>30 sec</stoptimeout>
+</service>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 20;display:inline-block;vertical-align:middle;line-height:1;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"tertiary-fixed-dim":"#4edea3","surface":"#f8f9ff","on-tertiary":"#ffffff","surface-dim":"#cbdbf5","surface-tint":"#0053db","primary-fixed-dim":"#b4c5ff","error":"#ba1a1a","error-container":"#ffdad6","secondary-fixed-dim":"#bfc6db","on-error-container":"#93000a","on-error":"#ffffff","on-surface":"#0b1c30","primary-container":"#2563eb","secondary-fixed":"#dbe2f8","tertiary-fixed":"#6ffbbe","on-secondary-fixed":"#141c2b","tertiary-container":"#007d55","inverse-surface":"#213145","secondary-container":"#dbe2f8","on-secondary-fixed-variant":"#3f4758","on-tertiary-fixed-variant":"#005236","surface-container-low":"#eff4ff","on-tertiary-fixed":"#002113","on-tertiary-container":"#bdffdb","on-primary-fixed-variant":"#003ea8","on-primary-container":"#eeefff","background":"#f8f9ff","secondary":"#575e70","outline":"#737686","on-surface-variant":"#434655","inverse-on-surface":"#eaf1ff","inverse-primary":"#b4c5ff","surface-container-high":"#dce9ff","on-primary-fixed":"#00174b","outline-variant":"#c3c6d7","surface-bright":"#f8f9ff","primary-fixed":"#dbe1ff","on-secondary":"#ffffff","surface-container":"#e5eeff","tertiary":"#006242","on-secondary-container":"#5d6476","on-primary":"#ffffff","surface-variant":"#d3e4fe","primary":"#004ac6","surface-container-lowest":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"gutter-mobile":"0.75rem","gutter":"1rem","space-sm":"0.5rem","space-xs":"0.25rem","space-xl":"2rem","space-md":"0.875rem","margin":"1.75rem","space-lg":"1.25rem","margin-mobile":"1rem"},"fontFamily":{"headline-lg-mobile":["Inter"],"data-tabular":["Inter"],"headline-md":["Inter"],"headline-lg":["Inter"],"body-sm":["Inter"],"headline-xl":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"],"label-md":["Inter"],"label-sm":["Inter"],"headline-xl-mobile":["Inter"]},"fontSize":{"headline-lg-mobile":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"data-tabular":["13px",{"lineHeight":"18px","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["18px",{"lineHeight":"26px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-xl":["30px",{"lineHeight":"38px","letterSpacing":"-0.02em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["15px",{"lineHeight":"22px","letterSpacing":"-0.005em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"24px","fontWeight":"400"}],"label-md":["13px",{"lineHeight":"16px","fontWeight":"500"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-xl-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-[#101827] z-50 flex flex-col justify-between select-none shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="p-space-lg flex items-center gap-space-sm"><img alt="ContaSuite Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrC2NTJhxexjSvTVNzQlDK-GG1I38Fj7ciVGwxpNqMRlqLFMGEw1B_pIfEo90U4eY1dqbx1Kj4m0Wsu20iBkBqa-nK05n5LOkxxCmkWvzhWfddixHxl8TsUjx3df8hjDwkfwByQmfDVp7QuwB34wtNdZrqzc_sMljmeFQqkqz3zps94l8zvx1J8bpX_K5C6t4pUI89pp5lJhS2I38_qEgGkKVHt3Xbs6cr_1IXfFrfJlcA"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface tracking-tight leading-none">ContaSuite</span><span class="font-label-sm text-label-sm text-outline-variant tracking-normal mt-space-xs">Gestión contable inteligente</span></div></div><div class="flex-1 overflow-y-auto px-space-sm py-space-xs"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">General</span></div><nav class="flex flex-col gap-space-xs mb-space-md" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="inicio" href="#"><span class="font-body-md text-body-md">Inicio</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="empresas" href="#"><span class="font-body-md text-body-md">Empresas</span></a><a class="flex items-center gap-space-md pl-space-lg pr-space-sm py-space-xs rounded-lg text-inverse-on-surface/80 hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="registro-de-empresas" href="#"><span class="font-body-sm text-body-sm">Registro de Empresas</span></a></nav><div class="px-space-sm pt-space-sm pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">Automatización</span></div><nav class="flex flex-col gap-space-xs mb-space-md" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="recopilador-cfdi" href="#"><span class="font-body-md text-body-md">Recopilador CFDI</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="organizador-cfdi" href="#"><span class="font-body-md text-body-md">Organizador CFDI</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="renombrador-de-cotizaciones" href="#"><span class="font-body-md text-body-md">Renombrador de cotizaciones</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="relacionador-documental" href="#"><span class="font-body-md text-body-md">Relacionador documental</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="generador-de-recibos" href="#"><span class="font-body-md text-body-md">Generador de recibos</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="centro-de-impresion" href="#"><span class="font-body-md text-body-md">Centro de impresión</span></a></nav><div class="px-space-sm pt-space-sm pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">Sistema</span></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="configuracion" href="#"><span class="font-body-md text-body-md">Configuración</span></a></nav></div></div><div class="p-space-sm bg-[#101827]/90 flex items-center justify-between gap-space-xs"><div class="flex items-center gap-space-sm min-w-0 flex-1"><img alt="Profile" class="w-8 h-8 rounded-full object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5ohMSOv4jwlW1GgEGFPRIN0gyDVFn8a8y-CS019C4H7tw_KmOz4F-f3jd9MfJWcRt3Pn0c2fFh-3tYs-qQnRXZy-a1SxQ7BaRG2yUPQ-UtaK-js0MTDECZvtHJtAYjN-E0vBnC2WqX9NwzQHtXUGhrAuhrYtsCgMlXFWqeXyZ51GaKzW-_tSX2cGtLO8nJou9JkAxeLWIrQkpYCj5xaC8wpTGYCJMtgm7KZj7rRNH"/><div class="flex flex-col min-w-0 leading-tight"><span class="font-label-md text-label-md text-inverse-on-surface truncate">C.P. Alejandro Morales</span><span class="font-label-sm text-label-sm text-outline-variant truncate">Contador Administrador</span></div></div><button aria-label="Colapsar panel" class="p-space-xs text-outline-variant hover:text-inverse-on-surface hover:bg-surface-variant/20 rounded-lg transition-colors" title="Colapsar panel" type="button"><span class="material-symbols-outlined text-[18px]">dock_to_right</span></button></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] px-gutter flex items-center justify-between gap-gutter"><div class="flex items-center gap-space-sm min-w-0"><div class="flex items-center gap-space-xs text-outline font-body-sm text-body-sm"><span class="font-body-sm text-body-sm text-on-surface-variant">ContaSuite</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-body-sm text-body-sm text-on-surface-variant">Workspace Fiscal</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-label-md text-label-md text-on-surface font-semibold truncate">Recopilador CFDI</span></div></div><div class="flex-1 max-w-lg mx-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-space-md text-outline text-[18px]">search</span><input class="w-full bg-surface-container-low text-on-surface placeholder:text-outline text-body-sm font-body-sm pl-9 pr-14 py-space-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="Buscar empresa, RFC, CFDI..." type="text"/><span class="absolute right-space-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-[10px] uppercase font-semibold">⌘K</span></div></div><div class="flex items-center gap-space-sm shrink-0"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-tertiary-container/10"><span class="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span><span class="font-label-sm text-label-sm text-tertiary font-semibold">SAT Conectado</span></div><button aria-label="Notificaciones" class="relative p-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-on-error font-label-sm text-[10px] flex items-center justify-center font-bold">3</span></button><button aria-label="Tema de interfaz" class="p-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">routine</span></button><div class="flex items-center pl-space-xs"><button class="flex items-center gap-space-xs p-space-xs rounded-lg hover:bg-surface-container-low transition-colors" type="button"><img alt="Profile" class="w-7 h-7 rounded-full object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5ohMSOv4jwlW1GgEGFPRIN0gyDVFn8a8y-CS019C4H7tw_KmOz4F-f3jd9MfJWcRt3Pn0c2fFh-3tYs-qQnRXZy-a1SxQ7BaRG2yUPQ-UtaK-js0MTDECZvtHJtAYjN-E0vBnC2WqX9NwzQHtXUGhrAuhrYtsCgMlXFWqeXyZ51GaKzW-_tSX2cGtLO8nJou9JkAxeLWIrQkpYCj5xaC8wpTGYCJMtgm7KZj7rRNH"/><span class="material-symbols-outlined text-outline text-[16px]">keyboard_arrow_down</span></button></div></div></header><main class="w-full pt-16 pb-8 bg-surface min-h-[calc(100vh-4rem)]"><div class="flex flex-col w-full">
+<!-- Top Navigation & Action Header -->
+<div class="px-gutter py-space-md bg-surface-container-lowest shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-outline font-label-sm text-label-sm">
+<span class="text-on-surface-variant font-medium">ContaSuite</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-medium" href="#">Empresas</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-semibold">Registrar nueva empresa</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Registrar empresa</h1>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+          Nuevo Contribuyente
+        </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Agrega un nuevo contribuyente al sistema de ContaSuite para emisión, recepción y auditoría fiscal.</p>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="inline-flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        Volver a Empresas
+      </button>
+<button class="inline-flex items-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">save</span>
+        Guardar borrador
+      </button>
+</div>
+</div>
+<!-- Main Content Layout -->
+<div class="px-gutter py-space-lg flex flex-col gap-space-lg">
+<!-- 1. Interactive Stepper -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md items-center">
+<!-- Step 1 -->
+<button class="flex items-center gap-space-md p-space-sm rounded-lg bg-primary/10 text-left transition-all group" id="step-btn-1" type="button">
+<div class="w-9 h-9 rounded-lg bg-primary-container text-on-primary flex items-center justify-center font-headline-sm text-headline-sm shadow-sm group-hover:scale-105 transition-transform">
+            1
+          </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1">
+<span class="font-label-md text-label-md text-primary font-semibold">1. Datos generales</span>
+<span class="material-symbols-outlined text-primary text-[16px]">check_circle</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Identidad y contacto fiscal</span>
+</div>
+</button>
+<!-- Step 2 -->
+<button class="flex items-center gap-space-md p-space-sm rounded-lg hover:bg-surface-container-low text-left transition-all group" id="step-btn-2" type="button">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center font-headline-sm text-headline-sm group-hover:bg-primary-container/20 group-hover:text-primary transition-all">
+            2
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold group-hover:text-primary transition-colors">2. Información fiscal</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Régimen y obligaciones SAT</span>
+</div>
+</button>
+<!-- Step 3 -->
+<button class="flex items-center gap-space-md p-space-sm rounded-lg hover:bg-surface-container-low text-left transition-all group" id="step-btn-3" type="button">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center font-headline-sm text-headline-sm group-hover:bg-primary-container/20 group-hover:text-primary transition-all">
+            3
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold group-hover:text-primary transition-colors">3. Expediente documental</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant truncate">Detección y CSD/e.firma</span>
+</div>
+</button>
+</div>
+<!-- Linear visual track -->
+<div class="w-full bg-surface-container-high h-1.5 rounded-full mt-space-md overflow-hidden">
+<div class="bg-primary-container h-full w-1/3 rounded-full transition-all duration-300" id="step-progress-bar"></div>
+</div>
+</div>
+<!-- 2. Wizard Body (Two-Column Asymmetric Layout) -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+<!-- Primary Captured Content (7 cols on Desktop) -->
+<div class="xl:col-span-8 flex flex-col gap-space-lg">
+<!-- TAB 1 CONTENT: DATOS GENERALES -->
+<section class="flex flex-col gap-space-md" id="tab-step-1">
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-space-md bg-surface-container-low/40 p-space-md rounded-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Paso 1: Identidad Jurídica y Representación</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Captura la información de identidad jurídica del contribuyente para emisión y recepción de comprobantes.</p>
+</div>
+<span class="mt-2 md:mt-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[15px]">verified</span>
+                Validación SAT Activa
+              </span>
+</div>
+<!-- Taxpayer Type Cards -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Tipo de contribuyente <span class="text-error">*</span></label>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<label class="cursor-pointer flex items-start gap-space-md p-space-md rounded-xl bg-primary-container/10 shadow-sm transition-all hover:bg-primary-container/15">
+<input checked="" class="mt-1 w-4 h-4 text-primary focus:ring-primary accent-primary" name="taxpayer_type" type="radio"/>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">corporate_fare</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Persona Moral</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Sociedad Mercantil, Civil, S.A. de C.V., S. de R.L. o Asociación sin fines lucrativos.</span>
+</div>
+</label>
+<label class="cursor-pointer flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low shadow-sm transition-all hover:bg-surface-container">
+<input class="mt-1 w-4 h-4 text-primary focus:ring-primary accent-primary" name="taxpayer_type" type="radio"/>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Persona Física</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Actividad Empresarial, Honorarios Profesionales, Arrendamiento o RESICO.</span>
+</div>
+</label>
+</div>
+</div>
+<!-- Legal Names and RFC Fields -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-space-xs md:col-span-2">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="razon_social">Razón Social o Denominación Legal <span class="text-error">*</span></label>
+<span class="font-label-sm text-label-sm text-outline">Tal como aparece en cédula fiscal</span>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">business</span>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none focus:bg-surface-container-lowest" id="razon_social" placeholder="p. ej. Distribuidora y Logística de Querétaro S.A. de C.V." type="text" value="Distribuidora y Logística de Querétaro S.A. de C.V."/>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="nombre_comercial">Nombre Comercial <span class="text-outline font-normal">(Opcional)</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">store</span>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none" id="nombre_comercial" placeholder="p. ej. LogiBajío Express" type="text" value="LogiBajío Express"/>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="rfc_input">RFC (Registro Federal de Contribuyentes) <span class="text-error">*</span></label>
+<span class="font-label-sm text-label-sm text-tertiary flex items-center gap-1 font-semibold">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> SAT Válido
+                  </span>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-tertiary text-[18px]">badge</span>
+<input class="w-full bg-surface-container-lowest text-on-surface uppercase font-data-tabular text-data-tabular tracking-wider font-semibold pl-10 pr-24 py-2 rounded-lg shadow-sm focus:outline-none" id="rfc_input" maxlength="13" type="text" value="DLQ190824AB3"/>
+<span class="absolute right-2 top-2 px-2 py-0.5 rounded bg-tertiary-container/15 text-tertiary font-label-sm text-[10px] font-bold">12 CARACTERES</span>
+</div>
+</div>
+</div>
+<!-- Validation Note / Art 69-B Blacklist Realtime Notice -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-md shadow-sm">
+<span class="material-symbols-outlined text-primary text-[22px] mt-0.5">verified_user</span>
+<div class="flex flex-col gap-0.5 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Validación de Integridad Fiscal ContaSuite</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-label-sm bg-tertiary-container/20 text-tertiary font-semibold">Sin coincidencias EFOS</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">El sistema verifica en tiempo real duplicidad de RFC en la base local y listas negras del <strong>Art. 69 y 69-B del CFF</strong> (Empresas que Deducen Operaciones Simuladas).</p>
+</div>
+</div>
+<!-- Secondary Contact & Responsible CPA -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="cpa_select">Contador Responsable del Despacho <span class="text-error">*</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">account_circle</span>
+<select class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md pl-10 pr-8 py-2 rounded-lg shadow-sm focus:outline-none appearance-none cursor-pointer" id="cpa_select">
+<option selected="">C.P. Alejandro Morales (Administrador Principal)</option>
+<option>C.P. Mariana Rivas (Auditor Senior Fiscal)</option>
+<option>Lic. Carlos Mendoza (Área Nóminas y DIOT)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="email_fiscal">Correo Electrónico de Contacto Fiscal <span class="text-outline font-normal">(Opcional)</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">mail</span>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none" id="email_fiscal" placeholder="contacto@logibajio.com.mx" type="email" value="contacto@logibajio.com.mx"/>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="tel_fiscal">Teléfono de Oficina <span class="text-outline font-normal">(Opcional)</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">call</span>
+<input class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none" id="tel_fiscal" placeholder="+52 (477) 710-4500" type="tel" value="+52 (477) 710-4500"/>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="sector_giro">Sector o Giro Mercantil</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">local_shipping</span>
+<input class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none" id="sector_giro" type="text" value="Transporte Terrestre de Carga Federal y Almacenaje"/>
+</div>
+</div>
+</div>
+<!-- Notes or Internal Audit Field -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="observaciones">Observaciones o Notas Internas de Auditoría <span class="text-outline font-normal">(Uso interno del despacho)</span></label>
+<textarea class="w-full bg-surface-container-lowest text-on-surface placeholder:text-outline text-body-md font-body-md p-space-md rounded-lg shadow-sm focus:outline-none" id="observaciones" placeholder="Añade precisiones sobre cierres mensuales, apoderado legal, o periodicidad de entrega de papelería física..." rows="3">Cliente incorporado en ejercicio 2024 para migración total de CFDI 4.0. Se requiere conciliar saldos a favor pendientes de IVA del ejercicio previo con SAT.</textarea>
+</div>
+</div>
+</section>
+<!-- TAB 2 PREVIEW SECTION: INFORMACIÓN FISCAL & OBLIGACIONES -->
+<section class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg" id="tab-step-2">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-space-md bg-surface-container-low/40 p-space-md rounded-lg">
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Paso 2: Régimen Fiscal y Calendario de Obligaciones</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Configura la normatividad tributaria aplicable conforme al catálogo SAT 2024.</p>
+</div>
+<span class="mt-2 md:mt-0 font-label-sm text-label-sm text-outline">Paso Vinculado</span>
+</div>
+<!-- Tax Regime and Dates Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<div class="flex flex-col gap-space-xs md:col-span-2">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Régimen Fiscal Principal (SAT CFDI 4.0) <span class="text-error">*</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">account_balance</span>
+<select class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md pl-10 pr-8 py-2 rounded-lg shadow-sm focus:outline-none appearance-none">
+<option selected="">601 — General de Ley Personas Morales</option>
+<option>626 — Régimen Simplificado de Confianza (RESICO)</option>
+<option>603 — Personas Morales con Fines no Lucrativos</option>
+<option>624 — Coordinados (Transporte y Logística)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Inicio de Operaciones <span class="text-error">*</span></label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">calendar_month</span>
+<input class="w-full bg-surface-container-lowest text-on-surface text-body-md font-body-md pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none font-data-tabular" type="text" value="15/08/2019"/>
+</div>
+</div>
+</div>
+<!-- Compliance Warning Card -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-md shadow-sm">
+<span class="material-symbols-outlined text-primary text-[22px] shrink-0 mt-0.5">info</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Criterio de Coincidencia Fiscal Estricta</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Las obligaciones seleccionadas deben coincidir rigurosamente con la <strong>Constancia de Situación Fiscal</strong> activa. Las discrepancias generarán alertas automáticas en el motor de pre-cierre mensual.</p>
+</div>
+</div>
+<!-- Obligations Checkbox Matrix (2 Columns) -->
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Obligaciones Tributarias y Periodicidad Declarativa</label>
+<span class="font-label-sm text-label-sm text-outline">6 seleccionadas de 8</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
+<!-- Item 1 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-low/70 rounded-lg hover:bg-surface-container cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">ISR Personas Morales</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">MENSUAL / ANUAL</span>
+</label>
+<!-- Item 2 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-low/70 rounded-lg hover:bg-surface-container cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">IVA Trasladado y Acreditable</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">MENSUAL</span>
+</label>
+<!-- Item 3 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-low/70 rounded-lg hover:bg-surface-container cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">Retenciones ISR Sueldos y Salarios</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">MENSUAL</span>
+</label>
+<!-- Item 4 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-low/70 rounded-lg hover:bg-surface-container cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">Retención IVA (Fletes/Servicios 4%)</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">MENSUAL</span>
+</label>
+<!-- Item 5 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-low/70 rounded-lg hover:bg-surface-container cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">DIOT (Operaciones con Terceros)</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">MENSUAL</span>
+</label>
+<!-- Item 6 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-low/70 rounded-lg hover:bg-surface-container cursor-pointer transition-colors shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">Declaración Anual del Ejercicio</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-high text-on-surface-variant">ANUAL (MARZO)</span>
+</label>
+<!-- Item 7 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-lowest rounded-lg hover:bg-surface-container cursor-pointer transition-colors opacity-75 shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">Impuesto Especial Sobre Producción (IEPS)</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-low text-outline">NO APLICA</span>
+</label>
+<!-- Item 8 -->
+<label class="flex items-center justify-between p-space-sm bg-surface-container-lowest rounded-lg hover:bg-surface-container cursor-pointer transition-colors opacity-75 shadow-sm">
+<div class="flex items-center gap-space-sm">
+<input class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface">Impuesto Sobre Nómina Estatal (ISN 3%)</span>
+</div>
+<span class="px-2 py-0.5 rounded font-label-sm text-[10px] font-semibold bg-surface-container-low text-outline">ESTATAL</span>
+</label>
+</div>
+</div>
+</section>
+<!-- TAB 3: EXPEDIENTE DOCUMENTAL AUTOMATIZADO -->
+<section class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg" id="tab-step-3">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-space-md bg-surface-container-low/40 p-space-md rounded-lg">
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Paso 3: Expediente Digital y Búsqueda en Servidor Local</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Indexación automática de certificados CSD, opinión 32-D y constancias en tu repositorio contable.</p>
+</div>
+<button class="mt-2 md:mt-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-container text-on-primary font-label-sm text-label-sm shadow-sm hover:opacity-95 transition-opacity" type="button">
+<span class="material-symbols-outlined text-[16px]">upload_file</span>
+              + Subir documentos sueltos
+            </button>
+</div>
+<!-- Local UNC Path Selector & Fast search -->
+<div class="flex flex-col gap-space-sm">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Directorio de red local autorizado (UNC)</label>
+<div class="flex flex-col sm:flex-row gap-space-xs">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-[18px]">search_music_note</span>
+<input class="w-full bg-surface-container-low text-on-surface font-data-tabular text-data-tabular pl-10 pr-3 py-2 rounded-lg shadow-sm focus:outline-none" type="text" value="//servidor-despacho/empresas/nuevos_ingresos/"/>
+</div>
+<button class="inline-flex items-center justify-center gap-space-xs px-space-md py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md shadow-sm transition-all whitespace-nowrap" type="button">
+<span class="material-symbols-outlined text-[18px]">folder_open</span>
+                Examinar carpeta de red
+              </button>
+</div>
+<div class="flex flex-wrap items-center gap-space-xs pt-1">
+<span class="font-label-sm text-label-sm text-outline">Filtros de escaneo:</span>
+<button class="px-2.5 py-1 rounded-full bg-primary-container/10 text-primary font-label-sm text-label-sm font-semibold hover:bg-primary-container/20 transition-colors" type="button">
+                Buscar por RFC (DLQ190824AB3)
+              </button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold hover:bg-surface-container transition-colors" type="button">
+                Buscar por Razón Social
+              </button>
+<button class="px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold hover:bg-surface-container transition-colors" type="button">
+                Todos los .cer/.key vigentes
+              </button>
+</div>
+</div>
+<!-- Detected Files Ledger Table -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Archivos detectados en la ruta para vincular al expediente</span>
+<span class="font-label-sm text-label-sm text-tertiary font-semibold">4 archivos encontrados</span>
+</div>
+<div class="overflow-x-auto rounded-lg shadow-sm">
+<table class="w-full text-left bg-surface-container-lowest">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase">
+<th class="py-2.5 px-3">Nombre del Archivo</th>
+<th class="py-2.5 px-3">Tipo de Documento</th>
+<th class="py-2.5 px-3">Estado Detección</th>
+<th class="py-2.5 px-3 text-right">Acción</th>
+</tr>
+</thead>
+<tbody class="divide-y-0 text-body-sm font-body-sm">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-error text-[18px]">picture_as_pdf</span>
+<span class="font-data-tabular">CSF_DLQ190824AB3_2024.pdf</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Constancia Situación Fiscal</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-sm text-[11px] bg-tertiary-container/15 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Identificado
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<label class="inline-flex items-center gap-1 cursor-pointer">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Vincular</span>
+</label>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-error text-[18px]">picture_as_pdf</span>
+<span class="font-data-tabular">OpinionCumplimiento_32D_Positiva.pdf</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Opinión 32-D Positiva</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-sm text-[11px] bg-tertiary-container/15 text-tertiary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Identificado
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<label class="inline-flex items-center gap-1 cursor-pointer">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Vincular</span>
+</label>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">key</span>
+<span class="font-data-tabular">CSD_DLQ190824AB3_Vigente.cer</span>
+</td>
+<td class="py-2.5 px-3 text-on-surface-variant">Certificado CSD Timbrado</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-sm text-[11px] bg-secondary-fixed text-on-secondary-fixed font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Requiere revisión
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<label class="inline-flex items-center gap-1 cursor-pointer">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-primary font-semibold">Vincular</span>
+</label>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors opacity-70">
+<td class="py-2.5 px-3 font-medium text-on-surface flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[18px]">draft</span>
+<span class="font-data-tabular">Cotizacion_Antigua_998.pdf</span>
+</td>
+<td class="py-2.5 px-3 text-outline">No relacionado con SAT</td>
+<td class="py-2.5 px-3">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label-sm text-[11px] bg-surface-container-high text-on-surface-variant font-medium">
+                        Ignorado
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<label class="inline-flex items-center gap-1 cursor-pointer">
+<input class="w-4 h-4 rounded text-outline focus:ring-outline accent-outline" type="checkbox"/>
+<span class="font-label-sm text-label-sm text-outline">Descartar</span>
+</label>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- TPM / Cryptographic Hardware Notice -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-md shadow-sm">
+<span class="material-symbols-outlined text-tertiary text-[22px] shrink-0 mt-0.5">lock</span>
+<div class="flex flex-col gap-0.5">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Aviso de Seguridad Criptográfica e.firma / CSD</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Las contraseñas de llaves privadas (.key) <strong>nunca se almacenan en texto claro ni se transmiten</strong>. Se cifran localmente mediante hardware TPM (Trusted Platform Module) y el búfer seguro del agente ContaSuite.</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Contextual Summary & Fiscal Status Widget (4 cols on Desktop) -->
+<div class="xl:col-span-4 flex flex-col gap-space-md">
+<!-- Executive Summary Card (Sticky in Workstation) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md sticky top-20">
+<div class="flex items-center justify-between pb-space-sm bg-surface-container-low/40 p-space-sm rounded-lg">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Resumen de Alta</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-primary-container/15 text-primary font-bold">Modo Asistido</span>
+</div>
+<!-- Company Meta Card -->
+<div class="flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm shrink-0">
+<span class="material-symbols-outlined text-[26px]">corporate_fare</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Distribuidora y Logística de QRO</span>
+<span class="font-data-tabular text-data-tabular text-primary font-bold">DLQ190824AB3</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">Régimen 601 • General de Ley</span>
+</div>
+</div>
+<!-- Visual Readiness Rings -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Progreso de Expediente Fiscal</span>
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-center gap-space-md">
+<div class="relative w-14 h-14 shrink-0 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-high" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-primary-container" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="85, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<span class="absolute font-data-tabular text-[13px] font-bold text-on-surface">85%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Listo para Incorporación</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">2 de 3 pasos completamente validados con el SAT.</span>
+</div>
+</div>
+</div>
+<!-- Checklist validation checklist -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Puntos de control pre-registro</span>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<span class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-tertiary text-[16px]">check_circle</span>
+                  Sintaxis RFC Persona Moral
+                </span>
+<span class="font-data-tabular text-tertiary font-semibold">12 Caracteres OK</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<span class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-tertiary text-[16px]">check_circle</span>
+                  Validación Lista Negra Art. 69-B
+                </span>
+<span class="font-label-sm text-tertiary font-semibold">Limpio</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<span class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-tertiary text-[16px]">check_circle</span>
+                  Constancia de Situación Fiscal
+                </span>
+<span class="font-label-sm text-tertiary font-semibold">Detectada</span>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm">
+<span class="flex items-center gap-1.5 text-on-surface">
+<span class="material-symbols-outlined text-primary text-[16px]">pending</span>
+                  Certificados Digitales CSD
+                </span>
+<span class="font-label-sm text-primary font-semibold">Revisión .cer</span>
+</div>
+</div>
+</div>
+<!-- Quick Actions & Help box -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-xs">
+<div class="flex items-center gap-1.5 text-on-surface font-semibold font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px]">support_agent</span>
+              ¿Dudas con la Constancia SAT?
+            </div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Puedes importar directamente el PDF de la constancia y nuestro OCR extraerá automáticamente el RFC, régimen y obligaciones.</p>
+<button class="mt-1 text-primary hover:underline font-label-sm text-label-sm text-left font-semibold" type="button">
+              Usar auto-completado por PDF →
+            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. Bottom Sticky Action Navigation Bar -->
+<div class="sticky bottom-8 z-20 w-full bg-surface-container-lowest/95 backdrop-blur-md rounded-xl p-space-md shadow-md flex flex-col sm:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm w-full sm:w-auto justify-between sm:justify-start">
+<button class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+          Cancelar / Salir
+        </button>
+<button class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant font-label-md text-label-md transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+          Anterior
+        </button>
+</div>
+<div class="flex items-center gap-space-sm w-full sm:w-auto justify-end">
+<button class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">bookmark_add</span>
+          Guardar borrador
+        </button>
+<button class="inline-flex items-center gap-space-xs px-space-md py-2.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-all" id="btn-next-step" type="button">
+          Siguiente: Expediente →
+        </button>
+<button class="inline-flex items-center gap-space-xs px-space-lg py-2.5 rounded-lg bg-primary-container hover:opacity-95 text-on-primary font-headline-sm text-headline-sm shadow-sm transition-all" id="btn-submit-company" type="button">
+<span class="material-symbols-outlined text-[20px]">how_to_reg</span>
+          Guardar y Dar de Alta Empresa
+        </button>
+</div>
+</div>
+</div>
+<!-- Interactive Wizard Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const step1Btn = document.getElementById('step-btn-1');
+      const step2Btn = document.getElementById('step-btn-2');
+      const step3Btn = document.getElementById('step-btn-3');
+      const nextBtn = document.getElementById('btn-next-step');
+      const progressBar = document.getElementById('step-progress-bar');
+      const submitBtn = document.getElementById('btn-submit-company');
+
+      function setActiveStep(stepIndex) {
+        if (stepIndex === 1) {
+          progressBar.style.width = '33.33%';
+          step1Btn.classList.add('bg-primary/10');
+          step2Btn.classList.remove('bg-primary/10');
+          step3Btn.classList.remove('bg-primary/10');
+          nextBtn.textContent = 'Siguiente: Info Fiscal →';
+          document.getElementById('tab-step-1').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (stepIndex === 2) {
+          progressBar.style.width = '66.66%';
+          step2Btn.classList.add('bg-primary/10');
+          step1Btn.classList.remove('bg-primary/10');
+          step3Btn.classList.remove('bg-primary/10');
+          nextBtn.textContent = 'Siguiente: Expediente →';
+          document.getElementById('tab-step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (stepIndex === 3) {
+          progressBar.style.width = '100%';
+          step3Btn.classList.add('bg-primary/10');
+          step1Btn.classList.remove('bg-primary/10');
+          step2Btn.classList.remove('bg-primary/10');
+          nextBtn.textContent = 'Completar Registro';
+          document.getElementById('tab-step-3').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      step1Btn?.addEventListener('click', () => setActiveStep(1));
+      step2Btn?.addEventListener('click', () => setActiveStep(2));
+      step3Btn?.addEventListener('click', () => setActiveStep(3));
+
+      let currentStep = 1;
+      nextBtn?.addEventListener('click', () => {
+        currentStep = currentStep >= 3 ? 1 : currentStep + 1;
+        setActiveStep(currentStep);
+      });
+
+      submitBtn?.addEventListener('click', () => {
+        submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> Registrando contribuyente...';
+        setTimeout(() => {
+          submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">check_circle</span> ¡Empresa Registrada con Éxito!';
+          submitBtn.classList.remove('bg-primary-container');
+          submitBtn.classList.add('bg-tertiary-container', 'text-on-tertiary-container');
+        }, 1200);
+      });
+    });
+  </script>
+</div></main><footer class="fixed bottom-0 left-64 right-0 h-8 bg-surface-container-lowest/95 backdrop-blur-md z-30 px-gutter flex items-center justify-between text-outline text-label-sm font-label-sm shadow-[0_-1px_4px_rgba(0,0,0,0.03)]"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span><span class="text-on-surface-variant font-medium">Agente ContaSuite Local v2.4 Activo</span></div><span class="text-outline-variant">|</span><span class="text-outline">Sincronización en segundo plano: En espera</span></div><div class="flex items-center gap-space-md"><span class="text-outline">Búfer Criptográfico e.firma: Seguro</span><span class="text-outline-variant">|</span><span class="text-on-surface-variant">Servicio SAT 100% Operativo</span></div></footer></div></body></html>

@@ -1,0 +1,19 @@
+CONTASUITE WEB · ENTREGA PARA CONTINUAR EN CODEX
+
+RESULTADOS
+- Parche aplicado sobre la base anterior, sin rechazos.
+- Frontend: npm run build completado (TypeScript + Vite).
+- Backend: 26 pruebas aprobadas en SQLite.
+- Recopila: motor original comparado byte a byte con el ZIP de escritorio.
+- Navegador con la interfaz compilada: Inicio muestra saludo y nombre en líneas distintas; Recibos muestra las casillas de meses en modo En masa; Recopila abre su pantalla funcional. Se revisó el estado final tras la animación.
+- Referencias originales de CFDI, Declara e Imprime incluidas para continuar la integración.
+
+LÍMITES
+- No se generó un EXE/instalador Windows: es el proyecto web completo con frontend compilado, servidor Python y los lanzadores BAT existentes.
+- No se ejecutó esta entrega en Windows ni se probó impresión física.
+- PostgreSQL no se verificó contra una instancia real en esta entrega.
+- La coincidencia visual exacta con todas las pantallas de Stitch necesita revisión conjunta; la apertura del navegador no equivale a probar cada interacción.
+- Organizador CFDI, Declara e Imprime siguen pendientes de integrar en la web.
+
+CONTINUIDAD
+Lee AGENTS.md y CONTINUAR_EN_CODEX.md. El parche ya está incorporado: no lo apliques otra vez.

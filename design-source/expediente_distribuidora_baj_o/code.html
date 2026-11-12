@@ -1,0 +1,1375 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_dashboard" name="shell-type"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 20;display:inline-block;vertical-align:middle;line-height:1;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"tertiary-fixed-dim":"#4edea3","surface":"#f8f9ff","on-tertiary":"#ffffff","surface-dim":"#cbdbf5","surface-tint":"#0053db","primary-fixed-dim":"#b4c5ff","error":"#ba1a1a","error-container":"#ffdad6","secondary-fixed-dim":"#bfc6db","on-error-container":"#93000a","on-error":"#ffffff","on-surface":"#0b1c30","primary-container":"#2563eb","secondary-fixed":"#dbe2f8","tertiary-fixed":"#6ffbbe","on-secondary-fixed":"#141c2b","tertiary-container":"#007d55","inverse-surface":"#213145","secondary-container":"#dbe2f8","on-secondary-fixed-variant":"#3f4758","on-tertiary-fixed-variant":"#005236","surface-container-low":"#eff4ff","on-tertiary-fixed":"#002113","on-tertiary-container":"#bdffdb","on-primary-fixed-variant":"#003ea8","on-primary-container":"#eeefff","background":"#f8f9ff","secondary":"#575e70","outline":"#737686","on-surface-variant":"#434655","inverse-on-surface":"#eaf1ff","inverse-primary":"#b4c5ff","surface-container-high":"#dce9ff","on-primary-fixed":"#00174b","outline-variant":"#c3c6d7","surface-bright":"#f8f9ff","primary-fixed":"#dbe1ff","on-secondary":"#ffffff","surface-container":"#e5eeff","tertiary":"#006242","on-secondary-container":"#5d6476","on-primary":"#ffffff","surface-variant":"#d3e4fe","primary":"#004ac6","surface-container-lowest":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"gutter-mobile":"0.75rem","gutter":"1rem","space-sm":"0.5rem","space-xs":"0.25rem","space-xl":"2rem","space-md":"0.875rem","margin":"1.75rem","space-lg":"1.25rem","margin-mobile":"1rem"},"fontFamily":{"headline-lg-mobile":["Inter"],"data-tabular":["Inter"],"headline-md":["Inter"],"headline-lg":["Inter"],"body-sm":["Inter"],"headline-xl":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"],"label-md":["Inter"],"label-sm":["Inter"],"headline-xl-mobile":["Inter"]},"fontSize":{"headline-lg-mobile":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"data-tabular":["13px",{"lineHeight":"18px","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["18px",{"lineHeight":"26px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-xl":["30px",{"lineHeight":"38px","letterSpacing":"-0.02em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["15px",{"lineHeight":"22px","letterSpacing":"-0.005em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"24px","fontWeight":"400"}],"label-md":["13px",{"lineHeight":"16px","fontWeight":"500"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-xl-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-inverse-surface z-50 flex flex-col justify-between select-none shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="p-space-lg flex items-center gap-space-sm"><img alt="ContaSuite Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrC2NTJhxexjSvTVNzQlDK-GG1I38Fj7ciVGwxpNqMRlqLFMGEw1B_pIfEo90U4eY1dqbx1Kj4m0Wsu20iBkBqa-nK05n5LOkxxCmkWvzhWfddixHxl8TsUjx3df8hjDwkfwByQmfDVp7QuwB34wtNdZrqzc_sMljmeFQqkqz3zps94l8zvx1J8bpX_K5C6t4pUI89pp5lJhS2I38_qEgGkKVHt3Xbs6cr_1IXfFrfJlcA"><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface tracking-tight leading-none">ContaSuite</span><span class="font-label-sm text-label-sm text-outline-variant tracking-normal mt-space-xs">Gestión contable inteligente</span></div></div><div class="flex-1 overflow-y-auto px-space-sm py-space-xs"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">General</span></div><nav class="flex flex-col gap-space-xs mb-space-md" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="inicio" href="#"><span class="material-symbols-outlined text-[18px]">home</span><span class="font-body-md text-body-md">Inicio</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-sm py-space-sm transition-colors bg-primary-container text-on-primary-container font-headline-sm rounded-lg" data-path="empresas" href="#"><span class="material-symbols-outlined text-[18px]">domain</span><span class="font-body-md text-body-md">Empresas</span></a></nav><div class="px-space-sm pt-space-sm pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">Automatización</span></div><nav class="flex flex-col gap-space-xs mb-space-md" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="recopilador-cfdi" href="#"><span class="material-symbols-outlined text-[18px]">cloud_download</span><span class="font-body-md text-body-md">Recopilador CFDI</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="organizador-cfdi" href="#"><span class="material-symbols-outlined text-[18px]">account_tree</span><span class="font-body-md text-body-md">Organizador CFDI</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="renombrador-de-cotizaciones" href="#"><span class="material-symbols-outlined text-[18px]">edit_note</span><span class="font-body-md text-body-md">Renombrador de cotizaciones</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="relacionador-documental" href="#"><span class="material-symbols-outlined text-[18px]">link</span><span class="font-body-md text-body-md">Relacionador documental</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="generador-de-recibos" href="#"><span class="material-symbols-outlined text-[18px]">receipt_long</span><span class="font-body-md text-body-md">Generador de recibos</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="centro-de-impresion" href="#"><span class="material-symbols-outlined text-[18px]">print</span><span class="font-body-md text-body-md">Centro de impresión</span></a></nav><div class="px-space-sm pt-space-sm pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">Sistema</span></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="configuracion" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-md text-body-md">Configuración</span></a></nav></div></div><div class="p-space-sm bg-inverse-surface/80 flex items-center justify-between gap-space-xs"><div class="flex items-center gap-space-sm min-w-0 flex-1"><img alt="Profile" class="w-8 h-8 rounded-full object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5ohMSOv4jwlW1GgEGFPRIN0gyDVFn8a8y-CS019C4H7tw_KmOz4F-f3jd9MfJWcRt3Pn0c2fFh-3tYs-qQnRXZy-a1SxQ7BaRG2yUPQ-UtaK-js0MTDECZvtHJtAYjN-E0vBnC2WqX9NwzQHtXUGhrAuhrYtsCgMlXFWqeXyZ51GaKzW-_tSX2cGtLO8nJou9JkAxeLWIrQkpYCj5xaC8wpTGYCJMtgm7KZj7rRNH"><div class="flex flex-col min-w-0 leading-tight"><span class="font-label-md text-label-md text-inverse-on-surface truncate">C.P. Alejandro Morales</span><span class="font-label-sm text-label-sm text-outline-variant truncate">Contador Administrador</span></div></div><button aria-label="Colapsar panel" class="p-space-xs text-outline-variant hover:text-inverse-on-surface hover:bg-surface-variant/20 rounded-lg transition-colors" title="Colapsar panel" type="button"><span class="material-symbols-outlined text-[18px]">dock_to_right</span></button></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] px-gutter flex items-center justify-between gap-gutter"><div class="flex items-center gap-space-sm min-w-0"><div class="flex items-center gap-space-xs text-outline font-body-sm text-body-sm"><span class="font-body-sm text-body-sm text-on-surface-variant">ContaSuite</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-label-md text-label-md text-on-surface font-medium truncate">Workspace Fiscal</span></div></div><div class="flex-1 max-w-lg mx-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-space-md text-outline text-[18px]">search</span><input class="w-full bg-surface-container-low text-on-surface placeholder:text-outline text-body-sm font-body-sm pl-9 pr-14 py-space-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="Buscar empresa, RFC, CFDI..." type="text"><span class="absolute right-space-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-[10px] uppercase font-semibold">⌘K</span></div></div><div class="flex items-center gap-space-sm shrink-0"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-tertiary-container/10"><span class="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span><span class="font-label-sm text-label-sm text-tertiary font-semibold">SAT Conectado</span></div><button aria-label="Notificaciones" class="relative p-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-on-error font-label-sm text-[10px] flex items-center justify-center font-bold">3</span></button><button aria-label="Tema de interfaz" class="p-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">routine</span></button><div class="flex items-center pl-space-xs"><button class="flex items-center gap-space-xs p-space-xs rounded-lg hover:bg-surface-container-low transition-colors" type="button"><img alt="Profile" class="w-7 h-7 rounded-full object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5ohMSOv4jwlW1GgEGFPRIN0gyDVFn8a8y-CS019C4H7tw_KmOz4F-f3jd9MfJWcRt3Pn0c2fFh-3tYs-qQnRXZy-a1SxQ7BaRG2yUPQ-UtaK-js0MTDECZvtHJtAYjN-E0vBnC2WqX9NwzQHtXUGhrAuhrYtsCgMlXFWqeXyZ51GaKzW-_tSX2cGtLO8nJou9JkAxeLWIrQkpYCj5xaC8wpTGYCJMtgm7KZj7rRNH"><span class="material-symbols-outlined text-outline text-[16px]">keyboard_arrow_down</span></button></div></div></header><main class="w-full pt-16 bg-surface min-h-[calc(100vh-4rem)]"><div class="w-full px-gutter py-space-md"><div class="flex flex-col w-full">
+<!-- Top Navigation & Return Bar -->
+<div class="flex items-center justify-between gap-space-sm mb-space-md">
+<a class="inline-flex items-center gap-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined text-[16px] text-primary">arrow_back</span>
+<span class="font-label-md text-label-md">Volver a Directorio de Empresas</span>
+</a>
+<div class="flex items-center gap-space-xs text-outline font-body-sm text-body-sm">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Dossier ID:</span>
+<span class="font-data-tabular text-data-tabular text-on-surface font-semibold">MX-MOR-2024-0089</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-fixed-dim mx-space-xs"></span>
+<span class="inline-flex items-center gap-1 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="material-symbols-outlined text-[14px]">format_image_left</span> Cifrado CSD Activo
+      </span>
+</div>
+</div>
+<!-- Company Master Header Card -->
+<div class="relative bg-surface-container-lowest rounded-xl p-space-lg shadow-sm mb-space-lg overflow-hidden">
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-gradient-to-br from-primary/5 via-tertiary-fixed-dim/10 to-transparent rounded-full pointer-events-none blur-2xl"></div>
+<div class="relative flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg">
+<!-- Left: Identity & Core Fiscal Attributes -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-space-md min-w-0">
+<!-- Monogram Badge -->
+<div class="w-16 h-16 rounded-xl bg-inverse-surface flex items-center justify-center text-inverse-on-surface shadow-md shrink-0">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-primary-fixed-dim">DB</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex flex-wrap items-center gap-space-sm mb-1">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight truncate">Distribuidora Bajío S.A. de C.V.</h1>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>
+              Requiere atención
+            </span>
+</div>
+<!-- RFC, Regimen & Attributes Chips -->
+<div class="flex flex-wrap items-center gap-y-1 gap-x-space-md text-on-surface-variant font-body-sm text-body-sm">
+<div class="flex items-center gap-1.5 bg-surface-container-low px-2 py-0.5 rounded">
+<span class="font-label-sm text-label-sm uppercase text-outline">RFC:</span>
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface tracking-wider" id="rfc-value">DBA180412KJ9</span>
+<button class="p-0.5 text-outline hover:text-primary transition-colors" onclick="navigator.clipboard.writeText('DBA180412KJ9')" title="Copiar RFC" type="button">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+</button>
+</div>
+<span class="text-outline-variant">•</span>
+<span class="font-label-md text-label-md text-on-surface">Persona Moral</span>
+<span class="text-outline-variant">•</span>
+<span class="font-body-sm text-body-sm text-secondary truncate max-w-xs md:max-w-md">Régimen 601: General de Ley Personas Morales</span>
+</div>
+<!-- Assigned Auditor & Verification stamp -->
+<div class="flex flex-wrap items-center gap-space-md mt-space-sm font-body-sm text-body-sm text-secondary">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm uppercase text-outline">Asignado a:</span>
+<div class="flex items-center gap-1.5">
+<img class="w-5 h-5 rounded-full object-cover" data-alt="Close up professional portrait of Mexican certified female tax auditor smiling in crisp blazer with glasses in natural office lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD05D0M6IyXfyHClv2TJrR7CHRGb5gL7KSjT4B_mY5DSTjVv-X4h95qpMromclcpOGBPCHHCYlouT8eG-NLJtHheT-gnG2eaxdX9mTu_JTj-9RwBhIGMy7UfTivOSZOjSxGTs-cEzQ7BNvkjkC2O5mmLZbR86_y8M3JUFZ-vZwl1TzsdvHRjIcOmdeWE03JA-oMxHTLFFcXQltCTzep-NkbZv4E77ApzXHY-JbMV4QZ">
+<span class="font-label-md text-label-md text-on-surface font-semibold">C.P. Mariana Rivas</span>
+</div>
+</div>
+<span class="text-outline-variant">•</span>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-outline">update</span>
+<span class="font-body-sm text-body-sm">Verificación SAT: <strong class="text-on-surface font-medium">23 Oct 2024, 18:30 hrs</strong></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Action Bar Controls -->
+<div class="flex flex-wrap items-center gap-space-xs shrink-0">
+<button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">add_task</span>
+<span class="">+ Nueva tarea</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">document_scanner</span>
+<span class="">Analizar docs</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">edit</span>
+<span class="">Editar</span>
+</button>
+<div class="relative inline-block">
+<button class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+<span class="">Acciones fiscales</span>
+<span class="material-symbols-outlined text-[16px]">arrow_drop_down</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Segmented Dossier Tabs Navigation -->
+<div class="flex items-center justify-between overflow-x-auto bg-surface-container-lowest rounded-xl p-1 mb-space-lg shadow-sm border border-surface-container-high/40">
+<nav class="flex items-center gap-1" id="dossier-tabs-nav">
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold shadow-xs transition-all" data-tab="tab-resumen" onclick="switchDossierTab('tab-resumen')" type="button">
+<span class="material-symbols-outlined text-[16px]">dashboard</span>
+<span class="">Resumen</span>
+</button>
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors" data-tab="tab-cumplimiento" onclick="switchDossierTab('tab-cumplimiento')" type="button">
+<span class="material-symbols-outlined text-[16px]">verified_user</span>
+<span class="">Cumplimiento</span>
+</button>
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors" data-tab="tab-cfdi" onclick="switchDossierTab('tab-cfdi')" type="button">
+<span class="material-symbols-outlined text-[16px]">receipt</span>
+<span class="">CFDI</span>
+<span class="px-1.5 py-0.2 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">1,420</span>
+</button>
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors" data-tab="tab-declaraciones" onclick="switchDossierTab('tab-declaraciones')" type="button">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
+<span class="">Declaraciones</span>
+</button>
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-error hover:bg-error-container/30 font-label-md text-label-md transition-colors font-medium" data-tab="tab-efirma" onclick="switchDossierTab('tab-efirma')" type="button">
+<span class="material-symbols-outlined text-[16px]">key</span>
+<span class="">e.firma y CSD</span>
+<span class="px-1.5 py-0.2 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold">1</span>
+</button>
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors" data-tab="tab-documentos" onclick="switchDossierTab('tab-documentos')" type="button">
+<span class="material-symbols-outlined text-[16px]">folder_open</span>
+<span class="">Documentos</span>
+<span class="px-1.5 py-0.2 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">34</span>
+</button>
+<button class="dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors" data-tab="tab-historial" onclick="switchDossierTab('tab-historial')" type="button">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span class="">Historial</span>
+</button>
+</nav>
+<div class="hidden sm:flex items-center gap-space-xs px-space-sm text-outline">
+<span class="font-label-sm text-label-sm">Vista: Matriz Integral CFDI 4.0</span>
+</div>
+</div>
+<!-- 1. TOP RESUMEN GRID (4 BESPOKE CARDS) -->
+<div id="tab-panels-wrapper" class="w-full space-y-space-lg">
+<!-- ================= TAB 1: RESUMEN ================= -->
+<div id="tab-resumen" class="dossier-tab-panel block space-y-space-lg">
+  <!-- 1. TOP RESUMEN GRID (4 BESPOKE CARDS) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+    <!-- CARD 1: Opinión de Cumplimiento 32-D -->
+    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group border border-surface-container-high/40">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-tertiary"></div>
+      <div>
+        <div class="flex items-center justify-between mb-space-sm">
+          <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">SAT Art. 32-D</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-bold">
+            <span class="material-symbols-outlined text-[14px]">check_circle</span>
+            Positiva
+          </span>
+        </div>
+        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Opinión de Cumplimiento</h3>
+        <p class="font-body-sm text-body-sm text-secondary mb-space-sm">Emisión: <span class="font-medium text-on-surface">15 Octubre 2024</span></p>
+        <div class="bg-surface-container-low p-2 rounded-lg font-data-tabular text-data-tabular text-on-surface-variant text-[11px] mb-space-md space-y-1">
+          <div class="flex justify-between items-center text-outline">
+            <span class="">FOLIO SAT:</span>
+            <span class="text-on-surface font-semibold">24NA9019283</span>
+          </div>
+          <div class="truncate text-secondary">HASH: 8f4a7c00192bce981...19a2</div>
+          <div class="flex items-center gap-1 text-tertiary font-semibold">
+            <span class="material-symbols-outlined text-[12px]">verified</span> Vigente 18 días más (15 Nov 2024)
+          </div>
+        </div>
+      </div>
+      <div class="pt-space-xs flex items-center justify-between">
+        <button class="inline-flex items-center gap-1 text-primary hover:text-primary-container font-label-md text-label-md font-semibold" type="button">
+          <span class="material-symbols-outlined text-[16px]">download</span> Descargar PDF
+        </button>
+        <button onclick="switchDossierTab('tab-cumplimiento')" class="inline-flex items-center gap-1 text-secondary hover:text-on-surface font-label-sm text-label-sm" type="button">
+          Ver historial <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+    <!-- CARD 2: Facturación y CFDI 4.0 -->
+    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group border border-surface-container-high/40">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-primary"></div>
+      <div>
+        <div class="flex items-center justify-between mb-space-sm">
+          <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">CFDI 4.0</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-container/10 text-primary font-label-sm text-label-sm font-semibold">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            Sync al 23 Oct
+          </span>
+        </div>
+        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Facturación del Mes</h3>
+        <p class="font-body-sm text-body-sm text-secondary mb-space-sm">Volumen fiscal en curso</p>
+        <div class="space-y-2 mb-space-md">
+          <div class="flex items-center justify-between p-1.5 bg-surface-container-low rounded">
+            <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px] text-tertiary">arrow_upward</span> Emitidos (342)
+            </span>
+            <span class="font-data-tabular text-data-tabular text-on-surface font-bold">$4,850,210.00</span>
+          </div>
+          <div class="flex items-center justify-between p-1.5 bg-surface-container-low rounded">
+            <span class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px] text-secondary">arrow_downward</span> Recibidos (189)
+            </span>
+            <span class="font-data-tabular text-data-tabular text-on-surface font-bold">$2,140,890.00</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-[11px] font-label-sm text-on-error-container bg-error-container/40 p-1.5 rounded">
+            <span class="material-symbols-outlined text-[14px] text-error">warning</span>
+            <span class="">2 complementos de pago pendientes</span>
+          </div>
+        </div>
+      </div>
+      <div class="pt-space-xs flex items-center justify-between">
+        <button class="inline-flex items-center gap-1 text-primary hover:text-primary-container font-label-md text-label-md font-semibold" type="button">
+          <span class="material-symbols-outlined text-[16px]">sync</span> Sincronizar SAT
+        </button>
+        <button onclick="switchDossierTab('tab-cfdi')" class="inline-flex items-center gap-1 text-secondary hover:text-on-surface font-label-sm text-label-sm" type="button">
+          Ver CFDI <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+    <!-- CARD 3: Declaraciones Fiscales -->
+    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group border border-surface-container-high/40">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-secondary-container"></div>
+      <div>
+        <div class="flex items-center justify-between mb-space-sm">
+          <span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold">Ejercicio 2024</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+            Al corriente
+          </span>
+        </div>
+        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Declaraciones Mensuales</h3>
+        <p class="font-body-sm text-body-sm text-secondary mb-space-sm">Periodo en curso: <span class="font-semibold text-on-surface">Octubre 2024</span></p>
+        <div class="space-y-1.5 mb-space-md">
+          <div class="bg-surface-container-low p-2 rounded text-body-sm text-body-sm">
+            <div class="flex justify-between text-on-surface mb-1">
+              <span class="font-label-md text-label-md font-medium">Septiembre 2024:</span>
+              <span class="text-tertiary font-semibold font-label-sm text-label-sm">Presentada</span>
+            </div>
+            <div class="text-[11px] font-data-tabular text-secondary space-y-0.5">
+              <div class="flex justify-between">
+                <span class="">ISR a cargo:</span>
+                <span class="font-medium text-on-surface">$184,320.00 MXN</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="">IVA saldo:</span>
+                <span class="font-medium text-tertiary">+$32,150.00 (A favor)</span>
+              </div>
+              <div class="text-outline truncate mt-1">Acuse núm. 8291048291</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pt-space-xs flex items-center justify-between">
+        <button onclick="switchDossierTab('tab-declaraciones')" class="inline-flex items-center gap-1 text-primary hover:text-primary-container font-label-md text-label-md font-semibold" type="button">
+          <span class="material-symbols-outlined text-[16px]">table_chart</span> Ver matriz anual
+        </button>
+        <button onclick="switchDossierTab('tab-declaraciones')" class="inline-flex items-center gap-1 text-secondary hover:text-on-surface font-label-sm text-label-sm" type="button">
+          Ver detalles <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+    <!-- CARD 4: Certificados e.firma y CSD (ALERTA CRÍTICA) -->
+    <div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden group border border-surface-container-high/40">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-error"></div>
+      <div>
+        <div class="flex items-center justify-between mb-space-sm">
+          <span class="font-label-sm text-label-sm uppercase tracking-wider text-error font-bold flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">priority_high</span> ALERTA CRÍTICA
+          </span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-label-sm text-label-sm font-bold">
+            Vence en 4 días
+          </span>
+        </div>
+        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">e.firma &amp; CSD</h3>
+        <p class="font-body-sm text-body-sm text-secondary mb-space-sm">Seguridad criptográfica SAT</p>
+        <div class="space-y-2 mb-space-md">
+          <div class="bg-error-container/20 p-2 rounded border-l-2 border-error">
+            <div class="flex justify-between items-center text-body-sm">
+              <span class="font-label-md text-label-md font-bold text-on-surface">e.firma (FIEL):</span>
+              <span class="font-label-sm text-label-sm font-bold text-error">28 Oct 2024</span>
+            </div>
+            <p class="text-[11px] text-error font-medium mt-0.5">Renovación obligatoria inmediata</p>
+          </div>
+          <div class="bg-surface-container-low p-2 rounded">
+            <div class="flex justify-between items-center text-body-sm">
+              <span class="font-label-md text-label-md text-on-surface font-medium">CSD Facturación:</span>
+              <span class="font-label-sm text-label-sm text-tertiary font-bold">14 Jul 2026</span>
+            </div>
+            <p class="text-[11px] text-secondary mt-0.5">630 días restantes · Llaves .key y .cer verificadas</p>
+          </div>
+        </div>
+      </div>
+      <div class="pt-space-xs flex items-center justify-between">
+        <button onclick="switchDossierTab('tab-efirma')" class="inline-flex items-center gap-1 text-error hover:text-on-error-container font-label-md text-label-md font-bold" type="button">
+          <span class="material-symbols-outlined text-[16px]">build_circle</span> Gestionar renovación
+        </button>
+        <button onclick="switchDossierTab('tab-efirma')" class="inline-flex items-center gap-1 text-secondary hover:text-on-surface font-label-sm text-label-sm" type="button">
+          Ver detalles <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAB 2: CUMPLIMIENTO ================= -->
+<div id="tab-cumplimiento" class="dossier-tab-panel hidden space-y-space-lg">
+  <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high/40">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-space-lg pb-space-sm border-b border-surface-container-high/40">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h2 class="font-headline-md text-headline-md text-on-surface">Opiniones de Cumplimiento SAT (Art. 32-D)</h2>
+          <span class="px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">Historial Oficial Validado</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-secondary">Control cronológico de opiniones de obligaciones fiscales expedidas directamente por el SAT.</p>
+      </div>
+      <div class="flex items-center gap-space-xs shrink-0">
+        <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all" type="button">
+          <span class="material-symbols-outlined text-[16px] text-primary">refresh</span>
+          <span class="">Consultar SAT en línea</span>
+        </button>
+        <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm" type="button">
+          <span class="material-symbols-outlined text-[16px]">upload_file</span>
+          <span class="">Subir nueva opinión 32-D</span>
+        </button>
+      </div>
+    </div>
+    <!-- Summary metric badges -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-space-md mb-space-lg">
+      <div class="bg-surface-container-low p-space-sm rounded-xl border border-surface-container-high/40">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Opinión Vigente</span>
+          <span class="material-symbols-outlined text-tertiary text-[18px]">verified</span>
+        </div>
+        <div class="font-headline-md text-headline-md text-on-surface font-bold">Positiva</div>
+        <div class="text-[11px] text-secondary mt-1">Folio: 24NA9019283 · Vence: 15 Nov 2024</div>
+      </div>
+      <div class="bg-surface-container-low p-space-sm rounded-xl border border-surface-container-high/40">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Revisiones SAT 2024</span>
+          <span class="material-symbols-outlined text-primary text-[18px]">history_edu</span>
+        </div>
+        <div class="font-headline-md text-headline-md text-on-surface font-bold">10 Dictámenes</div>
+        <div class="text-[11px] text-secondary mt-1">100% de consistencia positiva registrada</div>
+      </div>
+      <div class="bg-surface-container-low p-space-sm rounded-xl border border-surface-container-high/40">
+        <div class="flex items-center justify-between mb-1">
+          <span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Auditor Responsable</span>
+          <span class="material-symbols-outlined text-on-surface-variant text-[18px]">badge</span>
+        </div>
+        <div class="font-headline-md text-headline-md text-on-surface font-bold">Mariana Rivas</div>
+        <div class="text-[11px] text-secondary mt-1">C.P. Fiscal Colegiada · Despacho Central</div>
+      </div>
+    </div>
+    <!-- Table Opinions History -->
+    <div class="overflow-x-auto rounded-lg border border-surface-container-high/50">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="bg-surface-container text-outline font-label-sm text-label-sm uppercase">
+            <th class="py-2.5 px-3">Fecha de Emisión</th>
+            <th class="py-2.5 px-3">Resultado SAT</th>
+            <th class="py-2.5 px-3">Folio Oficial</th>
+            <th class="py-2.5 px-3">Cadena Original / Hash</th>
+            <th class="py-2.5 px-3">Vigencia</th>
+            <th class="py-2.5 px-3 text-right">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-surface-container-high/40 font-body-sm text-body-sm">
+          <tr class="hover:bg-surface-container-low transition-colors bg-tertiary-container/5">
+            <td class="py-3 px-3 font-medium text-on-surface">15 Oct 2024, 09:12 hrs</td>
+            <td class="py-3 px-3">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-bold">
+                <span class="material-symbols-outlined text-[14px]">check_circle</span> Positiva (Activa)
+              </span>
+            </td>
+            <td class="py-3 px-3 font-data-tabular text-data-tabular font-bold text-on-surface">24NA9019283</td>
+            <td class="py-3 px-3 font-data-tabular text-[11px] text-secondary truncate max-w-[180px]" title="8f4a7c00192bce981d3f90119a2884bf01982aef">8f4a7c00192bce981...19a2</td>
+            <td class="py-3 px-3 text-tertiary font-medium">15 Nov 2024 (18 días)</td>
+            <td class="py-3 px-3 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-label-sm font-semibold flex items-center gap-1" type="button">
+                  <span class="material-symbols-outlined text-[14px]">visibility</span> Ver PDF
+                </button>
+                <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar" type="button">
+                  <span class="material-symbols-outlined text-[16px]">download</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 font-medium text-on-surface">12 Sep 2024, 11:45 hrs</td>
+            <td class="py-3 px-3">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+                <span class="material-symbols-outlined text-[14px]">done</span> Positiva
+              </span>
+            </td>
+            <td class="py-3 px-3 font-data-tabular text-data-tabular text-on-surface">24NA8129031</td>
+            <td class="py-3 px-3 font-data-tabular text-[11px] text-secondary truncate max-w-[180px]">7b11a90c210de1924...b841</td>
+            <td class="py-3 px-3 text-outline text-[12px]">Expirada (12 Oct 2024)</td>
+            <td class="py-3 px-3 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1" type="button">
+                  <span class="material-symbols-outlined text-[14px]">visibility</span> Ver PDF
+                </button>
+                <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar" type="button">
+                  <span class="material-symbols-outlined text-[16px]">download</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 font-medium text-on-surface">10 Ago 2024, 14:02 hrs</td>
+            <td class="py-3 px-3">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+                <span class="material-symbols-outlined text-[14px]">done</span> Positiva
+              </span>
+            </td>
+            <td class="py-3 px-3 font-data-tabular text-data-tabular text-on-surface">24NA7091102</td>
+            <td class="py-3 px-3 font-data-tabular text-[11px] text-secondary truncate max-w-[180px]">3e9904acbb0198f12...55ca</td>
+            <td class="py-3 px-3 text-outline text-[12px]">Expirada (10 Sep 2024)</td>
+            <td class="py-3 px-3 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1" type="button">
+                  <span class="material-symbols-outlined text-[14px]">visibility</span> Ver PDF
+                </button>
+                <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar" type="button">
+                  <span class="material-symbols-outlined text-[16px]">download</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 font-medium text-on-surface">14 Jul 2024, 16:30 hrs</td>
+            <td class="py-3 px-3">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+                <span class="material-symbols-outlined text-[14px]">done</span> Positiva
+              </span>
+            </td>
+            <td class="py-3 px-3 font-data-tabular text-data-tabular text-on-surface">24NA6118029</td>
+            <td class="py-3 px-3 font-data-tabular text-[11px] text-secondary truncate max-w-[180px]">198abcf909281bc88...12fe</td>
+            <td class="py-3 px-3 text-outline text-[12px]">Expirada (14 Ago 2024)</td>
+            <td class="py-3 px-3 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-2 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm flex items-center gap-1" type="button">
+                  <span class="material-symbols-outlined text-[14px]">visibility</span> Ver PDF
+                </button>
+                <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar" type="button">
+                  <span class="material-symbols-outlined text-[16px]">download</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAB 3: CFDI ================= -->
+<div id="tab-cfdi" class="dossier-tab-panel hidden space-y-space-lg">
+  <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high/40">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-lg pb-space-sm border-b border-surface-container-high/40">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h2 class="font-headline-md text-headline-md text-on-surface">Conciliación y Archivo de CFDI 4.0</h2>
+          <span class="px-2 py-0.5 rounded-full bg-primary-container/10 text-primary font-label-sm text-label-sm font-semibold">1,420 Facturas Sincronizadas</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-secondary">Comprobantes fiscales digitales vigentes y cancelados conciliados contra la bóveda del SAT.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-space-xs">
+        <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all" type="button">
+          <span class="material-symbols-outlined text-[16px]">filter_alt</span>
+          <span class="">Filtros avanzados</span>
+        </button>
+        <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all" type="button">
+          <span class="material-symbols-outlined text-[16px]">download</span>
+          <span class="">Exportar Excel (XLSX)</span>
+        </button>
+        <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm" type="button">
+          <span class="material-symbols-outlined text-[16px]">sync</span>
+          <span class="">Sincronizar CFDI con SAT</span>
+        </button>
+      </div>
+    </div>
+    <!-- Filter Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-low p-space-sm rounded-lg mb-space-md">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-2.5 top-2 text-outline text-[16px]">search</span>
+          <input class="bg-surface-container-lowest text-on-surface text-body-sm pl-8 pr-3 py-1.5 rounded-lg border border-surface-container-high focus:outline-none focus:ring-1 focus:ring-primary w-64" placeholder="Buscar por RFC, UUID o Folio..." type="text">
+        </div>
+        <select class="bg-surface-container-lowest text-on-surface text-body-sm px-3 py-1.5 rounded-lg border border-surface-container-high focus:outline-none focus:ring-1 focus:ring-primary">
+          <option>Tipo: Todos (Ingresos, Egresos, Pagos)</option>
+          <option>Ingresos (Emitidos)</option>
+          <option>Egresos (Gastos)</option>
+          <option>Pagos (REP)</option>
+          <option>Nómina</option>
+        </select>
+        <select class="bg-surface-container-lowest text-on-surface text-body-sm px-3 py-1.5 rounded-lg border border-surface-container-high focus:outline-none focus:ring-1 focus:ring-primary">
+          <option>Periodo: Octubre 2024</option>
+          <option>Septiembre 2024</option>
+          <option>Agosto 2024</option>
+          <option>Ejercicio Completo 2024</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2 text-secondary font-label-sm text-label-sm">
+        <span class="">Status:</span>
+        <span class="px-2 py-0.5 bg-surface-container-lowest rounded font-semibold text-tertiary">1,418 Vigentes</span>
+        <span class="px-2 py-0.5 bg-surface-container-lowest rounded font-semibold text-error">2 Con incidencias</span>
+      </div>
+    </div>
+    <!-- Data Table -->
+    <div class="overflow-x-auto rounded-lg border border-surface-container-high/50">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="bg-surface-container text-outline font-label-sm text-label-sm uppercase">
+            <th class="py-2.5 px-3">Fecha / Folio</th>
+            <th class="py-2.5 px-3">UUID Fiscal</th>
+            <th class="py-2.5 px-2">Tipo</th>
+            <th class="py-2.5 px-3">Emisor / Receptor</th>
+            <th class="py-2.5 px-3 text-right">Subtotal</th>
+            <th class="py-2.5 px-3 text-right">IVA</th>
+            <th class="py-2.5 px-3 text-right">Total</th>
+            <th class="py-2.5 px-3 text-center">Estado SAT</th>
+            <th class="py-2.5 px-3 text-center">Archivos</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-surface-container-high/40 font-body-sm text-body-sm">
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-2.5 px-3">
+              <div class="font-data-tabular font-bold text-on-surface">23 Oct 2024</div>
+              <span class="text-[11px] text-secondary font-semibold">FAC-2024-9104</span>
+            </td>
+            <td class="py-2.5 px-3 font-data-tabular text-[11px] text-outline truncate max-w-[140px]" title="9B10E812-4C10-4A92-BF31-291AA0982E11">9B10E812...2E11</td>
+            <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded bg-tertiary-container/15 text-tertiary font-label-sm text-[11px] font-bold">Ingreso</span></td>
+            <td class="py-2.5 px-3">
+              <div class="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[170px]">Logística y Fletes del Norte</div>
+              <div class="text-[11px] font-data-tabular text-secondary">LFN1203099V1</div>
+            </td>
+            <td class="py-2.5 px-3 text-right font-data-tabular">$300,172.41</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular text-secondary">$48,027.59</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular font-bold text-on-surface">$348,200.00</td>
+            <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-[11px] font-bold">Vigente</span></td>
+            <td class="py-2.5 px-3 text-center">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-primary text-[11px] font-bold font-data-tabular" title="Descargar XML">XML</button>
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-error text-[11px] font-bold font-data-tabular" title="Descargar PDF">PDF</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-2.5 px-3">
+              <div class="font-data-tabular font-bold text-on-surface">22 Oct 2024</div>
+              <span class="text-[11px] text-secondary font-semibold">CFDI-EG-1029</span>
+            </td>
+            <td class="py-2.5 px-3 font-data-tabular text-[11px] text-outline truncate max-w-[140px]">D4A80291...CA90</td>
+            <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-[11px] font-bold">Egreso</span></td>
+            <td class="py-2.5 px-3">
+              <div class="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[170px]">Empaques Industriales SA</div>
+              <div class="text-[11px] font-data-tabular text-secondary">EIN881120KK8</div>
+            </td>
+            <td class="py-2.5 px-3 text-right font-data-tabular">$44,991.81</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular text-secondary">$7,198.69</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular font-bold text-on-surface">$52,190.50</td>
+            <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-[11px] font-bold">Vigente</span></td>
+            <td class="py-2.5 px-3 text-center">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-primary text-[11px] font-bold font-data-tabular" title="Descargar XML">XML</button>
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-error text-[11px] font-bold font-data-tabular" title="Descargar PDF">PDF</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-2.5 px-3">
+              <div class="font-data-tabular font-bold text-on-surface">20 Oct 2024</div>
+              <span class="text-[11px] text-secondary font-semibold">REP-OCT-0041</span>
+            </td>
+            <td class="py-2.5 px-3 font-data-tabular text-[11px] text-outline truncate max-w-[140px]">391BFA12...A012</td>
+            <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-[11px] font-bold">Pago REP</span></td>
+            <td class="py-2.5 px-3">
+              <div class="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[170px]">Comercializadora del Centro</div>
+              <div class="text-[11px] font-data-tabular text-secondary">CCE140510LA2</div>
+            </td>
+            <td class="py-2.5 px-3 text-right font-data-tabular">$120,000.00</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular text-secondary">$0.00</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular font-bold text-on-surface">$120,000.00</td>
+            <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-[11px] font-bold">Vigente</span></td>
+            <td class="py-2.5 px-3 text-center">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-primary text-[11px] font-bold font-data-tabular" title="Descargar XML">XML</button>
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-error text-[11px] font-bold font-data-tabular" title="Descargar PDF">PDF</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-2.5 px-3">
+              <div class="font-data-tabular font-bold text-on-surface">18 Oct 2024</div>
+              <span class="text-[11px] text-secondary font-semibold">FAC-2024-9098</span>
+            </td>
+            <td class="py-2.5 px-3 font-data-tabular text-[11px] text-outline truncate max-w-[140px]">A109E910...51CD</td>
+            <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded bg-tertiary-container/15 text-tertiary font-label-sm text-[11px] font-bold">Ingreso</span></td>
+            <td class="py-2.5 px-3">
+              <div class="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[170px]">Autotransportes de Guanajuato</div>
+              <div class="text-[11px] font-data-tabular text-secondary">ATG040919K81</div>
+            </td>
+            <td class="py-2.5 px-3 text-right font-data-tabular">$85,000.00</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular text-secondary">$13,600.00</td>
+            <td class="py-2.5 px-3 text-right font-data-tabular font-bold text-on-surface">$98,600.00</td>
+            <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-[11px] font-bold">Vigente</span></td>
+            <td class="py-2.5 px-3 text-center">
+              <div class="inline-flex items-center gap-1">
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-primary text-[11px] font-bold font-data-tabular" title="Descargar XML">XML</button>
+                <button class="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-error text-[11px] font-bold font-data-tabular" title="Descargar PDF">PDF</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pt-space-md flex items-center justify-between text-body-sm text-secondary">
+      <span class="">Página 1 de 142 (Mostrando 4 de 1,420 registros)</span>
+      <div class="inline-flex items-center gap-1">
+        <button class="px-3 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm font-semibold" disabled="">Anterior</button>
+        <button class="px-3 py-1 rounded bg-primary text-on-primary font-label-sm font-semibold">1</button>
+        <button class="px-3 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm font-semibold">2</button>
+        <button class="px-3 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm font-semibold">3</button>
+        <button class="px-3 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm font-semibold">Siguiente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAB 4: DECLARACIONES ================= -->
+<div id="tab-declaraciones" class="dossier-tab-panel hidden space-y-space-lg">
+  <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high/40">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md mb-space-lg pb-space-sm border-b border-surface-container-high/40">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h2 class="font-headline-md text-headline-md text-on-surface">Matriz de Cumplimiento de Declaraciones (Ejercicio 2024)</h2>
+          <span class="px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">Al corriente hasta Septiembre</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-secondary">Visualización de pagos provisionales, definitivos y declaraciones informativas mensuales.</p>
+      </div>
+      <div class="flex items-center gap-space-xs">
+        <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all" type="button">
+          <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+          <span class="">Descargar concentrado anual</span>
+        </button>
+        <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm" type="button">
+          <span class="material-symbols-outlined text-[16px]">add</span>
+          <span class="">Registrar acuse mensual</span>
+        </button>
+      </div>
+    </div>
+    <!-- Matrix Table 12 Months -->
+    <div class="overflow-x-auto rounded-lg border border-surface-container-high/50 mb-space-md">
+      <table class="w-full text-center">
+        <thead>
+          <tr class="bg-surface-container text-outline font-label-sm text-label-sm uppercase">
+            <th class="py-2.5 px-3 text-left">Obligación Fiscal</th>
+            <th class="py-2.5 px-2">Ene</th>
+            <th class="py-2.5 px-2">Feb</th>
+            <th class="py-2.5 px-2">Mar</th>
+            <th class="py-2.5 px-2">Abr</th>
+            <th class="py-2.5 px-2">May</th>
+            <th class="py-2.5 px-2">Jun</th>
+            <th class="py-2.5 px-2">Jul</th>
+            <th class="py-2.5 px-2">Ago</th>
+            <th class="py-2.5 px-2">Sep</th>
+            <th class="py-2.5 px-2 bg-primary-container/10 text-primary font-bold">Oct (Actual)</th>
+            <th class="py-2.5 px-2">Nov</th>
+            <th class="py-2.5 px-2">Dic</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-surface-container-high/40 font-body-sm text-body-sm text-[12px]">
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 text-left font-semibold text-on-surface">
+              <div class="">ISR Personas Morales</div>
+              <span class="text-[11px] text-secondary font-normal">Pago provisional</span>
+            </td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary" title="Presentada"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2 bg-primary-container/5"><span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold">En prep</span></td>
+            <td class="py-3 px-2 text-outline">-</td>
+            <td class="py-3 px-2 text-outline">-</td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 text-left font-semibold text-on-surface">
+              <div class="">IVA Definitivo Mensual</div>
+              <span class="text-[11px] text-secondary font-normal">Acreditamiento e impuesto</span>
+            </td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2 bg-primary-container/5"><span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold">En prep</span></td>
+            <td class="py-3 px-2 text-outline">-</td>
+            <td class="py-3 px-2 text-outline">-</td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 text-left font-semibold text-on-surface">
+              <div class="">Retenciones de Nómina / ISR</div>
+              <span class="text-[11px] text-secondary font-normal">Timbrado de salarios</span>
+            </td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2 bg-primary-container/5"><span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold">En prep</span></td>
+            <td class="py-3 px-2 text-outline">-</td>
+            <td class="py-3 px-2 text-outline">-</td>
+          </tr>
+          <tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-3 text-left font-semibold text-on-surface">
+              <div class="">DIOT (Proveedores)</div>
+              <span class="text-[11px] text-secondary font-normal">Informativa de operaciones terceros</span>
+            </td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2"><span class="inline-block p-1 rounded-full bg-tertiary-container/20 text-tertiary"><span class="material-symbols-outlined text-[16px]">check</span></span></td>
+            <td class="py-3 px-2 bg-primary-container/5"><span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold">En prep</span></td>
+            <td class="py-3 px-2 text-outline">-</td>
+            <td class="py-3 px-2 text-outline">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Detail Card on Selected Acuse (Septiembre 2024) -->
+    <div class="bg-surface-container-low p-space-md rounded-xl border border-surface-container-high flex flex-col md:flex-row justify-between items-start md:items-center gap-space-md">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="font-label-md text-label-md font-bold text-on-surface">Acuse Seleccionado: Septiembre 2024</span>
+          <span class="px-2 py-0.2 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-[11px] font-bold">Pagada y Sellada SAT</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-secondary">Línea de captura: <strong class="text-on-surface font-data-tabular">0224 8192 0182 9182</strong> · Folio Acuse: 8291048291 · Presentada: 17 Oct 2024</p>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5" type="button">
+          <span class="material-symbols-outlined text-[16px]">visibility</span> Ver Acuse Oficial
+        </button>
+        <button class="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-sm" type="button">
+          <span class="material-symbols-outlined text-[16px]">download</span> Descargar Acuse + Papel de Trabajo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAB 5: E.FIRMA Y CSD ================= -->
+<div id="tab-efirma" class="dossier-tab-panel hidden space-y-space-lg">
+  <!-- Critical Warning Banner -->
+  <div class="bg-error-container/30 border-l-4 border-error rounded-xl p-space-md flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+    <div class="flex items-start gap-space-sm">
+      <span class="material-symbols-outlined text-error text-[24px] mt-0.5">warning</span>
+      <div>
+        <h3 class="font-headline-sm text-headline-sm text-on-error-container font-bold">Atención: La e.firma (FIEL) vencerá en 4 días</h3>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">La renovación en línea SAT caduca si el certificado vence. Ya existe cita presencial agendada para el <strong class="text-error">26 Oct 2024</strong>.</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <button class="px-3.5 py-2 rounded-lg bg-error text-on-error font-label-md text-label-md font-bold hover:bg-error/90 transition-colors shadow-sm" type="button">
+        Agendar / Confirmar Cita
+      </button>
+    </div>
+  </div>
+  <!-- Certificates Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
+    <!-- Cert 1: FIEL -->
+    <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-error/50 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-space-sm">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-error-container text-on-error-container font-label-sm text-label-sm font-bold">
+            <span class="material-symbols-outlined text-[16px]">vpn_key</span> e.firma (FIEL)
+          </span>
+          <span class="px-2 py-0.5 rounded-full bg-error text-on-error font-label-sm text-[11px] font-bold">Por expirar (4 días)</span>
+        </div>
+        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Firma Electrónica Avanzada</h3>
+        <p class="font-body-sm text-body-sm text-secondary mb-space-md">Utilizada para declaraciones, trámites ante el portal SAT y revocación.</p>
+        <div class="bg-surface-container-low p-space-sm rounded-lg space-y-2 font-data-tabular text-body-sm mb-space-md">
+          <div class="flex justify-between items-center">
+            <span class="text-outline text-[12px]">No. de Serie:</span>
+            <span class="text-on-surface font-semibold select-all">00000100000803928172</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-outline text-[12px]">Titular:</span>
+            <span class="text-on-surface font-medium">Distribuidora Bajío S.A. de C.V.</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-outline text-[12px]">Vigencia:</span>
+            <span class="text-error font-bold">28 Oct 2020 — 28 Oct 2024</span>
+          </div>
+          <div class="flex justify-between items-center pt-1 border-t border-surface-container-high">
+            <span class="text-outline text-[12px]">Archivos en bóveda:</span>
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.2 rounded bg-tertiary-container/15 text-tertiary text-[11px] font-bold">.cer OK</span>
+              <span class="px-1.5 py-0.2 rounded bg-tertiary-container/15 text-tertiary text-[11px] font-bold">.key OK</span>
+              <span class="text-outline text-[11px] font-normal">Contraseña protegida</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pt-space-xs flex items-center justify-between border-t border-surface-container-high/40">
+        <button class="text-primary hover:text-primary-container font-label-md text-label-md font-semibold inline-flex items-center gap-1" type="button">
+          <span class="material-symbols-outlined text-[16px]">verified</span> Validar en SAT
+        </button>
+        <button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold inline-flex items-center gap-1" type="button">
+          <span class="material-symbols-outlined text-[16px]">upload</span> Reemplazar archivos .cer / .key
+        </button>
+      </div>
+    </div>
+    <!-- Cert 2: CSD Facturación -->
+    <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high/40 flex flex-col justify-between">
+      <div>
+        <div class="flex items-center justify-between mb-space-sm">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-bold">
+            <span class="material-symbols-outlined text-[16px]">key</span> CSD (Sello Digital)
+          </span>
+          <span class="px-2 py-0.5 rounded-full bg-tertiary-container/20 text-tertiary font-label-sm text-[11px] font-bold">Vigente (630 días)</span>
+        </div>
+        <h3 class="font-headline-sm text-headline-sm text-on-surface mb-1">Certificado de Sello Digital</h3>
+        <p class="font-body-sm text-body-sm text-secondary mb-space-md">Utilizado exclusivamente para timbrado y emisión de comprobantes CFDI 4.0.</p>
+        <div class="bg-surface-container-low p-space-sm rounded-lg space-y-2 font-data-tabular text-body-sm mb-space-md">
+          <div class="flex justify-between items-center">
+            <span class="text-outline text-[12px]">No. de Serie:</span>
+            <span class="text-on-surface font-semibold select-all">00000100000809182390</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-outline text-[12px]">Sucursal:</span>
+            <span class="text-on-surface font-medium">Matriz Matamoros (León, GTO)</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-outline text-[12px]">Vigencia:</span>
+            <span class="text-tertiary font-bold">14 Jul 2022 — 14 Jul 2026</span>
+          </div>
+          <div class="flex justify-between items-center pt-1 border-t border-surface-container-high">
+            <span class="text-outline text-[12px]">Archivos en bóveda:</span>
+            <div class="flex items-center gap-1.5">
+              <span class="px-1.5 py-0.2 rounded bg-tertiary-container/15 text-tertiary text-[11px] font-bold">.cer OK</span>
+              <span class="px-1.5 py-0.2 rounded bg-tertiary-container/15 text-tertiary text-[11px] font-bold">.key OK</span>
+              <span class="text-outline text-[11px] font-normal">Contraseña cifrada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pt-space-xs flex items-center justify-between border-t border-surface-container-high/40">
+        <button class="text-primary hover:text-primary-container font-label-md text-label-md font-semibold inline-flex items-center gap-1" type="button">
+          <span class="material-symbols-outlined text-[16px]">verified</span> Probar conexión PAC
+        </button>
+        <button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold inline-flex items-center gap-1" type="button">
+          <span class="material-symbols-outlined text-[16px]">add</span> Agregar CSD adicional
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAB 6: DOCUMENTOS ================= -->
+<div id="tab-documentos" class="dossier-tab-panel hidden space-y-space-lg">
+  <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high/40">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-space-md pb-space-sm border-b border-surface-container-high/40">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h2 class="font-headline-md text-headline-md text-on-surface">Expediente y Bóveda Documental Permanente</h2>
+          <span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">34 Archivos Validados</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-secondary">Documentos constitutivos, actas de asamblea, opiniones fiscales y contratos.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-label-md text-label-md font-semibold transition-all shadow-sm" type="button">
+          <span class="material-symbols-outlined text-[16px]">upload_file</span>
+          <span class="">Cargar documento</span>
+        </button>
+      </div>
+    </div>
+    <!-- 2 Panel Explorer -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-space-md">
+      <!-- Left: Folder Tree (4 cols) -->
+      <div class="md:col-span-4 bg-surface-container-low p-space-sm rounded-xl border border-surface-container-high/50 space-y-1 text-body-sm">
+        <div class="px-space-sm py-1 font-label-sm text-label-sm uppercase font-semibold text-outline tracking-wider">Carpetas del Expediente</div>
+        <a href="#" class="flex items-center justify-between px-space-sm py-2 rounded-lg bg-primary-container text-on-primary-container font-medium">
+          <div class="flex items-center gap-2 truncate">
+            <span class="material-symbols-outlined text-[18px]">folder</span>
+            <span class="">Todos los documentos</span>
+          </div>
+          <span class="text-xs font-semibold">34</span>
+        </a>
+        <a href="#" class="flex items-center justify-between px-space-sm py-2 rounded-lg hover:bg-surface-container text-on-surface transition-colors">
+          <div class="flex items-center gap-2 truncate">
+            <span class="material-symbols-outlined text-[18px] text-primary">badge</span>
+            <span class="">Constitutiva y Poderes</span>
+          </div>
+          <span class="text-xs text-outline">6</span>
+        </a>
+        <a href="#" class="flex items-center justify-between px-space-sm py-2 rounded-lg hover:bg-surface-container text-on-surface transition-colors">
+          <div class="flex items-center gap-2 truncate">
+            <span class="material-symbols-outlined text-[18px] text-tertiary">verified</span>
+            <span class="">Opiniones 32-D SAT</span>
+          </div>
+          <span class="text-xs text-outline">10</span>
+        </a>
+        <a href="#" class="flex items-center justify-between px-space-sm py-2 rounded-lg hover:bg-surface-container text-on-surface transition-colors">
+          <div class="flex items-center gap-2 truncate">
+            <span class="material-symbols-outlined text-[18px] text-secondary">receipt_long</span>
+            <span class="">Acuses de Declaraciones</span>
+          </div>
+          <span class="text-xs text-outline">12</span>
+        </a>
+        <a href="#" class="flex items-center justify-between px-space-sm py-2 rounded-lg hover:bg-surface-container text-on-surface transition-colors">
+          <div class="flex items-center gap-2 truncate">
+            <span class="material-symbols-outlined text-[18px] text-error">vpn_key</span>
+            <span class="">e.firma y Sellos CSD</span>
+          </div>
+          <span class="text-xs text-outline">6</span>
+        </a>
+      </div>
+      <!-- Right: File List (8 cols) -->
+      <div class="md:col-span-8 flex flex-col justify-between">
+        <div class="overflow-x-auto rounded-lg border border-surface-container-high/50 mb-space-sm">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="bg-surface-container text-outline font-label-sm text-label-sm uppercase">
+                <th class="py-2 px-3">Nombre de Archivo</th>
+                <th class="py-2 px-3">Tipo / Tamaño</th>
+                <th class="py-2 px-3">Actualizado</th>
+                <th class="py-2 px-3 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-container-high/40 font-body-sm text-body-sm">
+              <tr class="hover:bg-surface-container-low transition-colors">
+                <td class="py-2.5 px-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-[18px]">picture_as_pdf</span>
+                  <span class="font-medium text-on-surface truncate max-w-[200px]">Constancia_Situacion_Fiscal_Sept2024.pdf</span>
+                </td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">PDF · 420 KB</td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">15 Sep 2024</td>
+                <td class="py-2.5 px-3 text-right">
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Previsualizar"><span class="material-symbols-outlined text-[16px]">visibility</span></button>
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar"><span class="material-symbols-outlined text-[16px]">download</span></button>
+                </td>
+              </tr>
+              <tr class="hover:bg-surface-container-low transition-colors">
+                <td class="py-2.5 px-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-tertiary text-[18px]">verified</span>
+                  <span class="font-medium text-on-surface truncate max-w-[200px]">Opinion_Cumplimiento_32D_Oct2024.pdf</span>
+                </td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">PDF · 210 KB</td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">15 Oct 2024</td>
+                <td class="py-2.5 px-3 text-right">
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Previsualizar"><span class="material-symbols-outlined text-[16px]">visibility</span></button>
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar"><span class="material-symbols-outlined text-[16px]">download</span></button>
+                </td>
+              </tr>
+              <tr class="hover:bg-surface-container-low transition-colors">
+                <td class="py-2.5 px-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-outline text-[18px]">description</span>
+                  <span class="font-medium text-on-surface truncate max-w-[200px]">Acta_Constitutiva_DistribuidoraBajio.pdf</span>
+                </td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">PDF · 4.8 MB</td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">12 Abr 2018</td>
+                <td class="py-2.5 px-3 text-right">
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Previsualizar"><span class="material-symbols-outlined text-[16px]">visibility</span></button>
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar"><span class="material-symbols-outlined text-[16px]">download</span></button>
+                </td>
+              </tr>
+              <tr class="hover:bg-surface-container-low transition-colors">
+                <td class="py-2.5 px-3 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-secondary text-[18px]">receipt_long</span>
+                  <span class="font-medium text-on-surface truncate max-w-[200px]">Acuse_ISR_IVA_Septiembre_2024.pdf</span>
+                </td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">PDF · 315 KB</td>
+                <td class="py-2.5 px-3 text-secondary text-[12px]">17 Oct 2024</td>
+                <td class="py-2.5 px-3 text-right">
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Previsualizar"><span class="material-symbols-outlined text-[16px]">visibility</span></button>
+                  <button class="p-1 text-secondary hover:text-primary rounded" title="Descargar"><span class="material-symbols-outlined text-[16px]">download</span></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between text-body-sm text-secondary pt-2">
+          <span class="">Ruta directa: <code class="text-xs text-on-surface bg-surface-container-low px-1.5 py-0.5 rounded font-data-tabular">//servidor-despacho/empresas/DBA180412KJ9/</code></span>
+          <button class="text-primary hover:underline font-label-sm font-semibold" type="button">Ver los 34 documentos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TAB 7: HISTORIAL ================= -->
+<div id="tab-historial" class="dossier-tab-panel hidden space-y-space-lg">
+  <div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high/40">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-space-lg pb-space-sm border-b border-surface-container-high/40">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <h2 class="font-headline-md text-headline-md text-on-surface">Bitácora de Auditoría y Acciones Fiscales</h2>
+          <span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">Trazabilidad 100% Cifrada</span>
+        </div>
+        <p class="font-body-sm text-body-sm text-secondary">Registro inmutable de actividades realizadas por usuarios y sincronizaciones automáticas del SAT.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md font-semibold transition-all" type="button">
+          <span class="material-symbols-outlined text-[16px]">filter_list</span>
+          <span class="">Filtrar eventos</span>
+        </button>
+      </div>
+    </div>
+    <!-- Timeline Log -->
+    <div class="space-y-space-md pl-4 relative before:content-[''] before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-container-high">
+      <div class="relative flex items-start gap-space-sm">
+        <div class="w-3.5 h-3.5 rounded-full bg-primary mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+        <div class="flex-1 bg-surface-container-low p-space-sm rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-label-md text-label-md font-bold text-on-surface">Sincronización SAT de Bóveda CFDI</span>
+              <span class="px-2 py-0.2 rounded-full bg-primary-container/10 text-primary font-label-sm text-[11px] font-semibold">Robot Autónomo</span>
+            </div>
+            <p class="font-body-sm text-body-sm text-secondary">Se descargaron y validaron 42 facturas correspondientes a la tercera semana de Octubre 2024.</p>
+          </div>
+          <span class="text-[11px] font-data-tabular text-outline shrink-0">23 Oct 2024, 18:30 hrs</span>
+        </div>
+      </div>
+      <div class="relative flex items-start gap-space-sm">
+        <div class="w-3.5 h-3.5 rounded-full bg-error mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+        <div class="flex-1 bg-surface-container-low p-space-sm rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-label-md text-label-md font-bold text-on-surface">Alerta programada: Vencimiento de e.firma</span>
+              <span class="px-2 py-0.2 rounded-full bg-error text-on-error font-label-sm text-[11px] font-bold">C.P. Mariana Rivas</span>
+            </div>
+            <p class="font-body-sm text-body-sm text-secondary">Se agendó cita en módulo León del SAT y se notificó al representante legal vía correo certificado.</p>
+          </div>
+          <span class="text-[11px] font-data-tabular text-outline shrink-0">21 Oct 2024, 14:15 hrs</span>
+        </div>
+      </div>
+      <div class="relative flex items-start gap-space-sm">
+        <div class="w-3.5 h-3.5 rounded-full bg-tertiary mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+        <div class="flex-1 bg-surface-container-low p-space-sm rounded-lg flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-label-md text-label-md font-bold text-on-surface">Presentación y Pago de Declaración Provisional</span>
+              <span class="px-2 py-0.2 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-[11px] font-semibold">C.P. Alejandro Morales</span>
+            </div>
+            <p class="font-body-sm text-body-sm text-secondary">Carga de acuse y comprobante bancario SPEI BBVA Bancomer por $184,320.00 MXN.</p>
+          </div>
+          <span class="text-[11px] font-data-tabular text-outline shrink-0">17 Oct 2024, 10:48 hrs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchDossierTab(tabId) {
+  var panels = document.querySelectorAll('.dossier-tab-panel');
+  panels.forEach(function(panel) {
+    panel.classList.add('hidden');
+    panel.classList.remove('block');
+  });
+  var targetPanel = document.getElementById(tabId);
+  if (targetPanel) {
+    targetPanel.classList.remove('hidden');
+    targetPanel.classList.add('block');
+  }
+  var buttons = document.querySelectorAll('.dossier-tab-btn');
+  buttons.forEach(function(btn) {
+    var isTarget = btn.getAttribute('data-tab') === tabId;
+    if (isTarget) {
+      btn.className = 'dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold shadow-xs transition-all';
+    } else {
+      var isError = btn.innerText.indexOf('e.firma') !== -1;
+      if (isError) {
+        btn.className = 'dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-error hover:bg-error-container/30 font-label-md text-label-md transition-colors font-medium';
+      } else {
+        btn.className = 'dossier-tab-btn flex items-center gap-1.5 px-space-md py-2 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-low font-label-md text-label-md transition-colors';
+      }
+    }
+  });
+}
+</script>
+</div>
+<!-- 2. TWO-COLUMN SPLIT (CFDI & Conciliación vs Matriz de Cumplimiento) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg mb-space-lg">
+<!-- Left Section: CFDI Recientes y Conciliación (7 Cols) -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm mb-space-md">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">CFDI Recientes &amp; Conciliación</h2>
+<p class="font-body-sm text-body-sm text-secondary">Comprobantes fiscales recibidos y emitidos en el periodo actual</p>
+</div>
+<!-- Filter Tabs -->
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5">
+<button class="px-2.5 py-1 rounded bg-surface-container-lowest text-on-surface font-label-sm text-label-sm font-semibold shadow-xs" type="button">Todos</button>
+<button class="px-2.5 py-1 rounded text-secondary hover:text-on-surface font-label-sm text-label-sm transition-colors" type="button">Ingresos</button>
+<button class="px-2.5 py-1 rounded text-secondary hover:text-on-surface font-label-sm text-label-sm transition-colors" type="button">Egresos</button>
+<button class="px-2.5 py-1 rounded text-secondary hover:text-on-surface font-label-sm text-label-sm transition-colors" type="button">Pagos</button>
+</div>
+</div>
+<!-- Mini CFDI Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low text-outline font-label-sm text-label-sm uppercase">
+<th class="py-2.5 px-3 rounded-l">Folio Fiscal (UUID)</th>
+<th class="py-2.5 px-2">Tipo</th>
+<th class="py-2.5 px-3">Contraparte</th>
+<th class="py-2.5 px-3 text-right">Monto</th>
+<th class="py-2.5 px-3 rounded-r text-center">Estado SAT</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-transparent font-body-sm text-body-sm">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-3">
+<div class="flex flex-col">
+<span class="font-data-tabular text-data-tabular font-semibold text-on-surface">FAC-2024-9104</span>
+<span class="text-[11px] font-data-tabular text-outline truncate w-32" title="9B10E812-4C10-4A92-BF31-291AA0982E11">9B10E812...2E11</span>
+</div>
+</td>
+<td class="py-3 px-2">
+<span class="px-2 py-0.5 rounded bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">Ingreso</span>
+</td>
+<td class="py-3 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium truncate max-w-[160px]">Logística y Fletes del Norte</span>
+<span class="text-[11px] font-data-tabular text-secondary">LFN1203099V1</span>
+</div>
+</td>
+<td class="py-3 px-3 text-right">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">$348,200.00</span>
+<span class="block text-[11px] text-outline">MXN</span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Vigente
+                  </span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-3">
+<div class="flex flex-col">
+<span class="font-data-tabular text-data-tabular font-semibold text-on-surface">CFDI-EG-1029</span>
+<span class="text-[11px] font-data-tabular text-outline truncate w-32" title="D4A80291-039B-4081-912A-1823901BCA90">D4A80291...CA90</span>
+</div>
+</td>
+<td class="py-3 px-2">
+<span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-semibold">Egreso</span>
+</td>
+<td class="py-3 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium truncate max-w-[160px]">Empaques Industriales SA</span>
+<span class="text-[11px] font-data-tabular text-secondary">EIN881120KK8</span>
+</div>
+</td>
+<td class="py-3 px-3 text-right">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">$52,190.50</span>
+<span class="block text-[11px] text-outline">MXN</span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Vigente
+                  </span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-3">
+<div class="flex flex-col">
+<span class="font-data-tabular text-data-tabular font-semibold text-on-surface">REP-OCT-0041</span>
+<span class="text-[11px] font-data-tabular text-outline truncate w-32" title="391BFA12-0021-4322-98AA-5582910FA012">391BFA12...A012</span>
+</div>
+</td>
+<td class="py-3 px-2">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">Pago REP</span>
+</td>
+<td class="py-3 px-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium truncate max-w-[160px]">Comercializadora del Centro</span>
+<span class="text-[11px] font-data-tabular text-secondary">CCE140510LA2</span>
+</div>
+</td>
+<td class="py-3 px-3 text-right">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">$120,000.00</span>
+<span class="block text-[11px] text-outline">MXN</span>
+</td>
+<td class="py-3 px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Vigente
+                  </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="pt-space-md flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-secondary">Mostrando 3 de 1,420 registros emitidos y conciliados</span>
+<a class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-primary font-label-md text-label-md font-semibold transition-colors" href="#">
+<span class="">Ir al módulo CFDI completo</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Right Section: Cumplimiento de Obligaciones Recientes (5 Cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-md">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Cumplimiento Fiscal</h2>
+<p class="font-body-sm text-body-sm text-secondary">Calendario de obligaciones y estatus ante SAT</p>
+</div>
+<span class="p-2 rounded-lg bg-surface-container-low text-primary">
+<span class="material-symbols-outlined text-[20px]">event_available</span>
+</span>
+</div>
+<!-- Fiscal Timeline List -->
+<div class="space-y-space-md relative pl-4 before:content-[''] before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-surface-container-high">
+<!-- Obligation 1 -->
+<div class="relative flex items-start gap-space-sm">
+<div class="w-3.5 h-3.5 rounded-full bg-tertiary mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 bg-surface-container-low p-space-sm rounded-lg">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-on-surface">DIOT Septiembre 2024</span>
+<span class="px-2 py-0.2 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">Cumplida</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">Presentada en tiempo y forma. 48 operaciones reportadas con proveedores de insumos.</p>
+<span class="font-data-tabular text-[11px] text-outline mt-1 block">Folio SAT: 77291038 · 16 Oct 2024</span>
+</div>
+</div>
+<!-- Obligation 2 -->
+<div class="relative flex items-start gap-space-sm">
+<div class="w-3.5 h-3.5 rounded-full bg-tertiary mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 bg-surface-container-low p-space-sm rounded-lg">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Pago Provisional ISR Sept</span>
+<span class="px-2 py-0.2 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">Cumplida</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">Línea de captura pagada vía SPEI BBVA Bancomer por $184,320.00 MXN.</p>
+<span class="font-data-tabular text-[11px] text-outline mt-1 block">Línea: 0224 8192 0182 9182</span>
+</div>
+</div>
+<!-- Obligation 3 -->
+<div class="relative flex items-start gap-space-sm">
+<div class="w-3.5 h-3.5 rounded-full bg-tertiary mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 bg-surface-container-low p-space-sm rounded-lg">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Retenciones de Sueldos (Nómina)</span>
+<span class="px-2 py-0.2 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">Cumplida</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">62 colaboradores timbrados correctamente sin discrepancias de subsidio.</p>
+</div>
+</div>
+<!-- Obligation 4 (Alert / In Progress) -->
+<div class="relative flex items-start gap-space-sm">
+<div class="w-3.5 h-3.5 rounded-full bg-error mt-1 shrink-0 ring-4 ring-surface-container-lowest"></div>
+<div class="flex-1 bg-error-container/20 p-space-sm rounded-lg">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-md text-label-md font-bold text-on-surface">Renovación de e.firma ante el SAT</span>
+<span class="px-2 py-0.2 rounded-full bg-error text-on-error font-label-sm text-label-sm font-bold">En proceso</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Cita presencial agendada en Módulo SAT León para el <strong class="text-error">26 Oct 2024, 11:30 hrs</strong>.</p>
+<div class="flex items-center gap-2 mt-1">
+<span class="font-data-tabular text-[11px] text-outline">Cita núm: C-918239</span>
+<a class="text-primary hover:underline font-label-sm text-[11px] font-semibold" href="#">Ver comprobante de cita</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="pt-space-md flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-secondary">Obligaciones Octubre: 3/4 atendidas</span>
+<button class="text-primary hover:text-primary-container font-label-md text-label-md font-semibold inline-flex items-center gap-1" type="button">
+<span class="">Ver calendario fiscal completo</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 3. DOCUMENTARY DOSSIER PREVIEW & SERVER DIRECTORY -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm mb-space-md">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">folder_special</span>
+          Expediente Documental Principal
+        </h2>
+<p class="font-body-sm text-body-sm text-secondary">Documentos fiscales permanentes de la persona moral validados</p>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-outline">Ruta de red:</span>
+<code class="px-2 py-1 bg-surface-container-low rounded font-data-tabular text-[12px] text-on-surface select-all">//servidor-despacho/empresas/DBA180412KJ9/</code>
+<button class="p-1 rounded bg-surface-container-low hover:bg-surface-container text-secondary hover:text-primary transition-colors" title="Abrir carpeta local" type="button">
+<span class="material-symbols-outlined text-[16px]">launch</span>
+</button>
+</div>
+</div>
+<!-- 3 Dossier Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Document 1 -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex items-center justify-between hover:bg-surface-container-high/60 transition-colors group">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[22px]">description</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">Constancia de Situación Fiscal</span>
+<span class="font-body-sm text-body-sm text-secondary text-[12px]">Actualizada Sept 2024 · 420 KB</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors" title="Previsualizar" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors" title="Descargar" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</div>
+<!-- Document 2 -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex items-center justify-between hover:bg-surface-container-high/60 transition-colors group">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest text-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[22px]">verified</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">Última Opinión 32-D (SAT)</span>
+<span class="font-body-sm text-body-sm text-secondary text-[12px]">Emitida 15 Oct 2024 · Positiva · 210 KB</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors" title="Previsualizar" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors" title="Descargar" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</div>
+<!-- Document 3 -->
+<div class="bg-surface-container-low p-space-md rounded-xl flex items-center justify-between hover:bg-surface-container-high/60 transition-colors group">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest text-on-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[22px]">receipt_long</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">Acuse Declaración Mensual</span>
+<span class="font-body-sm text-body-sm text-secondary text-[12px]">Periodo Septiembre 2024 · 315 KB</span>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors" title="Previsualizar" type="button">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+</button>
+<button class="p-1.5 text-secondary hover:text-primary rounded-lg transition-colors" title="Descargar" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div></div></main></div>
+
+</body></html>

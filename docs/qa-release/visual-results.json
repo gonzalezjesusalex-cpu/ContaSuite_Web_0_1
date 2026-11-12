@@ -1,0 +1,32 @@
+{
+  "synthetic_only": true,
+  "keyboard_skip_to_main": true,
+  "dialog_named": true,
+  "dialog_escape_close": true,
+  "independent_company_correction": true,
+  "observations": [
+    {
+      "focus": "#b4c5ff",
+      "scroll": 1208,
+      "theme": "dark",
+      "width": 1208
+    },
+    {
+      "focus": "#0053db",
+      "theme": "light"
+    },
+    {
+      "mobile": {
+        "columns": "1fr",
+        "inputWidth": 271,
+        "pageWidth": 375,
+        "viewport": 375
+      }
+    },
+    {
+      "focus": "#fff",
+      "theme": "contrast"
+    }
+  ],
+  "complete_accessibility_audit": false
+}

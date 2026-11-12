@@ -1,0 +1,23 @@
+# Template only. Replace DNS/certificate paths with an approved, valid certificate.
+# No self-signed certificate is supplied or accepted as a production solution.
+server {
+    listen 443 ssl;
+    server_name contasuite.despacho.example;
+    ssl_certificate C:/ProgramData/ContaSuite/tls/fullchain.pem;
+    ssl_certificate_key C:/ProgramData/ContaSuite/tls/private-key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 100m;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    location / {
+        allow 192.168.50.0/24; # Replace with the authorized LAN subnet.
+        deny all;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_read_timeout 120s;
+    }
+}
+# PostgreSQL stays on loopback. Do not add inbound 5432/8000 firewall rules.
+# Allow inbound 443 ONLY from the authorized client subnet after separate authorization.

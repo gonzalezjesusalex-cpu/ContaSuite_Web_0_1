@@ -1,0 +1,36 @@
+ORGANIZADOR DE DECLARACIONES SAT v0.2.6 beta
+
+BASE
+- Esta versión parte directamente de Organizador_Declaraciones_SAT_v25.
+- Conserva el control mensual, el perfil/ruta persistente de Firefox y la validación de PDF antes de copiar a la carpeta de empresa.
+
+NOVEDAD v0.2.6 beta: DESCARGA MASIVA DE DECLARACIONES
+- Al abrir DECLARACIONES SAT, el Organizador sigue usando la navegación normal por Personas Morales > Declara > Pagos provisionales del ISR.
+- Cuando detecta la pantalla de Consulta de declaraciones, agrega un botón flotante dentro de la propia página:
+  "DESCARGAR TODAS".
+- También aparece un botón DESCARGAR TODAS en la barra SAT del Organizador mientras la sesión de Declaraciones está abierta.
+- El programa identifica las filas de la tabla y acciona el icono PDF de cada una.
+- Las descargas se realizan UNA POR UNA en cola para evitar saturar el portal.
+- Cada descarga espera hasta 25 segundos antes de marcar esa fila como error y continuar con la siguiente.
+- Se muestra progreso: procesadas / total, PDF guardados y errores.
+- Se conservan Normal y Complementaria aunque correspondan al mismo mes.
+- El número de operación se usa como referencia visual de progreso; no se elimina ninguna declaración por compartir periodo.
+- Solo archivos cuyo encabezado real es %PDF- se guardan en la carpeta de la empresa.
+- Si el SAT cambia la estructura y no se logra identificar el icono PDF, no se hacen clics indiscriminados: se muestra una advertencia.
+- Al cerrar Firefox, el Organizador vuelve a analizar la carpeta automáticamente, igual que en v25.
+
+IMPORTANTE PARA LA PRUEBA
+1. Analiza la carpeta de la empresa.
+2. Abre DECLARACIONES SAT.
+3. Inicia sesión normalmente.
+4. Llega a la pantalla Consulta donde aparece la tabla de declaraciones.
+5. Debe aparecer abajo a la derecha el botón flotante DESCARGAR TODAS.
+6. Pulsa una sola vez y deja que termine la cola.
+7. Revisa el resumen de descargadas/errores.
+8. Cierra Firefox para que se reanalice la carpeta.
+
+COMPILACIÓN
+- Cuando la prueba quede aprobada, ejecuta CREAR_EXE_v26.bat.
+- Firefox dedicado sigue en:
+  %LOCALAPPDATA%\OrganizadorSAT\playwright-browsers
+- Si hace falta reparar Firefox, usa INSTALAR_FIREFOX_SAT_v26.bat.

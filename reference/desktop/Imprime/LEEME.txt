@@ -1,0 +1,57 @@
+CI · Imprime | ContaSuite | v0.3 beta
+Aplicación independiente. No modifica el launcher ni otros módulos.
+
+INICIAR
+Windows 10/11, Python 3.11 o superior instalado con el lanzador py.
+Ejecuta INICIAR.bat. La primera ejecución instala las dependencias.
+Para crear el ejecutable, usa COMPILAR_EXE_WINDOWS.bat en Windows.
+No se incluye un EXE compilado en este paquete.
+
+DISEÑO v0.2
+Vista previa permanente a la derecha, con divisor ajustable.
+En impresión masiva: opciones a la izquierda, lote al centro y hoja
+a la derecha. Opciones desplazables con rueda del mouse sobre todo
+el panel, incluidos campos y desplegables, sin modificar sus valores.
+
+IMPRESIÓN NORMAL
+Abre un PDF. Revisa las páginas con las flechas y elige impresora,
+papel, orientación, escala, color, copias, doble cara y calidad.
+Páginas: vacío imprime todas; también acepta 1, 3-5, 8.
+Las páginas repetidas se eliminan; las copias salen por documento completo.
+Ctrl+O abre archivos. Ctrl+P inicia la impresión.
+
+IMPRESIÓN MASIVA
+Agrega varios PDFs o una carpeta (incluye subcarpetas).
+Selecciona una fila para previsualizarla. Quitar y Vaciar solo modifican
+la lista; nunca borran archivos del disco. Se evitan rutas duplicadas.
+Se imprime toda la lista, en su orden, con los ajustes compartidos.
+El número de copias se aplica a cada PDF. Los PDFs dañados o protegidos
+se omiten al cargar. Se muestran errores por documento durante el envío.
+
+PAPEL Y VISTA PREVIA
+Carta es el valor inicial; A4 y Legal son tamaños alternativos.
+Automática usa la primera página de cada PDF para fijar la orientación
+del trabajo completo; las demás páginas se ajustan a esa orientación.
+La vista previa muestra la hoja completa y el efecto del tamaño,
+orientación, escala y grises. No simula márgenes del controlador.
+El área real imprimible depende de la impresora. En tamaño real puede
+recortarse contenido que exceda esa área. No se cambian preferencias
+globales de Windows. Doble cara requiere soporte del controlador.
+
+CANCELAR
+Se solicita cancelar el documento activo entre páginas; no revoca
+trabajos previamente enviados. Para esos trabajos usa la cola de Windows.
+"Enviado a la cola" indica aceptación por Windows, no salida física.
+Los controles de configuración y edición se bloquean durante el envío.
+
+VALIDACIÓN
+Pruebas automáticas de selección de páginas, geometría, vista previa,
+contrato con el controlador y cancelación; ver tests/test_engine.py.
+La impresión física, la revisión visual de la ventana y la compilación
+del EXE quedan pendientes de probarse en Windows. Este entorno no
+dispone de una pantalla gráfica ni de controladores de Windows.
+
+ZOOM
+Botones − y +: 50% a 300% respecto de la hoja ajustada al panel.
+Ajustar hoja vuelve a 100%. Usa las barras o arrastra la hoja para
+recorrerla. El zoom no modifica la escala de impresión.

@@ -1,0 +1,1 @@
+Iconos originales extraidos sin modificar de ContaSuite_v0_6_interfaz_unificada.zip. Incluye los iconos en modos claro/oscuro, PNG e ICO, con todas las resoluciones presentes en el proyecto.

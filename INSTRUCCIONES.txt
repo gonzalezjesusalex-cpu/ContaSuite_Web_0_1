@@ -1,0 +1,31 @@
+CONTASUITE WEB 0.1 - INICIO RAPIDO EN WINDOWS
+
+1. Extrae TODO el ZIP, por ejemplo en C:\ContaSuiteWeb.
+2. Instala Python 3.12 de 64 bits con el lanzador py.
+3. Abre INICIAR_PRUEBA.bat.
+4. Espera la instalacion inicial (requiere Internet).
+5. En el navegador, pega la clave de acceso que aparece en la consola.
+6. Entra a Empresas. Hay tres empresas DEMO para probar.
+
+Puedes crear y editar empresas. Para eliminarlas: abre su expediente,
+pulsa Eliminar empresa y escribe el RFC de confirmacion.
+
+Conserva abierta la consola. Ctrl+C detiene el servidor.
+No necesitas Node.js para ejecutar este paquete.
+
+Para PostgreSQL: instala e inicia Docker Desktop y usa
+INICIAR_CONTASUITE.bat en una instalacion NUEVA.
+Los scripts respetan el .env existente; no migran ni cambian la base.
+
+Para analizar carpetas: revisa las rutas autorizadas de
+agent\config.json y abre INICIAR_AGENTE.bat.
+
+La consulta SAT, OCR, impresion y motores anteriores aun estan
+pendientes de integracion. Sus pantallas conservan el diseno de Stitch.
+
+Mas detalles: LEEME_PRIMERO.md y docs\ARQUITECTURA.md.
+Pruebas y limites: docs\VALIDACION.md.
+
+CORRECCION 0.1.1: El arranque selecciona Python 3.12 o 3.11 de 64 bits.
+Si solo tienes Python 3.15, instala ademas Python 3.12.
+El modo de prueba ya no instala el controlador de PostgreSQL.

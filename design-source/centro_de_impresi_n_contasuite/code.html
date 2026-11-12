@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 20;display:inline-block;vertical-align:middle;line-height:1;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"tertiary-fixed-dim":"#4edea3","surface":"#f8f9ff","on-tertiary":"#ffffff","surface-dim":"#cbdbf5","surface-tint":"#0053db","primary-fixed-dim":"#b4c5ff","error":"#ba1a1a","error-container":"#ffdad6","secondary-fixed-dim":"#bfc6db","on-error-container":"#93000a","on-error":"#ffffff","on-surface":"#0b1c30","primary-container":"#2563eb","secondary-fixed":"#dbe2f8","tertiary-fixed":"#6ffbbe","on-secondary-fixed":"#141c2b","tertiary-container":"#007d55","inverse-surface":"#213145","secondary-container":"#dbe2f8","on-secondary-fixed-variant":"#3f4758","on-tertiary-fixed-variant":"#005236","surface-container-low":"#eff4ff","on-tertiary-fixed":"#002113","on-tertiary-container":"#bdffdb","on-primary-fixed-variant":"#003ea8","on-primary-container":"#eeefff","background":"#f8f9ff","secondary":"#575e70","outline":"#737686","on-surface-variant":"#434655","inverse-on-surface":"#eaf1ff","inverse-primary":"#b4c5ff","surface-container-high":"#dce9ff","on-primary-fixed":"#00174b","outline-variant":"#c3c6d7","surface-bright":"#f8f9ff","primary-fixed":"#dbe1ff","on-secondary":"#ffffff","surface-container":"#e5eeff","tertiary":"#006242","on-secondary-container":"#5d6476","on-primary":"#ffffff","surface-variant":"#d3e4fe","primary":"#004ac6","surface-container-lowest":"#ffffff","on-background":"#0b1c30","surface-container-highest":"#d3e4fe"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"gutter-mobile":"0.75rem","gutter":"1rem","space-sm":"0.5rem","space-xs":"0.25rem","space-xl":"2rem","space-md":"0.875rem","margin":"1.75rem","space-lg":"1.25rem","margin-mobile":"1rem"},"fontFamily":{"headline-lg-mobile":["Inter"],"data-tabular":["Inter"],"headline-md":["Inter"],"headline-lg":["Inter"],"body-sm":["Inter"],"headline-xl":["Inter"],"body-md":["Inter"],"headline-sm":["Inter"],"body-lg":["Inter"],"label-md":["Inter"],"label-sm":["Inter"],"headline-xl-mobile":["Inter"]},"fontSize":{"headline-lg-mobile":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"data-tabular":["13px",{"lineHeight":"18px","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["18px",{"lineHeight":"26px","letterSpacing":"-0.01em","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-xl":["30px",{"lineHeight":"38px","letterSpacing":"-0.02em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"headline-sm":["15px",{"lineHeight":"22px","letterSpacing":"-0.005em","fontWeight":"600"}],"body-lg":["15px",{"lineHeight":"24px","fontWeight":"400"}],"label-md":["13px",{"lineHeight":"16px","fontWeight":"500"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"headline-xl-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"600"}]}}}};</script></head><body class="bg-surface font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-[#101827] z-50 flex flex-col justify-between select-none shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex flex-col flex-1 min-h-0"><div class="p-space-lg flex items-center gap-space-sm"><img alt="ContaSuite Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ALJJyrC2NTJhxexjSvTVNzQlDK-GG1I38Fj7ciVGwxpNqMRlqLFMGEw1B_pIfEo90U4eY1dqbx1Kj4m0Wsu20iBkBqa-nK05n5LOkxxCmkWvzhWfddixHxl8TsUjx3df8hjDwkfwByQmfDVp7QuwB34wtNdZrqzc_sMljmeFQqkqz3zps94l8zvx1J8bpX_K5C6t4pUI89pp5lJhS2I38_qEgGkKVHt3Xbs6cr_1IXfFrfJlcA"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-inverse-on-surface tracking-tight leading-none">ContaSuite</span><span class="font-label-sm text-label-sm text-outline-variant tracking-normal mt-space-xs">Gestión contable inteligente</span></div></div><div class="flex-1 overflow-y-auto px-space-sm py-space-xs"><div class="px-space-sm pt-space-md pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">General</span></div><nav class="flex flex-col gap-space-xs mb-space-md" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="inicio" href="#"><span class="font-body-md text-body-md">Inicio</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="empresas" href="#"><span class="font-body-md text-body-md">Empresas</span></a><a class="flex items-center gap-space-md pl-space-lg pr-space-sm py-space-xs rounded-lg text-inverse-on-surface/80 hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="registro-de-empresas" href="#"><span class="font-body-sm text-body-sm">Registro de Empresas</span></a></nav><div class="px-space-sm pt-space-sm pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">Automatización</span></div><nav class="flex flex-col gap-space-xs mb-space-md" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="recopilador-cfdi" href="#"><span class="font-body-md text-body-md">Recopilador CFDI</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="organizador-cfdi" href="#"><span class="font-body-md text-body-md">Organizador CFDI</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="renombrador-de-cotizaciones" href="#"><span class="font-body-md text-body-md">Renombrador de cotizaciones</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="relacionador-documental" href="#"><span class="font-body-md text-body-md">Relacionador documental</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="generador-de-recibos" href="#"><span class="font-body-md text-body-md">Generador de recibos</span></a><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="centro-de-impresion" href="#"><span class="font-body-md text-body-md">Centro de impresión</span></a></nav><div class="px-space-sm pt-space-sm pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline-variant">Sistema</span></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-headline-sm rounded-lg"><a class="flex items-center gap-space-md px-space-sm py-space-sm rounded-lg text-inverse-on-surface hover:bg-surface-variant/20 hover:text-inverse-on-surface transition-colors" data-path="configuracion" href="#"><span class="font-body-md text-body-md">Configuración</span></a></nav></div></div><div class="p-space-sm bg-[#101827]/90 flex items-center justify-between gap-space-xs"><div class="flex items-center gap-space-sm min-w-0 flex-1"><img alt="Profile" class="w-8 h-8 rounded-full object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5ohMSOv4jwlW1GgEGFPRIN0gyDVFn8a8y-CS019C4H7tw_KmOz4F-f3jd9MfJWcRt3Pn0c2fFh-3tYs-qQnRXZy-a1SxQ7BaRG2yUPQ-UtaK-js0MTDECZvtHJtAYjN-E0vBnC2WqX9NwzQHtXUGhrAuhrYtsCgMlXFWqeXyZ51GaKzW-_tSX2cGtLO8nJou9JkAxeLWIrQkpYCj5xaC8wpTGYCJMtgm7KZj7rRNH"/><div class="flex flex-col min-w-0 leading-tight"><span class="font-label-md text-label-md text-inverse-on-surface truncate">C.P. Alejandro Morales</span><span class="font-label-sm text-label-sm text-outline-variant truncate">Contador Administrador</span></div></div><button aria-label="Colapsar panel" class="p-space-xs text-outline-variant hover:text-inverse-on-surface hover:bg-surface-variant/20 rounded-lg transition-colors" title="Colapsar panel" type="button"><span class="material-symbols-outlined text-[18px]">dock_to_right</span></button></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] px-gutter flex items-center justify-between gap-gutter"><div class="flex items-center gap-space-sm min-w-0"><div class="flex items-center gap-space-xs text-outline font-body-sm text-body-sm"><span class="font-body-sm text-body-sm text-on-surface-variant">ContaSuite</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-body-sm text-body-sm text-on-surface-variant">Workspace Fiscal</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-label-md text-label-md text-on-surface font-semibold truncate">Recopilador CFDI</span></div></div><div class="flex-1 max-w-lg mx-space-md"><div class="relative flex items-center"><span class="material-symbols-outlined absolute left-space-md text-outline text-[18px]">search</span><input class="w-full bg-surface-container-low text-on-surface placeholder:text-outline text-body-sm font-body-sm pl-9 pr-14 py-space-xs rounded-lg focus:outline-none focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest transition-all" placeholder="Buscar empresa, RFC, CFDI..." type="text"/><span class="absolute right-space-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-label-sm text-[10px] uppercase font-semibold">⌘K</span></div></div><div class="flex items-center gap-space-sm shrink-0"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-tertiary-container/10"><span class="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span><span class="font-label-sm text-label-sm text-tertiary font-semibold">SAT Conectado</span></div><button aria-label="Notificaciones" class="relative p-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-on-error font-label-sm text-[10px] flex items-center justify-center font-bold">3</span></button><button aria-label="Tema de interfaz" class="p-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-lg transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">routine</span></button><div class="flex items-center pl-space-xs"><button class="flex items-center gap-space-xs p-space-xs rounded-lg hover:bg-surface-container-low transition-colors" type="button"><img alt="Profile" class="w-7 h-7 rounded-full object-cover shrink-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5ohMSOv4jwlW1GgEGFPRIN0gyDVFn8a8y-CS019C4H7tw_KmOz4F-f3jd9MfJWcRt3Pn0c2fFh-3tYs-qQnRXZy-a1SxQ7BaRG2yUPQ-UtaK-js0MTDECZvtHJtAYjN-E0vBnC2WqX9NwzQHtXUGhrAuhrYtsCgMlXFWqeXyZ51GaKzW-_tSX2cGtLO8nJou9JkAxeLWIrQkpYCj5xaC8wpTGYCJMtgm7KZj7rRNH"/><span class="material-symbols-outlined text-outline text-[16px]">keyboard_arrow_down</span></button></div></div></header><main class="w-full pt-16 pb-8 bg-surface min-h-[calc(100vh-4rem)]"><div class="flex flex-col w-full">
+<!-- Top Meta Bar / Context Header -->
+<div class="px-margin pt-space-lg pb-space-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-space-sm">
+<span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary-container text-on-primary shadow-sm">
+<span class="material-symbols-outlined text-[20px]">print</span>
+</span>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Centro de Impresión</h1>
+<span class="px-space-xs py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm uppercase font-semibold">Spooler v2.4</span>
+</div>
+<p class="font-body-md text-body-md text-outline pl-10">Administra y supervisa la impresión de documentos fiscales y expedientes auditables.</p>
+</div>
+<!-- Quick Status Ticker -->
+<div class="flex items-center gap-space-md self-start md:self-auto bg-surface-container-lowest px-space-md py-space-xs rounded-xl shadow-sm">
+<div class="flex items-center gap-space-xs">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-tertiary-container"></span>
+</span>
+<span class="font-label-md text-label-md text-on-surface font-medium">Servidor CUPS Local: Activo</span>
+</div>
+<span class="text-outline-variant font-light">|</span>
+<div class="flex items-center gap-space-xs text-outline font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-tertiary">speed</span>
+<span>Latencia: 18ms</span>
+</div>
+</div>
+</div>
+<!-- Main 3-Panel Workspace Container -->
+<div class="px-margin pb-space-md flex flex-col xl:flex-row gap-gutter flex-1 items-start">
+<!-- ========================================== -->
+<!-- PANEL 1: IZQUIERDO — DOCUMENTOS A IMPRIMIR -->
+<!-- ========================================== -->
+<section class="w-full xl:w-[320px] 2xl:w-[340px] shrink-0 bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
+<!-- Section Header & Mode Toggle -->
+<div class="p-space-md bg-surface-container-low/50 flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">folder_open</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Documentos</h2>
+</div>
+<span class="font-label-sm text-label-sm text-outline uppercase font-semibold">Lote #882</span>
+</div>
+<!-- Segmented Mode Control -->
+<div class="grid grid-cols-2 p-1 bg-surface-container-high rounded-lg text-center font-label-md text-label-md" id="modeSelector">
+<button class="py-1 px-space-xs rounded-md bg-surface-container-lowest text-on-surface font-semibold shadow-xs transition-all flex items-center justify-center gap-1" onclick="switchPrintMode('individual', this)" type="button">
+<span class="material-symbols-outlined text-[14px]">draft</span>
+<span>Individual</span>
+</button>
+<button class="py-1 px-space-xs rounded-md text-outline hover:text-on-surface transition-all flex items-center justify-center gap-1" onclick="switchPrintMode('masiva', this)" type="button">
+<span class="material-symbols-outlined text-[14px]">layers</span>
+<span>Masiva (Lotes)</span>
+</button>
+</div>
+</div>
+<div class="p-space-md flex flex-col gap-space-md">
+<!-- Main Add PDF Action Button -->
+<label class="cursor-pointer w-full py-2.5 px-space-md bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded-lg transition-all shadow-sm flex items-center justify-center gap-space-xs active:scale-[0.99] select-none text-center" for="pdfFileInput">
+<span class="material-symbols-outlined text-[20px]">add_circle</span>
+<span>+ Agregar archivos PDF</span>
+<input accept="application/pdf" class="hidden" id="pdfFileInput" multiple="" onchange="handleFileSelect(event)" type="file"/>
+</label>
+<!-- Drag & Drop Zone -->
+<div class="relative group p-space-md bg-surface-container-low/70 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-surface-container-low" id="dropZone" ondragleave="this.classList.remove('bg-primary-fixed/30');" ondragover="event.preventDefault(); this.classList.add('bg-primary-fixed/30');" ondrop="event.preventDefault(); this.classList.remove('bg-primary-fixed/30'); alert('Archivos integrados al búfer de impresión');">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary group-hover:scale-110 transition-transform shadow-xs mb-space-xs">
+<span class="material-symbols-outlined text-[22px]">cloud_upload</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface">Arrastra tus pólizas aquí</span>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">CFDI 4.0, pólizas, carátulas o acuses SAT</p>
+<span class="font-label-sm text-label-sm text-primary font-semibold mt-space-xs">o examina en tu equipo</span>
+</div>
+<!-- List Selection Header -->
+<div class="flex items-center justify-between pt-space-xs">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input checked="" class="w-4 h-4 rounded text-primary focus:ring-0 accent-primary cursor-pointer" id="selectAllCheckbox" onchange="toggleSelectAll(this)" type="checkbox"/>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Seleccionar todos</span>
+</label>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-medium" id="docCountBadge">3 docs (18 págs)</span>
+</div>
+<!-- Document Stack / Queue List -->
+<div class="flex flex-col gap-space-xs max-h-[380px] overflow-y-auto pr-0.5" id="documentList">
+<!-- Doc 1 (Active/Selected) -->
+<div class="doc-card group relative p-space-sm bg-surface-container-low rounded-lg transition-all cursor-pointer flex items-start gap-space-sm shadow-xs" onclick="selectDoc(this, 'Expediente_Materialidad_DistribuidoraBajio_Oct2024.pdf', 12)">
+<input checked="" class="mt-1 w-3.5 h-3.5 rounded text-primary accent-primary cursor-pointer shrink-0" onclick="event.stopPropagation()" type="checkbox"/>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[16px] shrink-0">picture_as_pdf</span>
+<span class="font-headline-sm text-body-md text-on-surface truncate font-semibold leading-tight">Expediente_Materialidad_Bajio.pdf</span>
+</div>
+<div class="flex items-center gap-2 mt-1 font-data-tabular text-body-sm text-outline">
+<span>12 págs</span>
+<span>•</span>
+<span>3.4 MB</span>
+</div>
+<div class="mt-1.5 flex items-center justify-between">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  Listo para imprimir
+                </span>
+<button aria-label="Remover documento" class="opacity-70 group-hover:opacity-100 p-1 text-outline hover:text-error hover:bg-error-container/30 rounded transition-all" onclick="event.stopPropagation(); removeDoc(this)" title="Remover del lote" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Doc 2 -->
+<div class="doc-card group relative p-space-sm bg-surface-container-lowest hover:bg-surface-container-low rounded-lg transition-all cursor-pointer flex items-start gap-space-sm" onclick="selectDoc(this, 'Poliza_Diario_D-102_Octubre_CFDI.pdf', 4)">
+<input checked="" class="mt-1 w-3.5 h-3.5 rounded text-primary accent-primary cursor-pointer shrink-0" onclick="event.stopPropagation()" type="checkbox"/>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0">picture_as_pdf</span>
+<span class="font-headline-sm text-body-md text-on-surface truncate font-semibold leading-tight">Poliza_Diario_D-102_Octubre_CFDI.pdf</span>
+</div>
+<div class="flex items-center gap-2 mt-1 font-data-tabular text-body-sm text-outline">
+<span>4 págs</span>
+<span>•</span>
+<span>1.1 MB</span>
+</div>
+<div class="mt-1.5 flex items-center justify-between">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  Listo
+                </span>
+<button aria-label="Remover documento" class="opacity-70 group-hover:opacity-100 p-1 text-outline hover:text-error hover:bg-error-container/30 rounded transition-all" onclick="event.stopPropagation(); removeDoc(this)" title="Remover del lote" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Doc 3 -->
+<div class="doc-card group relative p-space-sm bg-surface-container-lowest hover:bg-surface-container-low rounded-lg transition-all cursor-pointer flex items-start gap-space-sm" onclick="selectDoc(this, 'Acuse_Declaracion_Mensual_ISR_IVA_SEP2024.pdf', 2)">
+<input checked="" class="mt-1 w-3.5 h-3.5 rounded text-primary accent-primary cursor-pointer shrink-0" onclick="event.stopPropagation()" type="checkbox"/>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0">picture_as_pdf</span>
+<span class="font-headline-sm text-body-md text-on-surface truncate font-semibold leading-tight">Acuse_Declaracion_Mensual_SAT.pdf</span>
+</div>
+<div class="flex items-center gap-2 mt-1 font-data-tabular text-body-sm text-outline">
+<span>2 págs</span>
+<span>•</span>
+<span>480 KB</span>
+</div>
+<div class="mt-1.5 flex items-center justify-between">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                  Listo
+                </span>
+<button aria-label="Remover documento" class="opacity-70 group-hover:opacity-100 p-1 text-outline hover:text-error hover:bg-error-container/30 rounded transition-all" onclick="event.stopPropagation(); removeDoc(this)" title="Remover del lote" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Doc 4 -->
+<div class="doc-card group relative p-space-sm bg-surface-container-lowest hover:bg-surface-container-low rounded-lg transition-all cursor-pointer flex items-start gap-space-sm" onclick="selectDoc(this, 'Reporte_Conciliacion_Bancaria_BBVA_Octubre.pdf', 8)">
+<input class="mt-1 w-3.5 h-3.5 rounded text-primary accent-primary cursor-pointer shrink-0" onclick="event.stopPropagation()" type="checkbox"/>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0">picture_as_pdf</span>
+<span class="font-headline-sm text-body-md text-on-surface truncate font-semibold leading-tight">Reporte_Conciliacion_BBVA.pdf</span>
+</div>
+<div class="flex items-center gap-2 mt-1 font-data-tabular text-body-sm text-outline">
+<span>8 págs</span>
+<span>•</span>
+<span>2.2 MB</span>
+</div>
+<div class="mt-1.5 flex items-center justify-between">
+<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">
+                  En espera
+                </span>
+<button aria-label="Remover documento" class="opacity-70 group-hover:opacity-100 p-1 text-outline hover:text-error hover:bg-error-container/30 rounded transition-all" onclick="event.stopPropagation(); removeDoc(this)" title="Remover del lote" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Panel Footer / Volume Info -->
+<div class="pt-space-sm bg-surface-container-lowest flex items-center justify-between font-body-sm text-body-sm text-outline">
+<span class="font-data-tabular">Volumen: 7.18 MB</span>
+<button class="text-error hover:underline font-label-sm text-label-sm font-semibold" onclick="clearBatch()" type="button">Limpiar lista</button>
+</div>
+</div>
+</section>
+<!-- ============================================================== -->
+<!-- PANEL 2: CENTRAL — PREVISUALIZADOR PDF PROFESIONAL DE ALTA RES -->
+<!-- ============================================================== -->
+<main class="flex-1 min-w-0 w-full bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
+<!-- High-End PDF Viewer Toolbar -->
+<div class="px-space-md py-space-xs bg-[#1E293B] text-[#F8FAFC] flex flex-wrap items-center justify-between gap-y-2 select-none shadow-sm">
+<!-- Page Nav Section -->
+<div class="flex items-center gap-space-xs">
+<button aria-label="Página anterior" class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" onclick="changePage(-1)" title="Página anterior (Ctrl+←)" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+</button>
+<div class="flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded font-data-tabular text-body-sm">
+<span class="text-white/60">Pág.</span>
+<input class="w-8 text-center bg-transparent text-white font-semibold focus:outline-none focus:bg-white/20 rounded" id="pageNumberInput" max="12" min="1" onchange="jumpToPage(this.value)" type="number" value="1"/>
+<span class="text-white/60">/ <span id="totalPagesSpan">12</span></span>
+</div>
+<button aria-label="Página siguiente" class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" onclick="changePage(1)" title="Página siguiente (Ctrl+→)" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+<!-- Zoom & View Tools -->
+<div class="flex items-center gap-space-xs font-label-md text-label-md">
+<button aria-label="Reducir zoom" class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" onclick="adjustZoom(-10)" title="Reducir (-)" type="button">
+<span class="material-symbols-outlined text-[18px]">zoom_out</span>
+</button>
+<select class="bg-white/10 hover:bg-white/20 text-white font-medium text-body-sm py-0.5 px-2 rounded cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary" id="zoomSelect" onchange="setZoom(this.value)">
+<option class="text-on-surface" value="50">50%</option>
+<option class="text-on-surface" value="75">75%</option>
+<option class="text-on-surface" selected="" value="100">100%</option>
+<option class="text-on-surface" value="125">125%</option>
+<option class="text-on-surface" value="150">150%</option>
+</select>
+<button aria-label="Aumentar zoom" class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" onclick="adjustZoom(10)" title="Aumentar (+)" type="button">
+<span class="material-symbols-outlined text-[18px]">zoom_in</span>
+</button>
+<div class="h-4 w-px bg-white/20 mx-1"></div>
+<button class="px-2 py-1 rounded hover:bg-white/10 text-white/80 hover:text-white text-body-sm transition-colors flex items-center gap-1" onclick="fitWidth()" title="Ajustar al ancho" type="button">
+<span class="material-symbols-outlined text-[16px]">fit_screen</span>
+<span class="hidden sm:inline font-label-sm text-label-sm">Ancho</span>
+</button>
+<button class="px-2 py-1 rounded hover:bg-white/10 text-white/80 hover:text-white text-body-sm transition-colors flex items-center gap-1" onclick="fitPage()" title="Ajustar a la página" type="button">
+<span class="material-symbols-outlined text-[16px]">auto_stories</span>
+<span class="hidden sm:inline font-label-sm text-label-sm">Página</span>
+</button>
+</div>
+<!-- Extra Tools (Rotate, Pan, Fullscreen) -->
+<div class="flex items-center gap-space-xs">
+<button class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" id="handToolBtn" onclick="toggleHandTool()" title="Herramienta Mano / Desplazamiento" type="button">
+<span class="material-symbols-outlined text-[18px]">pan_tool</span>
+</button>
+<button class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" onclick="rotatePreview()" title="Rotar 90° en sentido horario" type="button">
+<span class="material-symbols-outlined text-[18px]">rotate_right</span>
+</button>
+<button class="p-1 rounded hover:bg-white/10 text-white/80 hover:text-white transition-colors" onclick="toggleFullscreen()" title="Pantalla completa" type="button">
+<span class="material-symbols-outlined text-[18px]">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Preview Canvas Viewport -->
+<div class="flex-1 bg-[#475569]/15 overflow-auto p-4 md:p-8 flex items-center justify-center min-h-[580px] relative transition-all" id="viewerCanvasViewport">
+<!-- Rendered Fiscal Sheet (Letter Proportion 8.5 x 11) -->
+<div class="w-full max-w-[620px] bg-white rounded-sm shadow-xl p-8 md:p-10 flex flex-col justify-between text-on-surface relative overflow-hidden transition-transform duration-200" id="pdfPaperSheet" style="min-height: 800px; transform: scale(1);">
+<!-- Background Subtle SAT Watermark -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.03] rotate-[-28deg]">
+<span class="font-headline-xl text-[64px] font-bold text-on-surface tracking-widest uppercase">EXPEDIENTE FISCAL SAT VERIFICADO</span>
+</div>
+<!-- Top Sheet Header & Membrete -->
+<div class="relative z-10 flex flex-col gap-space-sm pb-space-md border-b border-surface-container-high">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 bg-primary rounded flex items-center justify-center text-on-primary font-headline-md text-headline-md font-bold">
+                  DB
+                </div>
+<div class="flex flex-col">
+<h3 class="font-headline-sm text-headline-sm text-on-surface uppercase tracking-tight">Distribuidora del Bajío S.A. de C.V.</h3>
+<span class="font-data-tabular text-body-sm text-outline">RFC: DBA-940822-KG8 • Régimen General de Ley Personas Morales</span>
+</div>
+</div>
+<div class="text-right">
+<span class="px-2 py-0.5 rounded bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold uppercase">32-D Positiva</span>
+<p class="font-data-tabular text-body-sm text-outline mt-1">Folio Exp: 2024-MAT-089</p>
+</div>
+</div>
+<div class="mt-space-xs p-space-sm bg-surface-container-low rounded flex items-center justify-between text-body-sm font-data-tabular">
+<div>
+<span class="text-outline uppercase text-[10px] block font-semibold">TIPO DOCUMENTAL</span>
+<span class="text-on-surface font-semibold">CARÁTULA DE MATERIALIDAD FISCAL (ART. 69-B CFF)</span>
+</div>
+<div class="text-right">
+<span class="text-outline uppercase text-[10px] block font-semibold">PERIODO FISCAL</span>
+<span class="text-on-surface font-semibold">OCTUBRE 2024</span>
+</div>
+</div>
+</div>
+<!-- Middle Content: Póliza and Validation Body -->
+<div class="relative z-10 flex-1 flex flex-col gap-space-md py-space-md text-body-sm">
+<!-- UUID CFDI Card -->
+<div class="p-space-sm bg-surface-container-lowest border border-surface-container-high rounded-md flex flex-col gap-1">
+<div class="flex items-center justify-between text-[11px] text-outline font-medium">
+<span>COMPROBANTE FISCAL DIGITAL (CFDI 4.0 INGRESO)</span>
+<span class="text-tertiary font-semibold">TIMBRADO PAC SAT #00001</span>
+</div>
+<p class="font-data-tabular text-body-sm text-on-surface font-semibold">UUID: 4A8F23E1-7BC9-42E0-B95D-33C6109927F0</p>
+<div class="flex items-center justify-between font-data-tabular text-body-sm text-outline pt-1">
+<span>Fecha emisión: 24/10/2024 14:22:10</span>
+<span class="text-on-surface font-bold text-headline-sm">$148,480.00 MXN</span>
+</div>
+</div>
+<!-- Ledger Table Mock -->
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline mb-1 font-semibold">Desglose de Contabilidad Asociada (Póliza D-102)</span>
+<table class="w-full text-left font-data-tabular text-body-sm">
+<thead>
+<tr class="bg-surface-container-low text-outline text-[11px] uppercase">
+<th class="py-1 px-2 font-semibold">Cuenta</th>
+<th class="py-1 px-2 font-semibold">Concepto Fiscal</th>
+<th class="py-1 px-2 text-right font-semibold">Debe</th>
+<th class="py-1 px-2 text-right font-semibold">Haber</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<tr>
+<td class="py-1 px-2 font-mono text-[12px]">601.84.01</td>
+<td class="py-1 px-2 text-on-surface">Servicios Profesionales de Logística</td>
+<td class="py-1 px-2 text-right">$128,000.00</td>
+<td class="py-1 px-2 text-right">$0.00</td>
+</tr>
+<tr>
+<td class="py-1 px-2 font-mono text-[12px]">118.01.01</td>
+<td class="py-1 px-2 text-on-surface">IVA Acreditable Pagado 16%</td>
+<td class="py-1 px-2 text-right">$20,480.00</td>
+<td class="py-1 px-2 text-right">$0.00</td>
+</tr>
+<tr>
+<td class="py-1 px-2 font-mono text-[12px]">102.01.05</td>
+<td class="py-1 px-2 text-on-surface">BBVA Bancomer Cta Empresarial 9021</td>
+<td class="py-1 px-2 text-right">$0.00</td>
+<td class="py-1 px-2 text-right font-semibold text-primary">$148,480.00</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- SPEI Evidentiary Voucher Snippet -->
+<div class="p-space-sm bg-surface-container-low/60 rounded flex items-center gap-space-md">
+<div class="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[18px]">account_balance</span>
+</div>
+<div class="flex-1 min-w-0 font-data-tabular text-body-sm">
+<span class="text-on-surface font-semibold block truncate">Rastreo SPEI Banxico: 202410240982390123849182</span>
+<span class="text-outline text-[11px]">Banco Ordenante: BBVA • Beneficiario: Santander México • Clave CEP OK</span>
+</div>
+</div>
+<!-- Digital Seal / QR Mock -->
+<div class="pt-space-xs flex items-center gap-space-md border-t border-surface-container-high">
+<div class="w-16 h-16 bg-surface-container-high rounded p-1 flex items-center justify-center shrink-0">
+<div class="grid grid-cols-4 gap-0.5 w-full h-full opacity-60">
+<div class="bg-black"></div><div class="bg-black"></div><div class="bg-transparent"></div><div class="bg-black"></div>
+<div class="bg-black"></div><div class="bg-transparent"></div><div class="bg-black"></div><div class="bg-black"></div>
+<div class="bg-transparent"></div><div class="bg-black"></div><div class="bg-black"></div><div class="bg-transparent"></div>
+<div class="bg-black"></div><div class="bg-black"></div><div class="bg-transparent"></div><div class="bg-black"></div>
+</div>
+</div>
+<div class="flex-1 min-w-0 text-[10px] font-mono text-outline leading-tight break-all">
+<span class="font-bold text-on-surface block mb-0.5">Sello Digital del SAT:</span>
+                h7L89+n1Z/oPw...kE7X2w80PqL09831Jskldk20019284728190018274Lkmsdfg==
+              </div>
+</div>
+</div>
+<!-- Bottom Sheet Footer -->
+<div class="relative z-10 pt-space-xs border-t border-surface-container-high flex items-center justify-between font-body-sm text-body-sm text-outline">
+<span class="text-[11px]">Auditado con ContaSuite Fiscal • e.firma Vigente</span>
+<span class="font-data-tabular font-semibold">Página 1 de 12</span>
+</div>
+</div>
+<!-- Floating Document Detail Pill -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-inverse-surface/90 text-inverse-on-surface text-label-md font-label-md shadow-md backdrop-blur flex items-center gap-2 pointer-events-none">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed"></span>
+<span>Alineación 100% vectorizada</span>
+<span class="text-outline-variant">|</span>
+<span>Espacio de color: Grayscale Rec. 709</span>
+</div>
+</div>
+</main>
+<!-- ============================================== -->
+<!-- PANEL 3: DERECHO — CONFIGURACIÓN DE IMPRESIÓN  -->
+<!-- ============================================== -->
+<aside class="w-full xl:w-[320px] 2xl:w-[350px] shrink-0 bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
+<!-- Section Header -->
+<div class="p-space-md bg-surface-container-low/50 flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">tune</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Configuración de impresión</h2>
+</div>
+<button aria-label="Restablecer" class="text-outline hover:text-on-surface transition-colors" onclick="resetConfig()" title="Restablecer valores" type="button">
+<span class="material-symbols-outlined text-[18px]">restart_alt</span>
+</button>
+</div>
+<div class="p-space-md flex flex-col gap-space-md overflow-y-auto max-h-[720px]">
+<!-- 1. Printer Selector & Status -->
+<div class="flex flex-col gap-1.5">
+<label class="font-label-md text-label-md text-on-surface font-semibold flex items-center justify-between" for="printerSelect">
+<span>Dispositivo de salida</span>
+<span class="text-tertiary text-label-sm font-semibold flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary-container animate-pulse"></span>
+              En red
+            </span>
+</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface text-body-sm font-body-sm py-2 px-space-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer" id="printerSelect">
+<option selected="" value="hp-laserjet">HP LaserJet Enterprise MFP M630 (Contabilidad)</option>
+<option value="epson-workforce">Epson WorkForce Pro WF-C579R (Fiscal)</option>
+<option value="brother-hl">Brother HL-L6400DW (Auditoría Despacho)</option>
+<option value="pdf-virtual">Impresora Virtual PDF (Archivado Local)</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-2.5 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+<!-- Dynamic Printer Hardware Status Card -->
+<div class="p-space-xs bg-surface-container-low/70 rounded-md flex items-center justify-between text-body-sm font-data-tabular">
+<div class="flex items-center gap-1.5 text-outline">
+<span class="material-symbols-outlined text-[16px] text-tertiary">lan</span>
+<span>192.168.1.180</span>
+</div>
+<span class="text-on-surface-variant font-medium">Bandeja 2: Carta 80%</span>
+</div>
+</div>
+<!-- 2. Copies & Collate -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Número de copias</label>
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5">
+<button aria-label="Disminuir copias" class="w-8 h-8 rounded bg-surface-container-lowest text-on-surface flex items-center justify-center hover:bg-surface-container font-semibold transition-colors active:scale-95" onclick="adjustCopies(-1)" type="button">-</button>
+<input class="w-full text-center bg-transparent font-data-tabular text-headline-sm text-on-surface font-semibold focus:outline-none" id="copiesInput" max="99" min="1" type="number" value="1"/>
+<button aria-label="Aumentar copias" class="w-8 h-8 rounded bg-surface-container-lowest text-on-surface flex items-center justify-center hover:bg-surface-container font-semibold transition-colors active:scale-95" onclick="adjustCopies(1)" type="button">+</button>
+</div>
+</div>
+<div class="flex flex-col justify-end">
+<label class="p-space-xs bg-surface-container-low hover:bg-surface-container rounded-lg flex items-center gap-space-xs cursor-pointer select-none transition-colors h-[38px]">
+<input checked="" class="w-4 h-4 rounded text-primary accent-primary cursor-pointer shrink-0" id="collateToggle" type="checkbox"/>
+<div class="flex flex-col leading-none">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Intercalar</span>
+<span class="text-[10px] text-outline">Juegos completos</span>
+</div>
+</label>
+</div>
+</div>
+<!-- 3. Paper Size -->
+<div class="flex flex-col gap-1 pt-space-xs">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="paperSizeSelect">Tamaño de papel</label>
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface text-body-sm font-body-sm py-2 px-space-sm rounded-lg focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer" id="paperSizeSelect">
+<option selected="" value="carta">Carta (Letter — 216 × 279 mm)</option>
+<option value="oficio">Oficio (Legal — 216 × 356 mm)</option>
+<option value="a4">A4 (ISO 216 — 210 × 297 mm)</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-2.5 text-outline text-[18px] pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- 4. Orientation & Duplex (Sides) -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<!-- Orientation -->
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Orientación</span>
+<div class="grid grid-cols-2 gap-1 bg-surface-container-low p-1 rounded-lg">
+<button class="py-1 rounded bg-surface-container-lowest text-primary shadow-xs font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1" id="btnPortrait" onclick="setOrientation('portrait')" title="Vertical" type="button">
+<span class="material-symbols-outlined text-[16px]">stay_current_portrait</span>
+<span>Vert.</span>
+</button>
+<button class="py-1 rounded text-outline hover:text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1" id="btnLandscape" onclick="setOrientation('landscape')" title="Horizontal" type="button">
+<span class="material-symbols-outlined text-[16px]">stay_current_landscape</span>
+<span>Horiz.</span>
+</button>
+</div>
+</div>
+<!-- Duplex / Double sided -->
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Caras</span>
+<div class="grid grid-cols-2 gap-1 bg-surface-container-low p-1 rounded-lg">
+<button class="py-1 rounded text-outline hover:text-on-surface font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1" id="btnSimplex" onclick="setDuplex('simplex')" title="Una cara" type="button">
+<span>1 Cara</span>
+</button>
+<button class="py-1 rounded bg-surface-container-lowest text-primary shadow-xs font-label-sm text-label-sm font-semibold flex items-center justify-center gap-1" id="btnDuplex" onclick="setDuplex('duplex')" title="Doble cara" type="button">
+<span>2 Caras</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 5. Page Range Selector -->
+<div class="flex flex-col gap-1.5 pt-space-xs">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Intervalo de páginas</span>
+<div class="flex flex-col gap-1">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input checked="" class="w-4 h-4 text-primary accent-primary" name="pageRangeRadio" onchange="togglePageCustom(false)" type="radio" value="all"/>
+<span class="font-body-sm text-body-sm text-on-surface">Todas las páginas (1 a 12)</span>
+</label>
+<div class="flex items-center gap-space-xs">
+<label class="flex items-center gap-space-xs cursor-pointer select-none">
+<input class="w-4 h-4 text-primary accent-primary" name="pageRangeRadio" onchange="togglePageCustom(true)" type="radio" value="custom"/>
+<span class="font-body-sm text-body-sm text-on-surface">Personalizado:</span>
+</label>
+<input class="flex-1 bg-surface-container-low disabled:opacity-50 text-on-surface text-body-sm font-data-tabular px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-primary" disabled="" id="customPageRangeInput" placeholder="ej. 1-3, 5, 8-12" type="text"/>
+</div>
+</div>
+</div>
+<!-- 6. Color & DPI Settings -->
+<div class="grid grid-cols-2 gap-space-sm pt-space-xs">
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="colorModeSelect">Modo de color</label>
+<select class="w-full bg-surface-container-low text-on-surface text-body-sm font-body-sm py-1.5 px-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer" id="colorModeSelect">
+<option selected="" value="mono">Escala de grises (Fiscal)</option>
+<option value="color">Color completo</option>
+</select>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-label-md text-on-surface font-semibold" for="qualitySelect">Resolución</label>
+<select class="w-full bg-surface-container-low text-on-surface text-body-sm font-body-sm py-1.5 px-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer" id="qualitySelect">
+<option selected="" value="600">600 DPI (Alta)</option>
+<option value="300">300 DPI (Borrador)</option>
+<option value="1200">1200 DPI (FineArt)</option>
+</select>
+</div>
+</div>
+<!-- Action Triggers -->
+<div class="pt-space-sm flex flex-col gap-space-xs border-t border-surface-container-high">
+<button class="w-full py-3 px-space-md bg-primary hover:bg-primary-container text-on-primary font-headline-sm text-headline-sm rounded-lg transition-all shadow-md flex items-center justify-center gap-space-xs active:scale-[0.99] select-none" id="mainPrintBtn" onclick="triggerPrintJob()" type="button">
+<span class="material-symbols-outlined text-[20px]">print</span>
+<span>Imprimir documentos (<span id="printPagesCountBadge">12 págs</span>)</span>
+</button>
+<button class="w-full py-2 px-space-md bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md rounded-lg transition-colors flex items-center justify-center gap-space-xs" onclick="saveAsDefaultConfig()" type="button">
+<span class="material-symbols-outlined text-[16px] text-outline">bookmark</span>
+<span>Guardar configuración por defecto</span>
+</button>
+</div>
+<!-- Fiscal Audit Spooler Disclaimer -->
+<div class="p-space-xs bg-surface-container-low/40 rounded flex items-start gap-1.5 text-outline">
+<span class="material-symbols-outlined text-[16px] text-secondary mt-0.5 shrink-0">info</span>
+<p class="font-body-sm text-[11px] leading-tight">Lotes superiores a 50 páginas emitirán solicitud de confirmación por cuota de tóner.</p>
+</div>
+</div>
+</aside>
+</div>
+<!-- ============================================================== -->
+<!-- 4. SECCIÓN INFERIOR COLAPSABLE — COLA DE IMPRESIÓN (SPOOLER)   -->
+<!-- ============================================================== -->
+<section class="mx-margin mb-space-xl bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-300">
+<!-- Header Spooler Bar -->
+<div class="px-space-md py-space-sm bg-surface-container-low flex items-center justify-between cursor-pointer select-none" onclick="toggleSpoolerSection()">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">pending_actions</span>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Cola de impresión</h3>
+<span class="px-2 py-0.5 rounded-full bg-primary-container/10 text-primary font-data-tabular font-semibold text-body-sm">4 trabajos</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<button class="font-label-md text-label-md text-primary hover:underline flex items-center gap-1 font-semibold" onclick="event.stopPropagation(); alert('Abriendo bitácora histórica completa...');" type="button">
+<span class="material-symbols-outlined text-[16px]">history</span>
+<span>Historial completo de impresiones</span>
+</button>
+<button aria-label="Expandir o colapsar cola" class="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-container transition-transform duration-200" id="spoolerChevronBtn" type="button">
+<span class="material-symbols-outlined text-[20px]">expand_less</span>
+</button>
+</div>
+</div>
+<!-- Collapsible Table Content -->
+<div class="p-space-md overflow-x-auto" id="spoolerTableContainer">
+<table class="w-full text-left font-data-tabular text-body-sm">
+<thead>
+<tr class="text-outline uppercase text-[11px] border-b border-surface-container-high pb-2">
+<th class="pb-2 font-semibold">Documento fiscal</th>
+<th class="pb-2 font-semibold">Impresora / Bandeja</th>
+<th class="pb-2 font-semibold">Páginas</th>
+<th class="pb-2 font-semibold">Estado actual</th>
+<th class="pb-2 font-semibold">Fecha y hora</th>
+<th class="pb-2 text-right font-semibold">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<!-- Row 1: Active Printing -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-2.5 font-medium text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">print</span>
+<span>Expediente_Materialidad_Bajio.pdf</span>
+</td>
+<td class="py-2.5 text-on-surface-variant">HP M630 (Bandeja 2)</td>
+<td class="py-2.5">12 págs</td>
+<td class="py-2.5">
+<div class="flex flex-col gap-1 w-44">
+<div class="flex items-center justify-between text-[11px]">
+<span class="inline-flex items-center gap-1 font-semibold text-primary">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+                    Imprimiendo (6/12)
+                  </span>
+<span class="text-outline">50%</span>
+</div>
+<div class="w-full h-1.5 rounded-full bg-surface-container-high overflow-hidden">
+<div class="bg-primary h-full rounded-full transition-all duration-300" style="width: 50%;"></div>
+</div>
+</div>
+</td>
+<td class="py-2.5 text-outline">Hoy, 11:42 AM</td>
+<td class="py-2.5 text-right">
+<div class="inline-flex items-center gap-1">
+<button aria-label="Pausar trabajo" class="p-1 rounded text-outline hover:text-on-surface hover:bg-surface-container transition-colors" onclick="alert('Trabajo pausado')" title="Pausar trabajo" type="button">
+<span class="material-symbols-outlined text-[16px]">pause</span>
+</button>
+<button aria-label="Cancelar trabajo" class="p-1 rounded text-outline hover:text-error hover:bg-error-container/20 transition-colors" onclick="alert('Trabajo cancelado')" title="Cancelar trabajo" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: In Queue -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-2.5 font-medium text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px]">draft</span>
+<span>Poliza_Diario_D-102_Octubre_CFDI.pdf</span>
+</td>
+<td class="py-2.5 text-on-surface-variant">HP M630 (Bandeja 2)</td>
+<td class="py-2.5">4 págs</td>
+<td class="py-2.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                En espera (Spooler #2)
+              </span>
+</td>
+<td class="py-2.5 text-outline">Hoy, 11:43 AM</td>
+<td class="py-2.5 text-right">
+<button aria-label="Cancelar trabajo" class="p-1 rounded text-outline hover:text-error hover:bg-error-container/20 transition-colors" onclick="alert('Trabajo retirado de cola')" title="Cancelar" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Completed -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-2.5 font-medium text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[18px]">check_circle</span>
+<span>Acuse_Declaracion_Mensual_SAT.pdf</span>
+</td>
+<td class="py-2.5 text-on-surface-variant">Brother HL-L6400DW</td>
+<td class="py-2.5">2 págs</td>
+<td class="py-2.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-tertiary-container/10 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Completado
+              </span>
+</td>
+<td class="py-2.5 text-outline">Hoy, 11:38 AM</td>
+<td class="py-2.5 text-right">
+<button aria-label="Reimprimir acuse" class="p-1 rounded text-outline hover:text-primary hover:bg-surface-container transition-colors" onclick="alert('Reimprimiendo documento...')" title="Reimprimir" type="button">
+<span class="material-symbols-outlined text-[16px]">replay</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Error State -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-2.5 font-medium text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[18px]">warning</span>
+<span>Reporte_Conciliacion_BBVA.pdf</span>
+</td>
+<td class="py-2.5 text-on-surface-variant">Epson WF-C579R (Bandeja 1)</td>
+<td class="py-2.5">8 págs</td>
+<td class="py-2.5">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                Bandeja sin papel
+              </span>
+</td>
+<td class="py-2.5 text-outline">Hoy, 11:25 AM</td>
+<td class="py-2.5 text-right">
+<div class="inline-flex items-center gap-1">
+<button class="px-2 py-0.5 rounded bg-error-container/40 text-on-error-container hover:bg-error-container text-label-sm font-semibold transition-colors" onclick="alert('Reanudando envío tras recarga de papel...')" type="button">
+                  Reintentar
+                </button>
+<button aria-label="Cancelar" class="p-1 rounded text-outline hover:text-error hover:bg-error-container/20 transition-colors" onclick="alert('Trabajo cancelado')" title="Cancelar trabajo fallido" type="button">
+<span class="material-symbols-outlined text-[16px]">close</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- ============================================== -->
+<!-- MICRO-INTERACTIONS & CLIENT-SIDE LOGIC         -->
+<!-- ============================================== -->
+<script>
+  let currentZoom = 100;
+  let currentPage = 1;
+  const totalPages = 12;
+  let isHandToolActive = false;
+  let currentRotation = 0;
+  let isSpoolerCollapsed = false;
+
+  function switchPrintMode(mode, btn) {
+    const parent = document.getElementById('modeSelector');
+    parent.querySelectorAll('button').forEach(b => {
+      b.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-xs');
+      b.classList.add('text-outline');
+    });
+    btn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-xs');
+    btn.classList.remove('text-outline');
+  }
+
+  function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      alert(`Se han cargado ${files.length} archivo(s) PDF al lote actual.`);
+    }
+  }
+
+  function selectDoc(card, fileName, pages) {
+    document.querySelectorAll('.doc-card').forEach(c => {
+      c.classList.remove('bg-surface-container-low');
+      c.classList.add('bg-surface-container-lowest');
+    });
+    card.classList.add('bg-surface-container-low');
+    card.classList.remove('bg-surface-container-lowest');
+
+    document.getElementById('totalPagesSpan').innerText = pages;
+    document.getElementById('pageNumberInput').max = pages;
+    document.getElementById('pageNumberInput').value = 1;
+    document.getElementById('printPagesCountBadge').innerText = `${pages} págs`;
+  }
+
+  function removeDoc(btn) {
+    const card = btn.closest('.doc-card');
+    if (card) {
+      card.remove();
+      updateBatchCounter();
+    }
+  }
+
+  function updateBatchCounter() {
+    const count = document.querySelectorAll('.doc-card').length;
+    document.getElementById('docCountBadge').innerText = `${count} docs seleccionados`;
+  }
+
+  function clearBatch() {
+    if (confirm('¿Deseas vaciar la lista de documentos para imprimir?')) {
+      document.getElementById('documentList').innerHTML = '<div class="p-4 text-center text-outline font-body-sm">Sin documentos en cola.</div>';
+      document.getElementById('docCountBadge').innerText = '0 docs (0 págs)';
+    }
+  }
+
+  function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.doc-card input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+  }
+
+  function changePage(delta) {
+    const newPage = currentPage + delta;
+    if (newPage >= 1 && newPage <= totalPages) {
+      currentPage = newPage;
+      document.getElementById('pageNumberInput').value = currentPage;
+    }
+  }
+
+  function jumpToPage(val) {
+    const p = parseInt(val, 10);
+    if (p >= 1 && p <= totalPages) {
+      currentPage = p;
+    } else {
+      document.getElementById('pageNumberInput').value = currentPage;
+    }
+  }
+
+  function setZoom(val) {
+    currentZoom = parseInt(val, 10);
+    applyPaperTransform();
+  }
+
+  function adjustZoom(delta) {
+    currentZoom = Math.min(180, Math.max(40, currentZoom + delta));
+    document.getElementById('zoomSelect').value = currentZoom;
+    applyPaperTransform();
+  }
+
+  function fitWidth() {
+    currentZoom = 120;
+    document.getElementById('zoomSelect').value = '125';
+    applyPaperTransform();
+  }
+
+  function fitPage() {
+    currentZoom = 90;
+    document.getElementById('zoomSelect').value = '100';
+    applyPaperTransform();
+  }
+
+  function rotatePreview() {
+    currentRotation = (currentRotation + 90) % 360;
+    applyPaperTransform();
+  }
+
+  function applyPaperTransform() {
+    const sheet = document.getElementById('pdfPaperSheet');
+    if (sheet) {
+      sheet.style.transform = `scale(${currentZoom / 100}) rotate(${currentRotation}deg)`;
+    }
+  }
+
+  function toggleHandTool() {
+    isHandToolActive = !isHandToolActive;
+    const btn = document.getElementById('handToolBtn');
+    const viewport = document.getElementById('viewerCanvasViewport');
+    if (isHandToolActive) {
+      btn.classList.add('bg-white/30', 'text-white');
+      viewport.classList.add('cursor-grab');
+    } else {
+      btn.classList.remove('bg-white/30', 'text-white');
+      viewport.classList.remove('cursor-grab');
+    }
+  }
+
+  function toggleFullscreen() {
+    const elem = document.getElementById('viewerCanvasViewport');
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen().catch(err => {
+        alert(`Error al activar pantalla completa: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  function adjustCopies(delta) {
+    const input = document.getElementById('copiesInput');
+    let val = parseInt(input.value, 10) || 1;
+    val = Math.max(1, Math.min(99, val + delta));
+    input.value = val;
+  }
+
+  function setOrientation(mode) {
+    const bPort = document.getElementById('btnPortrait');
+    const bLand = document.getElementById('btnLandscape');
+    if (mode === 'portrait') {
+      bPort.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bPort.classList.remove('text-outline');
+      bLand.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bLand.classList.add('text-outline');
+    } else {
+      bLand.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bLand.classList.remove('text-outline');
+      bPort.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bPort.classList.add('text-outline');
+    }
+  }
+
+  function setDuplex(mode) {
+    const bSimp = document.getElementById('btnSimplex');
+    const bDup = document.getElementById('btnDuplex');
+    if (mode === 'duplex') {
+      bDup.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bDup.classList.remove('text-outline');
+      bSimp.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bSimp.classList.add('text-outline');
+    } else {
+      bSimp.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bSimp.classList.remove('text-outline');
+      bDup.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-xs');
+      bDup.classList.add('text-outline');
+    }
+  }
+
+  function togglePageCustom(enabled) {
+    const input = document.getElementById('customPageRangeInput');
+    input.disabled = !enabled;
+    if (enabled) input.focus();
+  }
+
+  function triggerPrintJob() {
+    const printer = document.getElementById('printerSelect').options[document.getElementById('printerSelect').selectedIndex].text;
+    const copies = document.getElementById('copiesInput').value;
+    alert(`Enviando trabajo de impresión al Spooler:\n• Impresora: ${printer}\n• Copias: ${copies}\n• Estado: En cola de CUPS ContaSuite`);
+  }
+
+  function saveAsDefaultConfig() {
+    alert('Configuración guardada satisfactoriamente en el perfil fiscal del usuario.');
+  }
+
+  function resetConfig() {
+    document.getElementById('copiesInput').value = 1;
+    document.getElementById('paperSizeSelect').value = 'carta';
+    document.getElementById('colorModeSelect').value = 'mono';
+    document.getElementById('qualitySelect').value = '600';
+    setOrientation('portrait');
+    setDuplex('duplex');
+  }
+
+  function toggleSpoolerSection() {
+    isSpoolerCollapsed = !isSpoolerCollapsed;
+    const container = document.getElementById('spoolerTableContainer');
+    const chevron = document.getElementById('spoolerChevronBtn');
+    if (isSpoolerCollapsed) {
+      container.classList.add('hidden');
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      container.classList.remove('hidden');
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  }
+</script></main><footer class="fixed bottom-0 left-64 right-0 h-8 bg-surface-container-lowest/95 backdrop-blur-md z-30 px-gutter flex items-center justify-between text-outline text-label-sm font-label-sm shadow-[0_-1px_4px_rgba(0,0,0,0.03)]"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-tertiary-container"></span><span class="text-on-surface-variant font-medium">Agente ContaSuite Local v2.4 Activo</span></div><span class="text-outline-variant">|</span><span class="text-outline">Sincronización en segundo plano: En espera</span></div><div class="flex items-center gap-space-md"><span class="text-outline">Búfer Criptográfico e.firma: Seguro</span><span class="text-outline-variant">|</span><span class="text-on-surface-variant">Servicio SAT 100% Operativo</span></div></footer></div></body></html>

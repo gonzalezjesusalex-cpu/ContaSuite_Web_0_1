@@ -1,0 +1,15 @@
+fastapi==0.121.1
+uvicorn==0.38.0
+SQLAlchemy==2.0.44
+python-multipart==0.0.20
+python-dotenv==1.2.1
+alembic==1.20.1
+defusedxml==0.7.1
+cryptography==46.0.3
+# IANA timezone data for zoneinfo on Windows (certificate expiry dates).
+tzdata==2026.6
+# Bounded XLSX reading in memory; no formulas or macros are executed.
+openpyxl==3.1.5
+
+reportlab>=4.4,<5
+pypdf>=6.1,<7

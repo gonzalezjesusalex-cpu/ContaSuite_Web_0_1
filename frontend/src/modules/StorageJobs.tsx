@@ -1,0 +1,18 @@
+import { useEffect, useState } from 'react';
+import { api, dateLabel } from '../api';
+import { Field } from '../components/ui';
+import { stitchButton } from '../components/stitch';
+import type { StorageSource } from '../types';
+
+type Job={id:string;source_id:string;status:string;counters:Record<string,number>;error_code:string|null;created_at:string};
+const states:Record<string,string>={queued:'En cola',running:'Analizando',completed:'Completado',completed_with_errors:'Completado con incidencias',failed:'No completado'};
+const errors:Record<string,string>={access_denied:'No hay permiso de lectura para una parte del origen.',scan_limit:'El recorrido alcanzó el límite de archivos o tiempo.',root_unavailable:'La carpeta de origen no está disponible.',file_changed:'Un archivo cambió durante la lectura.',file_too_large:'Un archivo supera el tamaño permitido.',linked_path:'Se omitió un enlace o punto de unión.',invalid_format:'Un archivo no tiene el contenido esperado para su formato.'};
+const counts:Record<string,string>={new:'nuevos',modified:'modificados',unchanged:'sin cambios',duplicates:'posibles duplicados',missing:'no localizados',errors:'incidencias'};
+export default function StorageJobs({sources,onComplete}:{sources:StorageSource[];onComplete:()=>void}){
+ const [jobs,setJobs]=useState<Job[]>([]);const [source,setSource]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [reload,setReload]=useState(0);
+ const active=jobs.some(j=>['queued','running'].includes(j.status));
+ useEffect(()=>{const c=new AbortController();api<Job[]>('/storage/index-jobs','GET',undefined,c.signal).then(data=>{if(!c.signal.aborted){setJobs(data)}}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[reload]);
+ useEffect(()=>{if(!active)return;const timer=setInterval(()=>{setReload(v=>v+1);onComplete()},5000);return()=>clearInterval(timer)},[active,onComplete]);
+ async function queue(){setBusy(true);setError('');try{await api('/storage/index-jobs','POST',{source_id:source});setReload(v=>v+1)}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
+ return <details className="storage-jobs"><summary>Análisis de carpetas locales</summary><p className="muted">El trabajador independiente procesa la cola. Los originales se consultan en modo de sólo lectura.</p><div className="actions"><Field label="Carpeta autorizada"><select aria-label="Carpeta autorizada" value={source} onChange={e=>setSource(e.target.value)}><option value="">Selecciona un origen</option>{sources.filter(s=>s.kind==='local_folder'&&s.enabled).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select></Field><button className={stitchButton} disabled={busy||!source} onClick={queue}>Solicitar análisis</button><button className={stitchButton} onClick={()=>{setError('');setReload(v=>v+1);onComplete()}}>Actualizar análisis</button></div>{!sources.some(s=>s.kind==='local_folder')&&<p className="muted">Sin carpetas autorizadas registradas. Registra un origen en Configuración → Almacenamiento documental.</p>}{active&&<p role="status">Hay trabajos pendientes. Requieren que el trabajador local esté en ejecución.</p>}{error&&<p role="alert" className="error-banner">{error}</p>}<ul className="documents-versions">{jobs.map(j=><li key={j.id}><strong>{sources.find(s=>s.id===j.source_id)?.label||'Origen local'} · {states[j.status]||j.status}</strong><small>{dateLabel(j.created_at)} · {Object.entries(j.counters).map(([k,v])=>v+' '+(counts[k]||k)).join(' · ')||'Sin archivos procesados'}</small>{j.error_code&&<small>{errors[j.error_code]||'No se pudo procesar una parte del origen.'} Se conserva el historial; revisa el origen y solicita otro análisis.</small>}</li>)}</ul></details>
+}
