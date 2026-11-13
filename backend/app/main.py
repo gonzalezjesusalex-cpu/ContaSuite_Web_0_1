@@ -36,6 +36,8 @@ from .database import Base, engine, session, DATA, ROOT, SessionLocal
 
 from .models import Company, Task, Obligation, Document, Audit, Agent, Job, Setting, Receipt
 
+from .agent_jobs import claim_marker, expire_stale_jobs
+
 from .schemas import CompanyIn, TaskIn, ObligationIn, Heartbeat, JobIn, JobResult
 
 
@@ -93,6 +95,10 @@ async def lifespan(app):
     from .schema_compatibility import assert_schema
 
     assert_schema(engine)
+
+    from .agent_jobs import timeout_minutes
+
+    timeout_minutes()  # an invalid CS_AGENT_JOB_TIMEOUT_MINUTES stops startup instead of failing requests
 
     from .models import RecopilaRun, OrganizadorRun, DeclaraRun
 
@@ -240,6 +246,9 @@ def health():
 
 @app.get('/api/state', dependencies=APP)
 def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
+    if principal.admin:
+        expire_stale_jobs(db)  # jobs are only shown to administrators
+
     agents = db.scalars(select(Agent)).all() if principal.admin else []
 
     from .storage.router import storage_service
@@ -522,6 +531,8 @@ def create_job(data: JobIn, db: Session = Depends(session)):
     if data.kind not in agent.capabilities:
         raise HTTPException(409, 'El agente no tiene esta capacidad')
 
+    expire_stale_jobs(db)
+
     if not company.folder:
         raise HTTPException(422, 'Primero configura la carpeta de la empresa')
 
@@ -561,8 +572,11 @@ def claim(agent_id: str, db: Session = Depends(session), not_before: datetime | 
     query = select(Job).where(Job.agent_id == agent_id, Job.status == 'queued')
     if not_before is not None:
         query = query.where(Job.created_at >= not_before)
+    expire_stale_jobs(db)
     for job in db.scalars(query.order_by(Job.created_at).limit(50)).all():
-        changed = db.execute(update(Job).where(Job.id == job.id, Job.status == 'queued').values(status='running'))
+        changed = db.execute(
+            update(Job).where(Job.id == job.id, Job.status == 'queued').values(status='running', result=claim_marker())
+        )
 
         db.commit()
 
