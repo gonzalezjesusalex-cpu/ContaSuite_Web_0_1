@@ -24,7 +24,7 @@ from fastapi.exceptions import RequestValidationError
 
 from fastapi.responses import JSONResponse
 
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 
 from sqlalchemy.exc import IntegrityError
 
@@ -252,6 +252,15 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
             'duplicate_rfc': normalized.count(normalize_rfc(c.rfc)) > 1,
         }
 
+    # Counts only: the document list is served paginated by the Document Center, never by this polled endpoint.
+    document_counts, document_total = {}, 0
+    for company_id, count in db.execute(
+        select(Document.company_id, func.count()).where(storage_service()._scope(actor)).group_by(Document.company_id)
+    ):
+        document_total += count
+        if company_id is not None and (principal.admin or company_id in principal.company_ids):
+            document_counts[company_id] = count
+
     return {
         'companies': [company_public(c) for c in companies],
         'current_user': principal.public(),
@@ -266,19 +275,8 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
             .where(True if principal.admin else Obligation.company_id.in_(principal.company_ids))
             .order_by(Obligation.due_date)
         ).all(),
-        'documents': [
-            {
-                'id': d.id,
-                'company_id': d.company_id if principal.admin or d.company_id in principal.company_ids else None,
-                'name': d.name,
-                'category': d.category,
-                'size': d.size,
-                'created_at': d.created_at,
-            }
-            for d in db.scalars(
-                select(Document).where(storage_service()._scope(actor)).order_by(Document.created_at.desc())
-            )
-        ],
+        'document_counts': document_counts,
+        'document_total': document_total,
         'audit': db.scalars(select(Audit).order_by(Audit.created_at.desc()).limit(200)).all()
         if principal.admin
         else [],

@@ -126,8 +126,17 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
     refresh().catch((e) => setError(e.message));
-    const timer = setInterval(() => refresh().catch((e) => setError(e.message)), 10000);
-    return () => clearInterval(timer);
+    // Background poll once a minute; data changes made in this tab refresh immediately via
+    // contasuite-data-changed, and returning to the tab refreshes too.
+    const timer = setInterval(() => refresh().catch((e) => setError(e.message)), 60000);
+    const visible = () => {
+      if (document.visibilityState === 'visible') void refresh().catch((e) => setError(e.message));
+    };
+    document.addEventListener('visibilitychange', visible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', visible);
+    };
   }, [token, refresh]);
   useEffect(() => {
     const changed = () => {

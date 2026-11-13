@@ -125,7 +125,8 @@ def test_legacy_document_download_registers_and_preserves_history(client):
     assert client.delete('/api/companies/' + id, headers=A).status_code == 409
     assert client.delete('/api/documents/' + doc['id'], headers=A).status_code == 409
     state = client.get('/api/state', headers=A).json()
-    assert len(state['companies']) == len(state['tasks']) == len(state['obligations']) == len(state['documents']) == 1
+    assert len(state['companies']) == len(state['tasks']) == len(state['obligations']) == state['document_total'] == 1
+    assert state['document_counts'] == {id: 1}
     assert list((Path(os.environ['DATA_DIR']) / 'documents').iterdir())
     detail = client.get('/api/storage/documents/' + doc['id'], headers=A).json()
     assert detail['versions'][0]['sha256']

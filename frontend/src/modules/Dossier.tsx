@@ -58,7 +58,7 @@ export default function Dossier({
     ? params.get('period')!
     : today().slice(0, 7);
   const tabs = dossierSections;
-  const docs = state.documents.filter((d) => d.company_id === c.id);
+  const documentCount = state.document_counts[c.id] ?? 0;
   const tasks = state.tasks.filter((t) => t.company_id === c.id);
   const [busy, setBusy] = useState(false);
   const [agentId, setAgentId] = useState('');
@@ -219,7 +219,7 @@ export default function Dossier({
           >
             {t === 'Declaraciones' && <OriginalIcon name="declaraciones" size={24} />}
             <span className="tab-label">{t}</span>
-            {t === 'Documentos' && <span>{docs.length}</span>}
+            {t === 'Documentos' && <span>{documentCount}</span>}
           </button>
         ))}
       </div>
@@ -319,7 +319,7 @@ export default function Dossier({
       ) : (
         <>
           <div className="kpi-grid four">
-            <Kpi label="Documentos adjuntos" value={docs.length} detail="Sin validación automática" tone="blue" />
+            <Kpi label="Documentos adjuntos" value={documentCount} detail="Sin validación automática" tone="blue" />
             <Kpi
               label="Tareas abiertas"
               value={tasks.filter((t) => t.status !== 'Completada').length}

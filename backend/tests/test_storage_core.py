@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import os
 import stat
 from pathlib import Path
@@ -365,5 +366,8 @@ def test_existing_document_api_cannot_bypass_managed_storage(client):
     assert client.get('/api/documents/' + doc.id + '/download').status_code == 401
     assert client.delete('/api/documents/' + doc.id, headers=A).status_code == 409
     assert client.delete('/api/companies/' + c['id'], headers=A).status_code == 409
-    assert doc.id in {d['id'] for d in client.get('/api/state', headers=A).json()['documents']}
-    assert 'storage_name' not in client.get('/api/state', headers=A).json()['documents'][0]
+    state = client.get('/api/state', headers=A).json()
+    assert state['document_counts'] == {c['id']: 1} and state['document_total'] == 1
+    assert (
+        'documents' not in state and 'storage_name' not in json.dumps(state) and 'managed.pdf' not in json.dumps(state)
+    )

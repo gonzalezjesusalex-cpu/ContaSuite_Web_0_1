@@ -66,7 +66,7 @@ def main():
         assert sum(bool(r.get('error')) for r in data['rows']) == 1
         assert all(not r['rfc'] for r in data['rows'] if r['kind'] == 'company')
         state = request(c, 'GET', '/state')
-        assert not state['companies'] and not state['documents']
+        assert not state['companies'] and not state['document_total']
         data = review(c, data)
         request(
             c,

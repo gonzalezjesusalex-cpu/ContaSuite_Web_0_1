@@ -46,14 +46,6 @@ export interface Obligation {
   reference: string;
   notes: string;
 }
-export interface Document {
-  id: string;
-  company_id: string | null;
-  name: string;
-  category: string;
-  size: number;
-  created_at: string;
-}
 export interface Agent {
   id: string;
   online: boolean;
@@ -80,7 +72,10 @@ export interface State {
   companies: Company[];
   tasks: Task[];
   obligations: Obligation[];
-  documents: Document[];
+  /** Visible documents per company (only companies the user may see). */
+  document_counts: Record<string, number>;
+  /** All documents visible to the user, including those not attributed to a company. */
+  document_total: number;
   audit: { id: string; company_id: string; action: string; created_at: string }[];
   agents: Agent[];
   jobs: Job[];

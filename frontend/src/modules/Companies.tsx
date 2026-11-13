@@ -223,7 +223,7 @@ export default function Companies({
                   <FolderOpen size={27} />
                   <h3>{c.name}</h3>
                   <p className="rfc">{c.rfc}</p>
-                  <small>{state.documents.filter((d) => d.company_id === c.id).length} documentos adjuntos</small>
+                  <small>{state.document_counts[c.id] ?? 0} documentos adjuntos</small>
                   <p className="path-text">{c.folder || 'Ruta local pendiente de configurar'}</p>
                   <span>Abrir expediente →</span>
                 </Link>
@@ -277,7 +277,7 @@ export default function Companies({
                   detail="En el periodo seleccionado"
                   tone="blue"
                 />
-                <Kpi label="Documentos adjuntos" value={state.documents.length} detail="Expedientes digitales" />
+                <Kpi label="Documentos adjuntos" value={state.document_total} detail="Expedientes digitales" />
               </div>
               <div className="overview-grid">
                 <section className="card compliance">
@@ -470,7 +470,7 @@ export default function Companies({
                         <td>{c.regime}</td>
                         <td>{c.accountant || 'Sin asignar'}</td>
                         <td title="Solo documentos asociados directamente; no mide integridad documental">
-                          {state.documents.filter((d) => d.company_id === c.id).length}
+                          {state.document_counts[c.id] ?? 0}
                         </td>
                         <td>
                           <Badge>Sin consultar</Badge>

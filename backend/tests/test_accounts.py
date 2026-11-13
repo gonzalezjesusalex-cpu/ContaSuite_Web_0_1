@@ -170,6 +170,26 @@ def test_session_time_limits(client, expired):
     assert client.get('/api/auth/me').status_code == 401
 
 
+def test_state_sends_document_counts_not_document_list(client):
+    a = company(client, name='Empresa A', rfc='AAA010101AA1').json()
+    b = company(client, name='Empresa B', rfc='BBB020202BB2').json()
+    upload(client, a['id'], 'alfa-confidencial.xml', A)
+    upload(client, b['id'], 'beta-1.xml', A)
+    upload(client, b['id'], 'beta-2.xml', A)
+    upload(client, None, 'sin-empresa.xml', A)
+    state = client.get('/api/state', headers=A).json()
+    assert 'documents' not in state
+    assert state['document_counts'] == {a['id']: 1, b['id']: 2}
+    assert state['document_total'] == 4  # includes the document not yet attributed to a company
+    assert '.xml' not in json.dumps(state)
+    setup(client)
+    add_user(client, grants=[(b['id'], 'read')])
+    login(client, 'reader')
+    scoped = client.get('/api/state').json()
+    assert scoped['document_counts'] == {b['id']: 2} and scoped['document_total'] == 2
+    assert a['id'] not in json.dumps(scoped)
+
+
 def test_company_scope_catalog_details_preview_history_duplicates_and_legacy(client):
     a = company(client, name='Empresa A', rfc='AAA010101AA1', folder='C:/private-a').json()
     b = company(client, name='Empresa B', rfc='BBB020202BB2', folder='C:/private-b').json()
@@ -187,7 +207,7 @@ def test_company_scope_catalog_details_preview_history_duplicates_and_legacy(cli
     assert state['companies'][0]['folder'] == ''
     assert state['jobs'] == state['agents'] == state['audit'] == []
     assert state['current_user']['write_company_ids'] == []
-    assert state['documents'][0]['id'] == first['id'] and len(state['documents']) == 1
+    assert state['document_counts'] == {a['id']: 1} and state['document_total'] == 1
     assert 'private-a' not in json.dumps(state) and 'private-b' not in json.dumps(state)
     catalog = client.get('/api/storage/documents').json()
     assert catalog['total'] == 1 and catalog['items'][0]['id'] == first['id']
