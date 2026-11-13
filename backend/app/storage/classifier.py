@@ -1,4 +1,5 @@
 """Deterministic, conservative content classification. No filename guesses or OCR."""
+
 import re
 import hashlib
 import json
@@ -34,11 +35,21 @@ def classify(stream, name, companies):
     """
     # Private keys are rejected before even seeking/reading the supplied stream.
     if Path(name).suffix.lower() == '.key':
-        return {'evidence': {'rule': 'rfc-v1', 'reason': 'private_key_excluded', 'rfcs': [], 'complete': False},
-                'links': [], 'automatic': False, 'type': 'unknown', 'period': None}
+        return {
+            'evidence': {'rule': 'rfc-v1', 'reason': 'private_key_excluded', 'rfcs': [], 'complete': False},
+            'links': [],
+            'automatic': False,
+            'type': 'unknown',
+            'period': None,
+        }
     stream.seek(0)
-    evidence = {'rule': 'rfc-v1', 'reason': 'no_rfc', 'rfcs': [], 'complete': True,
-                'catalog_digest': catalog_digest(companies)}
+    evidence = {
+        'rule': 'rfc-v1',
+        'reason': 'no_rfc',
+        'rfcs': [],
+        'complete': True,
+        'catalog_digest': catalog_digest(companies),
+    }
     kind, period, roles = 'unknown', None, []
     try:
         if Path(name).suffix.lower() == '.xml':
@@ -46,12 +57,15 @@ def classify(stream, name, companies):
             namespace = root.tag[1:].split('}')[0] if root.tag.startswith('{') else ''
             if namespace in CFDI_NAMESPACES and root.tag == '{' + namespace + '}Comprobante':
                 kind = 'cfdi'
-                stamps=root.findall('.//{http://www.sat.gob.mx/TimbreFiscalDigital}TimbreFiscalDigital')
-                uuids=[s.attrib.get('UUID','').strip().upper() for s in stamps]
-                valid_uuid=len(uuids)==1 and bool(re.fullmatch(r'[0-9A-F]{8}-(?:[0-9A-F]{4}-){3}[0-9A-F]{12}',uuids[0]))
-                evidence['cfdi_uuid']=uuids[0] if valid_uuid else None
-                evidence['uuid_status']='valid' if valid_uuid else 'missing' if not uuids else 'contradictory'
-                if uuids and not valid_uuid:evidence['complete']=False
+                stamps = root.findall('.//{http://www.sat.gob.mx/TimbreFiscalDigital}TimbreFiscalDigital')
+                uuids = [s.attrib.get('UUID', '').strip().upper() for s in stamps]
+                valid_uuid = len(uuids) == 1 and bool(
+                    re.fullmatch(r'[0-9A-F]{8}-(?:[0-9A-F]{4}-){3}[0-9A-F]{12}', uuids[0])
+                )
+                evidence['cfdi_uuid'] = uuids[0] if valid_uuid else None
+                evidence['uuid_status'] = 'valid' if valid_uuid else 'missing' if not uuids else 'contradictory'
+                if uuids and not valid_uuid:
+                    evidence['complete'] = False
                 date = root.attrib.get('Fecha', '')
                 try:
                     period = datetime.fromisoformat(date).strftime('%Y-%m')
@@ -72,6 +86,7 @@ def classify(stream, name, companies):
                 roles = [{'rfc': r, 'role': 'owner'} for r in sorted(set(RFC.findall(text))) if valid_rfc(r)]
         elif Path(name).suffix.lower() == '.pdf':
             from pypdf import PdfReader
+
             reader = PdfReader(stream, strict=True)
             if reader.is_encrypted:
                 raise ValueError('encrypted')
@@ -98,8 +113,11 @@ def classify(stream, name, companies):
         key = ''.join(c['rfc'].split()).upper()
         known.setdefault(key, set()).add(c['id'])
     ambiguous = any(len(known.get(r['rfc'], set())) > 1 for r in evidence['rfcs'])
-    links = [dict(company_id=next(iter(known[r['rfc']])), role=r['role'])
-             for r in evidence['rfcs'] if len(known.get(r['rfc'], set())) == 1]
+    links = [
+        dict(company_id=next(iter(known[r['rfc']])), role=r['role'])
+        for r in evidence['rfcs']
+        if len(known.get(r['rfc'], set())) == 1
+    ]
     links = [dict(company_id=cid, role=role) for cid, role in sorted({(l['company_id'], l['role']) for l in links})]
     distinct_rfcs = {r['rfc'] for r in roles}
     # CFDI naturally includes an external counterparty; other formats must have one RFC total.
@@ -107,6 +125,17 @@ def classify(stream, name, companies):
     if kind != 'cfdi' and len(distinct_rfcs) != 1:
         automatic = False
     evidence['authority_validated'] = False
-    evidence['reason'] = ('ambiguous_identity' if ambiguous else 'unambiguous' if automatic else 'multiple_companies' if len({l['company_id'] for l in links}) > 1
-                          else 'incomplete_content' if not evidence['complete'] else 'unknown_rfc' if roles else 'no_rfc')
+    evidence['reason'] = (
+        'ambiguous_identity'
+        if ambiguous
+        else 'unambiguous'
+        if automatic
+        else 'multiple_companies'
+        if len({l['company_id'] for l in links}) > 1
+        else 'incomplete_content'
+        if not evidence['complete']
+        else 'unknown_rfc'
+        if roles
+        else 'no_rfc'
+    )
     return {'evidence': evidence, 'links': links, 'automatic': automatic, 'type': kind, 'period': period}

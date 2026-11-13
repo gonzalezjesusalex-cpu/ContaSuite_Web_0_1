@@ -11,9 +11,15 @@ def safe_key(value: str) -> str:
     if not isinstance(value, str) or not value or len(value) > 1000 or '\\' in value:
         raise StorageError('invalid_path')
     parts = value.split('/')
-    if any(not p or p in {'.', '..'} or len(p) > 255 or p.endswith((' ', '.')) or
-           re.search(r'[<>:"|?*\x00-\x1f]', p) or
-           re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?', p, re.I) for p in parts):
+    if any(
+        not p
+        or p in {'.', '..'}
+        or len(p) > 255
+        or p.endswith((' ', '.'))
+        or re.search(r'[<>:"|?*\x00-\x1f]', p)
+        or re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?', p, re.I)
+        for p in parts
+    ):
         raise StorageError('invalid_path')
     return str(PurePosixPath(value))
 

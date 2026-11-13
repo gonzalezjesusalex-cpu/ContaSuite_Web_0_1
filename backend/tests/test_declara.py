@@ -21,10 +21,15 @@ RFC = 'ASU260331IWA'
 def pdf(kind='DECLARACION', dtype='Normal', month='Octubre', year='2026', rfc=RFC, operation='100'):
     stream = io.BytesIO()
     c = canvas.Canvas(stream)
-    lines = ['DECLARACION PROVISIONAL O DEFINITIVA DE IMPUESTOS FEDERALES',
-             f'RFC: {rfc}', 'Denominación o razón social: ARKOS SUMINISTROS',
-             f'Tipo de declaración: {dtype}', f'Período de la declaración: {month}',
-             f'Ejercicio: {year}', f'Número de operación: {operation}']
+    lines = [
+        'DECLARACION PROVISIONAL O DEFINITIVA DE IMPUESTOS FEDERALES',
+        f'RFC: {rfc}',
+        'Denominación o razón social: ARKOS SUMINISTROS',
+        f'Tipo de declaración: {dtype}',
+        f'Período de la declaración: {month}',
+        f'Ejercicio: {year}',
+        f'Número de operación: {operation}',
+    ]
     if kind == 'ACUSE':
         lines.insert(0, 'ACUSE DE RECIBO')
     for n, line in enumerate(lines):
@@ -42,9 +47,12 @@ def zip_bytes(entries):
 
 
 def upload(client, cid, entries, **kw):
-    return client.post('/api/declara/runs', headers=A,
-                       data={'company_id': cid, 'short_name': 'Arkos', **kw},
-                       files={'files': ('declaraciones.zip', zip_bytes(entries), 'application/zip')})
+    return client.post(
+        '/api/declara/runs',
+        headers=A,
+        data={'company_id': cid, 'short_name': 'Arkos', **kw},
+        files={'files': ('declaraciones.zip', zip_bytes(entries), 'application/zip')},
+    )
 
 
 def test_extracted_engine_preserves_original_logic():
@@ -54,16 +62,22 @@ def test_extracted_engine_preserves_original_logic():
     old = {n.name: n for n in original.body if isinstance(n, (ast.ClassDef, ast.FunctionDef))}
     for node in extracted.body:
         if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in old:
-            assert ast.dump(node, include_attributes=False) == ast.dump(old[node.name], include_attributes=False), node.name
+            assert ast.dump(node, include_attributes=False) == ast.dump(old[node.name], include_attributes=False), (
+                node.name
+            )
     assert 'tkinter' not in (root / 'backend/app/declara_engine.py').read_text(encoding='utf-8')
 
 
 def test_declara_web_full_flow_and_names(client):
     cid = company(client).json()['id']
-    entries = {'Empresa/declaracion.pdf': pdf(), 'Empresa/acuse.PDF': pdf('ACUSE'),
-               'Empresa/complementaria.pdf': pdf(dtype='Complementaria', operation='200'),
-               'Empresa/complementaria_b.pdf': pdf(dtype='Complementaria', operation='201'),
-               'Empresa/otro.pdf': b'not a PDF', 'Empresa/secret.key': b'not uploaded'}
+    entries = {
+        'Empresa/declaracion.pdf': pdf(),
+        'Empresa/acuse.PDF': pdf('ACUSE'),
+        'Empresa/complementaria.pdf': pdf(dtype='Complementaria', operation='200'),
+        'Empresa/complementaria_b.pdf': pdf(dtype='Complementaria', operation='201'),
+        'Empresa/otro.pdf': b'not a PDF',
+        'Empresa/secret.key': b'not uploaded',
+    }
     response = upload(client, cid, entries)
     assert response.status_code == 202
     ident = response.json()['id']
@@ -76,10 +90,12 @@ def test_declara_web_full_flow_and_names(client):
     assert result['run']['months']['2026']['OCTUBRE']['acuse']
     assert result['run']['warnings']
     names = {i['expected_name'] for i in result['records'] if i['status'] == 'RENOMBRAR'}
-    assert names == {'10.- DECLARACION ISR E IVA OCTUBRE ARKOS.pdf',
-                     '10.2.- ACUSE ISR E IVA OCTUBRE ARKOS.pdf',
-                     '10.1.- DECLARACION COMPLEMENTARIA ISR E IVA OCTUBRE ARKOS.pdf',
-                     '10.1.1.- DECLARACION COMPLEMENTARIA ISR E IVA OCTUBRE ARKOS.pdf'}
+    assert names == {
+        '10.- DECLARACION ISR E IVA OCTUBRE ARKOS.pdf',
+        '10.2.- ACUSE ISR E IVA OCTUBRE ARKOS.pdf',
+        '10.1.- DECLARACION COMPLEMENTARIA ISR E IVA OCTUBRE ARKOS.pdf',
+        '10.1.1.- DECLARACION COMPLEMENTARIA ISR E IVA OCTUBRE ARKOS.pdf',
+    }
     row = next(i for i in result['records'] if i['path'].endswith('declaracion.pdf'))
     assert client.get(base + '/file/' + str(row['index']), headers=A).content == entries['Empresa/declaracion.pdf']
     assert client.get(base + '/file/999', headers=A).status_code == 404
@@ -93,26 +109,39 @@ def test_declara_web_full_flow_and_names(client):
         assert set(z.namelist()) == names
         assert z.read('10.- DECLARACION ISR E IVA OCTUBRE ARKOS.pdf') == entries['Empresa/declaracion.pdf']
         assert z.testzip() is None
-    rows = list(csv.DictReader(io.StringIO(client.get(base + '/download?kind=csv', headers=A).content.decode('utf-8-sig'))))
+    rows = list(
+        csv.DictReader(io.StringIO(client.get(base + '/download?kind=csv', headers=A).content.decode('utf-8-sig')))
+    )
     assert len(rows) == 5 and all(len(r['sha256']) == 64 for r in rows)
     assert not any(str(declara.DATA) in str(r) for r in rows)
     assert client.post(base + '/generate', headers=A, json={'revision': 0}).status_code == 409
     assert client.delete('/api/companies/' + cid, headers=A).status_code == 409
     assert len(client.get('/api/declara/runs?company_id=' + cid, headers=A).json()) == 1
     assert client.get('/api/declara/runs?company_id=missing', headers=A).json() == []
-    assert (declara.folder(ident) / 'input' / 'Empresa' / 'declaracion.pdf').read_bytes() == entries['Empresa/declaracion.pdf']
+    assert (declara.folder(ident) / 'input' / 'Empresa' / 'declaracion.pdf').read_bytes() == entries[
+        'Empresa/declaracion.pdf'
+    ]
 
 
 def test_month_rules_normal_complementary_and_start_date():
-    info = motor.PdfInfo(Path('a.pdf'), rfc=RFC, month='OCTUBRE', year='2026',
-                         document_kind='DECLARACION', declaration_type='Normal', status='RENOMBRAR')
+    info = motor.PdfInfo(
+        Path('a.pdf'),
+        rfc=RFC,
+        month='OCTUBRE',
+        year='2026',
+        document_kind='DECLARACION',
+        declaration_type='Normal',
+        status='RENOMBRAR',
+    )
     acuse = replace(info, document_kind='ACUSE')
     months = motor.compute_month_completeness([info, acuse], RFC, date(2026, 11, 9))['2026']
     assert not months['ENERO']['aplicable'] and months['ENERO']['razon_no_aplica'] == 'ALTA'
     assert months['MARZO']['aplicable']
     assert months['OCTUBRE']['declaracion'] and months['OCTUBRE']['acuse']
     assert not months['NOVIEMBRE']['aplicable'] and months['NOVIEMBRE']['razon_no_aplica'] == 'NO_EXIGIBLE'
-    comp = motor.compute_month_completeness([replace(info, declaration_type='Complementaria')], RFC, date(2026, 11, 9))['2026']
+    comp = motor.compute_month_completeness([replace(info, declaration_type='Complementaria')], RFC, date(2026, 11, 9))[
+        '2026'
+    ]
     assert not comp['OCTUBRE']['declaracion']
     assert motor.rfc_company_start_date('GODE800101AA1') is None
 
@@ -166,7 +195,12 @@ def test_wrong_company_and_mixed_rfc(client):
     detail = client.get(base, headers=A).json()
     assert detail['run']['summary']['excluded'] == 1
     other = next(i for i in detail['records'] if i['status'] == 'RFC DIFERENTE')
-    assert client.post(base + '/resolve', headers=A, json={'revision': 0, 'index': other['index'], 'action': 'duplicate'}).status_code == 422
+    assert (
+        client.post(
+            base + '/resolve', headers=A, json={'revision': 0, 'index': other['index'], 'action': 'duplicate'}
+        ).status_code
+        == 422
+    )
 
 
 def test_validation_limits_and_traversal(client, monkeypatch):
@@ -200,8 +234,12 @@ def test_modified_input_does_not_publish_results(client):
 
 def test_folder_upload_and_ignored_subfolders(client):
     cid = company(client).json()['id']
-    response = client.post('/api/declara/runs', headers=A, data={'company_id': cid, 'short_name': 'ARKOS'},
-                           files=[('files', ('Folder/a.pdf', pdf())), ('files', ('Folder/nested/b.pdf', pdf('ACUSE')))])
+    response = client.post(
+        '/api/declara/runs',
+        headers=A,
+        data={'company_id': cid, 'short_name': 'ARKOS'},
+        files=[('files', ('Folder/a.pdf', pdf())), ('files', ('Folder/nested/b.pdf', pdf('ACUSE')))],
+    )
     base = '/api/declara/runs/' + response.json()['id']
     detail = client.get(base, headers=A).json()
     assert len(detail['records']) == 1

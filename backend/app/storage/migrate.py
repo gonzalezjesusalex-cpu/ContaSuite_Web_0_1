@@ -1,4 +1,5 @@
 """Run explicit, versioned upgrades against the configured database (or a supplied test engine)."""
+
 from pathlib import Path
 from alembic import command
 from alembic.config import Config
@@ -45,5 +46,6 @@ def schema_revision(engine):
 
 if __name__ == '__main__':
     from ..database import engine
+
     upgrade_storage(engine)
     print('CS-Storage schema upgraded. No source documents were opened or modified.')

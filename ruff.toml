@@ -1,0 +1,12 @@
+line-length = 120
+target-version = "py312"
+extend-exclude = [
+    ".qa", "data", ".venv*", "node_modules", "frontend", "archivo", "reference", "design-source", "design_references",
+    # Original desktop engines kept identical to their sources (see AGENTS.md).
+    "backend/app/recopila_engine.py", "backend/app/organizador_engine.py", "backend/app/declara_engine.py",
+    # Frozen migrations: applied revisions are not edited, not even for formatting.
+    "backend/migrations", "backend/*_migrations",
+]
+
+[format]
+quote-style = "preserve"

@@ -1,4 +1,5 @@
 """Named accounts, revocable cookie sessions and installation bootstrap."""
+
 import argparse
 import base64
 import getpass
@@ -13,10 +14,31 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.exc import IntegrityError
 from .database import SessionLocal
-from .models import (Company, IdentityState, UserAccount, UserCompanyGrant, UserSession,
-                     LoginThrottle, SecurityEvent, StorageEvent, now)
-from .security import (auth, admin_auth, Principal, security, digest, utc, same_origin,
-                       installation_key, audit, session_secure, SESSION_COOKIE, CSRF_COOKIE)
+from .models import (
+    Company,
+    IdentityState,
+    UserAccount,
+    UserCompanyGrant,
+    UserSession,
+    LoginThrottle,
+    SecurityEvent,
+    StorageEvent,
+    now,
+)
+from .security import (
+    auth,
+    admin_auth,
+    Principal,
+    security,
+    digest,
+    utc,
+    same_origin,
+    installation_key,
+    audit,
+    session_secure,
+    SESSION_COOKIE,
+    CSRF_COOKIE,
+)
 
 router = APIRouter(prefix='/api/auth', tags=['Cuentas y sesiones'])
 PrincipalDep = Annotated[Principal, Depends(auth)]
@@ -28,7 +50,9 @@ def password_hash(password, *, salt=None):
     if not HASH_SLOTS.acquire(blocking=False):
         raise HTTPException(429, 'Hay otras verificaciones en curso. Intenta en unos segundos.')
     try:
-        value = hashlib.scrypt(password.encode('utf-8'), salt=salt, n=2**17, r=8, p=1, dklen=32, maxmem=192*1024*1024)
+        value = hashlib.scrypt(
+            password.encode('utf-8'), salt=salt, n=2**17, r=8, p=1, dklen=32, maxmem=192 * 1024 * 1024
+        )
         return 'scrypt-v1$' + base64.b64encode(salt).decode() + '$' + base64.b64encode(value).decode()
     finally:
         HASH_SLOTS.release()
@@ -91,7 +115,9 @@ class PasswordChange(Input):
 
 
 def identity_lock(db):
-    db.execute(update(IdentityState).where(IdentityState.id == 'identity').values(initialized=IdentityState.initialized))
+    db.execute(
+        update(IdentityState).where(IdentityState.id == 'identity').values(initialized=IdentityState.initialized)
+    )
     return db.get(IdentityState, 'identity')
 
 
@@ -109,7 +135,11 @@ def cookie_secure(request):
 
 
 def revoke(db, user_id):
-    db.execute(update(UserSession).where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None)).values(revoked_at=now()))
+    db.execute(
+        update(UserSession)
+        .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=now())
+    )
 
 
 def clear_cookies(response):
@@ -118,10 +148,22 @@ def clear_cookies(response):
 
 
 def public_user(db, user):
-    return dict(id=user.id, username=user.username, display_name=user.display_name, admin=user.admin,
-        enabled=user.enabled, revision=user.revision,
-        grants=[dict(company_id=g.company_id, access=g.access) for g in db.scalars(
-            select(UserCompanyGrant).where(UserCompanyGrant.user_id == user.id).order_by(UserCompanyGrant.company_id))])
+    return dict(
+        id=user.id,
+        username=user.username,
+        display_name=user.display_name,
+        admin=user.admin,
+        enabled=user.enabled,
+        revision=user.revision,
+        grants=[
+            dict(company_id=g.company_id, access=g.access)
+            for g in db.scalars(
+                select(UserCompanyGrant)
+                .where(UserCompanyGrant.user_id == user.id)
+                .order_by(UserCompanyGrant.company_id)
+            )
+        ],
+    )
 
 
 @router.get('/status')
@@ -133,8 +175,9 @@ def status(response: Response):
 
 
 @router.post('/bootstrap', status_code=201)
-def bootstrap(payload: Bootstrap, request: Request,
-              credentials: HTTPAuthorizationCredentials | None = Security(security)):
+def bootstrap(
+    payload: Bootstrap, request: Request, credentials: HTTPAuthorizationCredentials | None = Security(security)
+):
     same_origin(request)
     cookie_secure(request)
     with SessionLocal() as db:
@@ -149,7 +192,9 @@ def bootstrap(payload: Bootstrap, request: Request,
         state = identity_lock(db)
         if state is None or state.initialized:
             raise HTTPException(409, 'La administración inicial ya está configurada.')
-        user = UserAccount(username=payload.username, display_name=payload.display_name, password_hash=encoded, admin=True)
+        user = UserAccount(
+            username=payload.username, display_name=payload.display_name, password_hash=encoded, admin=True
+        )
         db.add(user)
         db.flush()
         state.initialized = True
@@ -185,7 +230,11 @@ def login(payload: Login, request: Request, response: Response):
     with SessionLocal() as db:
         user = db.scalar(select(UserAccount).where(UserAccount.username == payload.username))
         # An unknown username still performs the same expensive hash.
-        valid = password_matches(payload.password, user.password_hash) if user else bool(password_hash(payload.password) and False)
+        valid = (
+            password_matches(payload.password, user.password_hash)
+            if user
+            else bool(password_hash(payload.password) and False)
+        )
         if not valid or not user or not user.enabled:
             audit('anonymous', 'login_failed', 'denied', 'invalid_credentials')
             raise HTTPException(401, 'Usuario o contraseña incorrectos.')
@@ -199,16 +248,23 @@ def login(payload: Login, request: Request, response: Response):
         old = request.cookies.get(SESSION_COOKIE, '')
         if old:
             db.execute(update(UserSession).where(UserSession.id == digest(old)).values(revoked_at=now()))
-        active = db.scalars(select(UserSession).where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
-                            .order_by(UserSession.created_at.desc())).all()
+        active = db.scalars(
+            select(UserSession)
+            .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
+            .order_by(UserSession.created_at.desc())
+        ).all()
         for previous in active[4:]:
             previous.revoked_at = now()
-        db.add(UserSession(id=digest(raw), user_id=user_id, csrf_hash=digest(csrf), expires_at=now()+timedelta(hours=12)))
+        db.add(
+            UserSession(id=digest(raw), user_id=user_id, csrf_hash=digest(csrf), expires_at=now() + timedelta(hours=12))
+        )
         account_throttle = db.get(LoginThrottle, digest('account:' + payload.username))
         if account_throttle:
             account_throttle.attempts = 0
         db.add(SecurityEvent(actor_id=user_id, action='login_success', outcome='success'))
-    response.set_cookie(SESSION_COOKIE, raw, max_age=43200, path='/api', httponly=True, secure=secure, samesite='strict')
+    response.set_cookie(
+        SESSION_COOKIE, raw, max_age=43200, path='/api', httponly=True, secure=secure, samesite='strict'
+    )
     response.set_cookie(CSRF_COOKIE, csrf, max_age=43200, path='/', httponly=False, secure=secure, samesite='strict')
     response.headers['Cache-Control'] = 'no-store'
     return {'ok': True}
@@ -248,8 +304,11 @@ def change_password(payload: PasswordChange, principal: PrincipalDep, response: 
     encoded = password_hash(payload.new_password)
     with SessionLocal.begin() as db:
         identity_lock(db)
-        changed = db.execute(update(UserAccount).where(UserAccount.id == principal.subject, UserAccount.revision == revision)
-                            .values(password_hash=encoded, revision=revision+1))
+        changed = db.execute(
+            update(UserAccount)
+            .where(UserAccount.id == principal.subject, UserAccount.revision == revision)
+            .values(password_hash=encoded, revision=revision + 1)
+        )
         if not changed.rowcount:
             raise HTTPException(409, 'La cuenta cambió. Actualiza la página.')
         revoke(db, principal.subject)
@@ -273,11 +332,18 @@ def create_user(payload: AccountCreate, principal: AdminDep):
             grants = {g.company_id: g.access for g in payload.grants}
             if len(grants) != len(payload.grants) or any(db.get(Company, cid) is None for cid in grants):
                 raise HTTPException(422, 'Revisa las empresas y permisos seleccionados.')
-            user = UserAccount(username=payload.username, display_name=payload.display_name, password_hash=encoded,
-                               admin=payload.admin, enabled=payload.enabled)
+            user = UserAccount(
+                username=payload.username,
+                display_name=payload.display_name,
+                password_hash=encoded,
+                admin=payload.admin,
+                enabled=payload.enabled,
+            )
             db.add(user)
             db.flush()
-            db.add_all([UserCompanyGrant(user_id=user.id, company_id=cid, access=access) for cid, access in grants.items()])
+            db.add_all(
+                [UserCompanyGrant(user_id=user.id, company_id=cid, access=access) for cid, access in grants.items()]
+            )
             db.flush()
             db.add(SecurityEvent(actor_id=principal.subject, action='account_created:' + user.id, outcome='success'))
             return public_user(db, user)
@@ -294,17 +360,29 @@ def edit_user(ident: str, payload: AccountEdit, principal: AdminDep):
         if not user:
             raise HTTPException(404, 'Cuenta no encontrada.')
         if not payload.enabled or not payload.admin:
-            others = db.scalar(select(func.count()).select_from(UserAccount).where(UserAccount.id != ident,
-                                UserAccount.enabled == True, UserAccount.admin == True))
+            others = db.scalar(
+                select(func.count())
+                .select_from(UserAccount)
+                .where(UserAccount.id != ident, UserAccount.enabled == True, UserAccount.admin == True)
+            )
             if user.admin and user.enabled and not others:
                 raise HTTPException(409, 'Debe permanecer al menos un administrador activo.')
         grants = {g.company_id: g.access for g in payload.grants}
         if len(grants) != len(payload.grants) or any(db.get(Company, cid) is None for cid in grants):
             raise HTTPException(422, 'Revisa las empresas y permisos seleccionados.')
-        values = dict(display_name=payload.display_name, admin=payload.admin, enabled=payload.enabled, revision=payload.revision+1)
+        values = dict(
+            display_name=payload.display_name,
+            admin=payload.admin,
+            enabled=payload.enabled,
+            revision=payload.revision + 1,
+        )
         if encoded:
             values['password_hash'] = encoded
-        changed = db.execute(update(UserAccount).where(UserAccount.id == ident, UserAccount.revision == payload.revision).values(**values))
+        changed = db.execute(
+            update(UserAccount)
+            .where(UserAccount.id == ident, UserAccount.revision == payload.revision)
+            .values(**values)
+        )
         if not changed.rowcount:
             raise HTTPException(409, 'La cuenta cambió. Actualiza antes de guardar.')
         db.execute(delete(UserCompanyGrant).where(UserCompanyGrant.user_id == ident))
@@ -328,14 +406,31 @@ def revoke_user(ident: str, principal: AdminDep):
 
 
 @router.get('/audit')
-def audit_log(principal: AdminDep, kind: str = Query('security', pattern='^(security|storage)$'),
-              offset: int = Query(0, ge=0, le=100000), limit: int = Query(50, ge=1, le=100)):
+def audit_log(
+    principal: AdminDep,
+    kind: str = Query('security', pattern='^(security|storage)$'),
+    offset: int = Query(0, ge=0, le=100000),
+    limit: int = Query(50, ge=1, le=100),
+):
     model = SecurityEvent if kind == 'security' else StorageEvent
     with SessionLocal() as db:
         rows = db.scalars(select(model).order_by(model.created_at.desc(), model.id).offset(offset).limit(limit))
-        return {'total': db.scalar(select(func.count()).select_from(model)), 'items': [dict(
-            id=r.id, actor_id=r.actor_id, action=r.action, outcome=r.outcome, code=r.code, created_at=r.created_at,
-            document_id=getattr(r, 'document_id', None), company_id=getattr(r, 'company_id', None)) for r in rows]}
+        return {
+            'total': db.scalar(select(func.count()).select_from(model)),
+            'items': [
+                dict(
+                    id=r.id,
+                    actor_id=r.actor_id,
+                    action=r.action,
+                    outcome=r.outcome,
+                    code=r.code,
+                    created_at=r.created_at,
+                    document_id=getattr(r, 'document_id', None),
+                    company_id=getattr(r, 'company_id', None),
+                )
+                for r in rows
+            ],
+        }
 
 
 def recover_admin():

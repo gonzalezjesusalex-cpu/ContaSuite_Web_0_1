@@ -1,4 +1,5 @@
 """Read-only UNC provider using the Windows process identity; no stored credentials."""
+
 import os
 from pathlib import Path, PureWindowsPath
 from .local import LocalFolderProvider
@@ -10,8 +11,12 @@ def unc_root(value):
     """Validate syntax before any filesystem/network call."""
     value = str(value).replace('/', '\\')
     path = PureWindowsPath(value)
-    if (not value.startswith('\\\\') or value.startswith(('\\\\?\\', '\\\\.\\')) or
-            not path.is_absolute() or not path.drive.startswith('\\\\')):
+    if (
+        not value.startswith('\\\\')
+        or value.startswith(('\\\\?\\', '\\\\.\\'))
+        or not path.is_absolute()
+        or not path.drive.startswith('\\\\')
+    ):
         raise StorageError('invalid_path')
     server, share = path.drive[2:].split('\\', 1)
     safe_key(server)
@@ -59,7 +64,9 @@ class WindowsSMBProvider(LocalFolderProvider):
             raise StorageError('root_unavailable') from None
 
     def availability(self):
-        return super().availability() if self.configured else Availability('pending_configuration', 'smb_not_configured')
+        return (
+            super().availability() if self.configured else Availability('pending_configuration', 'smb_not_configured')
+        )
 
     def enumerate(self):
         if not self.configured:

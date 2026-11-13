@@ -2,6 +2,7 @@
 
 HTTP derives actors from authenticated named sessions; internal workers use explicit technical identities.
 """
+
 import hashlib
 import tempfile
 from contextlib import contextmanager
@@ -9,8 +10,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 from sqlalchemy import select, update, delete
-from ..models import (Company, Document, StorageSource, DocumentVersion, DocumentLocation,
-                      DocumentCompanyLink, DocumentClassificationReview, StorageEvent, now)
+from ..models import (
+    Company,
+    Document,
+    StorageSource,
+    DocumentVersion,
+    DocumentLocation,
+    DocumentCompanyLink,
+    DocumentClassificationReview,
+    StorageEvent,
+    now,
+)
 from .internal import InternalStorageProvider, validate_payload
 from .local import LocalFolderProvider
 from .paths import safe_key
@@ -33,11 +43,16 @@ class StorageActor:
     def require(self, permission, company_id=None):
         if not self.subject or len(self.subject) > 100:
             raise StorageError('unauthenticated')
-        if not self.admin and (permission not in self.permissions or
-                               (company_id is not None and company_id not in self.company_ids)):
+        if not self.admin and (
+            permission not in self.permissions or (company_id is not None and company_id not in self.company_ids)
+        ):
             raise StorageError('forbidden')
-        if not self.admin and permission == 'write' and company_id is not None and company_id not in (
-                self.company_ids if self.write_company_ids is None else self.write_company_ids):
+        if (
+            not self.admin
+            and permission == 'write'
+            and company_id is not None
+            and company_id not in (self.company_ids if self.write_company_ids is None else self.write_company_ids)
+        ):
             raise StorageError('forbidden')
 
 
@@ -47,14 +62,31 @@ class StorageService(DocumentCatalog, ClassificationService):
         self.settings = settings
         self.internal = InternalStorageProvider(settings.internal_root, max_file_bytes=settings.max_file_bytes)
 
-    def _event(self, db, actor, action, *, document_id=None, source_id=None, company_id=None, outcome='success', code=None):
-        db.add(StorageEvent(actor_id=actor.subject, action=action, document_id=document_id,
-                            source_id=source_id, company_id=company_id, outcome=outcome, code=code))
+    def _event(
+        self, db, actor, action, *, document_id=None, source_id=None, company_id=None, outcome='success', code=None
+    ):
+        db.add(
+            StorageEvent(
+                actor_id=actor.subject,
+                action=action,
+                document_id=document_id,
+                source_id=source_id,
+                company_id=company_id,
+                outcome=outcome,
+                code=code,
+            )
+        )
 
     def _failure(self, actor, action, code):
         if actor.subject and len(actor.subject) <= 100:
             with self.sessions.begin() as db:
-                self._event(db, actor, action, outcome='denied' if code in {'forbidden', 'not_found', 'unauthenticated'} else 'error', code=code)
+                self._event(
+                    db,
+                    actor,
+                    action,
+                    outcome='denied' if code in {'forbidden', 'not_found', 'unauthenticated'} else 'error',
+                    code=code,
+                )
 
     def _provider(self, source):
         if not source.enabled:
@@ -67,22 +99,36 @@ class StorageService(DocumentCatalog, ClassificationService):
             if source.id == 'cs_internal':
                 return self.internal
             if source.id == 'cs_legacy':
-                return LocalFolderProvider(self.settings.legacy_root, (self.settings.legacy_root,),
-                                           max_file_bytes=self.settings.max_file_bytes, allow_legacy_public_cer=True)
+                return LocalFolderProvider(
+                    self.settings.legacy_root,
+                    (self.settings.legacy_root,),
+                    max_file_bytes=self.settings.max_file_bytes,
+                    allow_legacy_public_cer=True,
+                )
             raise StorageError('invalid_configuration')
         if source.kind == 'local_folder':
             return self._local(Path(source.root_path), source.configuration.get('exclusions', []))
         raise StorageError('invalid_configuration')
 
     def _smb(self, windows, exclusions=()):
-        return WindowsSMBProvider(windows_root(windows), self.settings.smb_allowed_roots,
-                                  exclusions=exclusions, max_file_bytes=self.settings.max_file_bytes,
-                                  max_entries=self.settings.max_scan_entries, max_seconds=self.settings.max_scan_seconds)
+        return WindowsSMBProvider(
+            windows_root(windows),
+            self.settings.smb_allowed_roots,
+            exclusions=exclusions,
+            max_file_bytes=self.settings.max_file_bytes,
+            max_entries=self.settings.max_scan_entries,
+            max_seconds=self.settings.max_scan_seconds,
+        )
 
     def _local(self, root, exclusions=()):
-        provider = LocalFolderProvider(root, self.settings.allowed_roots, exclusions=exclusions,
-                                       max_file_bytes=self.settings.max_file_bytes,
-                                       max_entries=self.settings.max_scan_entries, max_seconds=self.settings.max_scan_seconds)
+        provider = LocalFolderProvider(
+            root,
+            self.settings.allowed_roots,
+            exclusions=exclusions,
+            max_file_bytes=self.settings.max_file_bytes,
+            max_entries=self.settings.max_scan_entries,
+            max_seconds=self.settings.max_scan_seconds,
+        )
         for internal in (self.settings.internal_root, self.settings.legacy_root):
             internal = internal.absolute()
             if provider.root.is_relative_to(internal) or internal.is_relative_to(provider.root):
@@ -92,19 +138,31 @@ class StorageService(DocumentCatalog, ClassificationService):
     def register_local(self, actor, label, root, *, exclusions=()):
         try:
             actor.require('manage_sources')
-            if not label.strip() or len(label) > 160 or len(exclusions) > 100 or any(not isinstance(p, str) or len(p) > 200 for p in exclusions):
+            if (
+                not label.strip()
+                or len(label) > 160
+                or len(exclusions) > 100
+                or any(not isinstance(p, str) or len(p) > 200 for p in exclusions)
+            ):
                 raise StorageError('invalid_configuration')
             provider = self._local(Path(root), exclusions)
             available = provider.availability()
             if available.state != 'available':
                 raise StorageError(available.code or 'root_unavailable')
             with self.sessions.begin() as db:
-                source = StorageSource(id=str(uuid4()), label=label.strip(), kind='local_folder', root_path=str(provider.root),
-                                       configuration={'exclusions': list(exclusions)})
+                source = StorageSource(
+                    id=str(uuid4()),
+                    label=label.strip(),
+                    kind='local_folder',
+                    root_path=str(provider.root),
+                    configuration={'exclusions': list(exclusions)},
+                )
                 db.add(source)
                 db.flush()
                 self._event(db, actor, 'source_registered', source_id=source.id)
-                result = SourcePublic(id=source.id, label=source.label, kind=source.kind, enabled=True, state='available')
+                result = SourcePublic(
+                    id=source.id, label=source.label, kind=source.kind, enabled=True, state='available'
+                )
             return result
         except StorageError as exc:
             self._failure(actor, 'source_register_failed', exc.code)
@@ -120,11 +178,22 @@ class StorageService(DocumentCatalog, ClassificationService):
                     state, code = status.state, status.code
                 except StorageError as exc:
                     state, code = 'unavailable', exc.code
-                result.append(SourcePublic(id=source.id, label=source.label, kind=source.kind, enabled=source.enabled, state=state, code=code))
+                result.append(
+                    SourcePublic(
+                        id=source.id,
+                        label=source.label,
+                        kind=source.kind,
+                        enabled=source.enabled,
+                        state=state,
+                        code=code,
+                    )
+                )
             return result
 
     def _companies(self, db, doc):
-        companies = set(db.scalars(select(DocumentCompanyLink.company_id).where(DocumentCompanyLink.document_id == doc.id)))
+        companies = set(
+            db.scalars(select(DocumentCompanyLink.company_id).where(DocumentCompanyLink.document_id == doc.id))
+        )
         if doc.company_id:
             companies.add(doc.company_id)
         return companies
@@ -149,9 +218,19 @@ class StorageService(DocumentCatalog, ClassificationService):
         return doc
 
     def _public(self, db, doc, actor):
-        return DocumentPublic(id=doc.id, name=doc.name, size=doc.size, revision=doc.storage_revision,
-                              company_ids=sorted(self._companies(db, doc) if actor.admin else self._companies(db, doc) & actor.company_ids), document_type=doc.document_type, period=doc.period,
-                              classification_status=doc.classification_status, created_at=doc.created_at)
+        return DocumentPublic(
+            id=doc.id,
+            name=doc.name,
+            size=doc.size,
+            revision=doc.storage_revision,
+            company_ids=sorted(
+                self._companies(db, doc) if actor.admin else self._companies(db, doc) & actor.company_ids
+            ),
+            document_type=doc.document_type,
+            period=doc.period,
+            classification_status=doc.classification_status,
+            created_at=doc.created_at,
+        )
 
     def document(self, actor, ident):
         try:
@@ -165,19 +244,50 @@ class StorageService(DocumentCatalog, ClassificationService):
             raise
 
     def _version(self, db, actor, doc, stored, source_id, key, *, mtime_ns=None):
-        version = DocumentVersion(id=str(uuid4()), document_id=doc.id, number=doc.storage_revision,
-                                  original_name=doc.name, sha256=stored.sha256, size=stored.size,
-                                  media_type=stored.media_type, file_metadata={}, created_by=actor.subject)
+        version = DocumentVersion(
+            id=str(uuid4()),
+            document_id=doc.id,
+            number=doc.storage_revision,
+            original_name=doc.name,
+            sha256=stored.sha256,
+            size=stored.size,
+            media_type=stored.media_type,
+            file_metadata={},
+            created_by=actor.subject,
+        )
         db.add(version)
         db.flush()
-        db.add(DocumentLocation(version_id=version.id, source_id=source_id, relative_key=key,
-                                key_digest=hashlib.sha256(key.casefold().encode()).hexdigest(), availability='available',
-                                size=stored.size, mtime_ns=str(mtime_ns) if mtime_ns is not None else None, last_seen_at=now()))
+        db.add(
+            DocumentLocation(
+                version_id=version.id,
+                source_id=source_id,
+                relative_key=key,
+                key_digest=hashlib.sha256(key.casefold().encode()).hexdigest(),
+                availability='available',
+                size=stored.size,
+                mtime_ns=str(mtime_ns) if mtime_ns is not None else None,
+                last_seen_at=now(),
+            )
+        )
         if doc.classification_status == 'pending':
-            db.add(DocumentClassificationReview(document_id=doc.id, version_id=version.id, evidence={}, proposed_links=[]))
+            db.add(
+                DocumentClassificationReview(document_id=doc.id, version_id=version.id, evidence={}, proposed_links=[])
+            )
         return version
 
-    def upload(self, actor, stream, name, *, company_id=None, document_id=None, expected_revision=None, category='General', document_type='unknown', period=None):
+    def upload(
+        self,
+        actor,
+        stream,
+        name,
+        *,
+        company_id=None,
+        document_id=None,
+        expected_revision=None,
+        category='General',
+        document_type='unknown',
+        period=None,
+    ):
         stored = None
         try:
             actor.require('write', company_id)
@@ -196,32 +306,71 @@ class StorageService(DocumentCatalog, ClassificationService):
                     raise StorageError('not_found')
             stored = self.internal.put(stream, name)
             with self.sessions.begin() as db:
-                from ..document_identity import lock,register,available
+                from ..document_identity import lock, register, available
+
                 lock(db)
                 source = db.get(StorageSource, 'cs_internal')
                 if source is None or not source.enabled:
                     raise StorageError('source_disabled')
                 if document_id:
                     doc = self._document(db, actor, document_id, 'write')
-                    changed = db.execute(update(Document).where(Document.id == doc.id, Document.storage_revision == expected_revision)
-                                         .values(storage_revision=expected_revision + 1, name=name, size=stored.size, category=category, document_type=document_type, period=period))
+                    changed = db.execute(
+                        update(Document)
+                        .where(Document.id == doc.id, Document.storage_revision == expected_revision)
+                        .values(
+                            storage_revision=expected_revision + 1,
+                            name=name,
+                            size=stored.size,
+                            category=category,
+                            document_type=document_type,
+                            period=period,
+                        )
+                    )
                     if not changed.rowcount:
                         raise StorageError('revision_conflict')
                     db.refresh(doc)
                 else:
-                    doc = Document(id=str(uuid4()), company_id=company_id, name=name, category=category, document_type=document_type, period=period, size=stored.size,
-                                   storage_name=None, managed=True, storage_revision=1,
-                                   classification_status='confirmed' if company_id else 'pending')
+                    doc = Document(
+                        id=str(uuid4()),
+                        company_id=company_id,
+                        name=name,
+                        category=category,
+                        document_type=document_type,
+                        period=period,
+                        size=stored.size,
+                        storage_name=None,
+                        managed=True,
+                        storage_revision=1,
+                        classification_status='confirmed' if company_id else 'pending',
+                    )
                     db.add(doc)
                     db.flush()
                     if company_id:
-                        db.add(DocumentCompanyLink(document_id=doc.id, company_id=company_id, role='owner', method='manual', confirmed_by=actor.subject))
-                version=self._version(db, actor, doc, stored, 'cs_internal', stored.key)
+                        db.add(
+                            DocumentCompanyLink(
+                                document_id=doc.id,
+                                company_id=company_id,
+                                role='owner',
+                                method='manual',
+                                confirmed_by=actor.subject,
+                            )
+                        )
+                version = self._version(db, actor, doc, stored, 'cs_internal', stored.key)
                 if name.lower().endswith('.xml') and available(db):
                     from .classifier import classify
-                    with self.internal.open_read(stored.key) as content:identity=classify(content,name,[])
-                    db.flush();register(db,doc,version,identity,actor.subject)
-                self._event(db, actor, 'version_uploaded', document_id=doc.id, source_id='cs_internal', company_id=doc.company_id)
+
+                    with self.internal.open_read(stored.key) as content:
+                        identity = classify(content, name, [])
+                    db.flush()
+                    register(db, doc, version, identity, actor.subject)
+                self._event(
+                    db,
+                    actor,
+                    'version_uploaded',
+                    document_id=doc.id,
+                    source_id='cs_internal',
+                    company_id=doc.company_id,
+                )
                 result = self._public(db, doc, actor)
             return result
         except Exception as exc:
@@ -261,6 +410,7 @@ class StorageService(DocumentCatalog, ClassificationService):
         try:
             with self.sessions.begin() as db:
                 from ..document_identity import lock
+
                 lock(db)
                 source = db.get(StorageSource, source_id)
                 if not source or source.kind not in {'local_folder', 'windows_smb'}:
@@ -272,51 +422,108 @@ class StorageService(DocumentCatalog, ClassificationService):
                 db.execute(update(StorageSource).where(StorageSource.id == source_id).values(label=source.label))
                 if lease:
                     from .indexer import check_lease
+
                     check_lease(db, *lease)
                 spool, size, digest = self._buffer(provider, key)
                 try:
                     media_type = validate_payload(spool, Path(key).name, allow_public_cer=True)
                     from .classifier import classify
-                    identity=classify(spool,Path(key).name,[]) if Path(key).suffix.lower()=='.xml' else None
+
+                    identity = classify(spool, Path(key).name, []) if Path(key).suffix.lower() == '.xml' else None
                 finally:
                     spool.close()
-                previous = db.scalar(select(DocumentVersion).join(DocumentLocation, DocumentLocation.version_id == DocumentVersion.id)
-                                     .where(DocumentLocation.source_id == source_id, DocumentLocation.key_digest == digest_key)
-                                     .order_by(DocumentVersion.number.desc()))
+                previous = db.scalar(
+                    select(DocumentVersion)
+                    .join(DocumentLocation, DocumentLocation.version_id == DocumentVersion.id)
+                    .where(DocumentLocation.source_id == source_id, DocumentLocation.key_digest == digest_key)
+                    .order_by(DocumentVersion.number.desc())
+                )
                 if previous:
                     doc = self._document(db, actor, previous.document_id, 'index')
                     if company_id and company_id not in self._companies(db, doc):
                         raise StorageError('classification_conflict')
                     if previous.sha256 == digest:
-                        db.execute(update(DocumentLocation).where(DocumentLocation.version_id == previous.id,
-                                   DocumentLocation.source_id == source_id, DocumentLocation.key_digest == digest_key)
-                                   .values(availability='available', last_seen_at=now(), error_code=None,
-                                           mtime_ns=str(provider.metadata(key).mtime_ns)))
+                        db.execute(
+                            update(DocumentLocation)
+                            .where(
+                                DocumentLocation.version_id == previous.id,
+                                DocumentLocation.source_id == source_id,
+                                DocumentLocation.key_digest == digest_key,
+                            )
+                            .values(
+                                availability='available',
+                                last_seen_at=now(),
+                                error_code=None,
+                                mtime_ns=str(provider.metadata(key).mtime_ns),
+                            )
+                        )
                         self._event(db, actor, 'observation_unchanged', document_id=doc.id, source_id=source_id)
                         return self._public(db, doc, actor)
-                    changed = db.execute(update(Document).where(Document.id == doc.id, Document.storage_revision == previous.number)
-                                         .values(storage_revision=previous.number + 1, size=size, classification_status='pending',
-                                                 document_type='unknown', period=None))
+                    changed = db.execute(
+                        update(Document)
+                        .where(Document.id == doc.id, Document.storage_revision == previous.number)
+                        .values(
+                            storage_revision=previous.number + 1,
+                            size=size,
+                            classification_status='pending',
+                            document_type='unknown',
+                            period=None,
+                        )
+                    )
                     if not changed.rowcount:
                         raise StorageError('revision_conflict')
                     db.refresh(doc)
                     # Do not expose new bytes through an automatic link inferred from an older version.
-                    db.execute(delete(DocumentCompanyLink).where(DocumentCompanyLink.document_id == doc.id,
-                                                                 DocumentCompanyLink.method == 'rfc-v1'))
-                    db.execute(update(DocumentLocation).where(DocumentLocation.source_id == source_id, DocumentLocation.key_digest == digest_key)
-                               .values(availability='superseded'))
+                    db.execute(
+                        delete(DocumentCompanyLink).where(
+                            DocumentCompanyLink.document_id == doc.id, DocumentCompanyLink.method == 'rfc-v1'
+                        )
+                    )
+                    db.execute(
+                        update(DocumentLocation)
+                        .where(DocumentLocation.source_id == source_id, DocumentLocation.key_digest == digest_key)
+                        .values(availability='superseded')
+                    )
                 else:
-                    doc = Document(id=str(uuid4()), company_id=company_id, name=Path(key).name, category='General', size=size,
-                                   managed=True, storage_revision=1, classification_status='confirmed' if company_id else 'pending')
+                    doc = Document(
+                        id=str(uuid4()),
+                        company_id=company_id,
+                        name=Path(key).name,
+                        category='General',
+                        size=size,
+                        managed=True,
+                        storage_revision=1,
+                        classification_status='confirmed' if company_id else 'pending',
+                    )
                     db.add(doc)
                     db.flush()
                     if company_id:
-                        db.add(DocumentCompanyLink(document_id=doc.id, company_id=company_id, role='owner', method='manual', confirmed_by=actor.subject))
+                        db.add(
+                            DocumentCompanyLink(
+                                document_id=doc.id,
+                                company_id=company_id,
+                                role='owner',
+                                method='manual',
+                                confirmed_by=actor.subject,
+                            )
+                        )
                 from .providers import StoredFile
-                version=self._version(db, actor, doc, StoredFile(key, size, digest, media_type), source_id, key, mtime_ns=provider.metadata(key).mtime_ns)
+
+                version = self._version(
+                    db,
+                    actor,
+                    doc,
+                    StoredFile(key, size, digest, media_type),
+                    source_id,
+                    key,
+                    mtime_ns=provider.metadata(key).mtime_ns,
+                )
                 if identity:
-                    from ..document_identity import lock,register
-                    lock(db);db.flush();register(db,doc,version,identity,actor.subject)
+                    from ..document_identity import lock, register
+
+                    lock(db)
+                    db.flush()
+                    register(db, doc, version, identity, actor.subject)
                 self._event(db, actor, 'external_observed', document_id=doc.id, source_id=source_id)
                 result = self._public(db, doc, actor)
             return result
@@ -331,12 +538,19 @@ class StorageService(DocumentCatalog, ClassificationService):
         try:
             with self.sessions.begin() as db:
                 doc = self._document(db, actor, ident)
-                version = db.scalar(select(DocumentVersion).where(DocumentVersion.document_id == doc.id,
-                                    DocumentVersion.number == (revision if revision is not None else doc.storage_revision)))
+                version = db.scalar(
+                    select(DocumentVersion).where(
+                        DocumentVersion.document_id == doc.id,
+                        DocumentVersion.number == (revision if revision is not None else doc.storage_revision),
+                    )
+                )
                 if version is None:
                     raise StorageError('not_found')
-                locations = db.scalars(select(DocumentLocation).where(DocumentLocation.version_id == version.id,
-                                      DocumentLocation.availability != 'superseded')).all()
+                locations = db.scalars(
+                    select(DocumentLocation).where(
+                        DocumentLocation.version_id == version.id, DocumentLocation.availability != 'superseded'
+                    )
+                ).all()
                 if not locations:
                     raise StorageError('unavailable')
                 failure = 'unavailable'
@@ -359,11 +573,19 @@ class StorageService(DocumentCatalog, ClassificationService):
                         break
                     except StorageError as exc:
                         failure = exc.code
-                        state = {'missing': 'missing', 'access_denied': 'denied', 'integrity_error': 'changed',
-                                 'legacy_verification_required': 'unchecked'}.get(exc.code, 'unavailable')
+                        state = {
+                            'missing': 'missing',
+                            'access_denied': 'denied',
+                            'integrity_error': 'changed',
+                            'legacy_verification_required': 'unchecked',
+                        }.get(exc.code, 'unavailable')
                         unavailable.append((location.id, state, exc.code))
                 for location_id, state, code in unavailable:
-                    db.execute(update(DocumentLocation).where(DocumentLocation.id == location_id).values(availability=state, error_code=code))
+                    db.execute(
+                        update(DocumentLocation)
+                        .where(DocumentLocation.id == location_id)
+                        .values(availability=state, error_code=code)
+                    )
                 if spool is None:
                     raise StorageError(failure)
                 self._event(db, actor, 'content_read', document_id=doc.id)
@@ -374,7 +596,11 @@ class StorageService(DocumentCatalog, ClassificationService):
                 # The failed read transaction rolled back; preserve observations in a separate transaction.
                 with self.sessions.begin() as db:
                     for location_id, state, code in unavailable:
-                        db.execute(update(DocumentLocation).where(DocumentLocation.id == location_id).values(availability=state, error_code=code))
+                        db.execute(
+                            update(DocumentLocation)
+                            .where(DocumentLocation.id == location_id)
+                            .values(availability=state, error_code=code)
+                        )
             self._failure(actor, 'content_read_failed', exc.code)
             raise
         finally:

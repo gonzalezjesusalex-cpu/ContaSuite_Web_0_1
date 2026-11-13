@@ -24,6 +24,7 @@ def validate_payload(stream, name, *, allow_public_cer=False):
     if certificate:
         from cryptography import x509
         from cryptography.hazmat.primitives.serialization import Encoding
+
         try:
             stream.seek(0)
             data = stream.read()
@@ -56,6 +57,7 @@ def validate_payload(stream, name, *, allow_public_cer=False):
 
 class InternalStorageProvider:
     """Writes only generated names to a private repository. No caller-supplied absolute destinations."""
+
     def __init__(self, root: Path, *, max_file_bytes=25 * 1024 * 1024):
         self.root = Path(root).absolute()
         self.max_file_bytes = max_file_bytes
@@ -85,8 +87,9 @@ class InternalStorageProvider:
             raise StorageError('repository_unavailable') from None
 
     def _reader(self):
-        return LocalFolderProvider(self.root, (self.root,), max_file_bytes=self.max_file_bytes,
-                                   exclusions=('.staging',))
+        return LocalFolderProvider(
+            self.root, (self.root,), max_file_bytes=self.max_file_bytes, exclusions=('.staging',)
+        )
 
     def availability(self):
         try:

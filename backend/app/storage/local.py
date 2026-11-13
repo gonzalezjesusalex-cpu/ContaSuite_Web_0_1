@@ -9,13 +9,29 @@ from .providers import Availability, FileMetadata, ScanIssue, StorageError
 
 
 def os_error(exc):
-    return 'missing' if isinstance(exc, FileNotFoundError) else 'access_denied' if isinstance(exc, PermissionError) else 'read_error'
+    return (
+        'missing'
+        if isinstance(exc, FileNotFoundError)
+        else 'access_denied'
+        if isinstance(exc, PermissionError)
+        else 'read_error'
+    )
 
 
 class LocalFolderProvider:
     """Read-only, bounded traversal. Roots come from server configuration, never from document requests."""
-    def __init__(self, root: Path, allowed_roots: tuple[Path, ...], *, exclusions=(), max_entries=30000,
-                 max_seconds=60, max_file_bytes=25 * 1024 * 1024, allow_legacy_public_cer=False):
+
+    def __init__(
+        self,
+        root: Path,
+        allowed_roots: tuple[Path, ...],
+        *,
+        exclusions=(),
+        max_entries=30000,
+        max_seconds=60,
+        max_file_bytes=25 * 1024 * 1024,
+        allow_legacy_public_cer=False,
+    ):
         self.root = self._authorize_root(root, allowed_roots)
         self.exclusions = tuple(exclusions)
         self.max_entries = max_entries
@@ -33,9 +49,12 @@ class LocalFolderProvider:
 
     def _excluded(self, key):
         parts = key.split('/')
-        return any(fnmatch.fnmatchcase('/'.join(parts[:n + 1]).casefold(), pattern.casefold()) or
-                   fnmatch.fnmatchcase(part.casefold(), pattern.casefold())
-                   for n, part in enumerate(parts) for pattern in self.exclusions)
+        return any(
+            fnmatch.fnmatchcase('/'.join(parts[: n + 1]).casefold(), pattern.casefold())
+            or fnmatch.fnmatchcase(part.casefold(), pattern.casefold())
+            for n, part in enumerate(parts)
+            for pattern in self.exclusions
+        )
 
     def _path(self, key):
         safe_key(key)
@@ -155,6 +174,7 @@ class LocalFolderProvider:
         import ctypes
         import msvcrt
         from ctypes import wintypes
+
         final_path = ctypes.windll.kernel32.GetFinalPathNameByHandleW
         final_path.argtypes = (wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD)
         final_path.restype = wintypes.DWORD

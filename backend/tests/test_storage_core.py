@@ -8,8 +8,16 @@ import pytest
 from sqlalchemy import create_engine, event, select, func
 from sqlalchemy.orm import sessionmaker
 from test_api import client, A, company  # Initialize the existing isolated test environment before app imports.
-from app.models import (Company, Document, DocumentVersion, DocumentLocation, DocumentClassificationReview,
-                        StorageEvent, StorageSource, now)
+from app.models import (
+    Company,
+    Document,
+    DocumentVersion,
+    DocumentLocation,
+    DocumentClassificationReview,
+    StorageEvent,
+    StorageSource,
+    now,
+)
 from app.storage.migrate import upgrade_storage
 from app.storage.providers import FileMetadata, ScanIssue, StorageError
 from app.storage.paths import safe_key
@@ -27,19 +35,27 @@ ADMIN = StorageActor('test-administrator', admin=True)
 @pytest.fixture
 def core(tmp_path):
     engine = create_engine('sqlite:///' + str(tmp_path / 'storage.db'))
+
     @event.listens_for(engine, 'connect')
     def foreign_keys(conn, _):
         conn.execute('PRAGMA foreign_keys=ON')
+
     upgrade_storage(engine)
     # Full application baseline is provisioned explicitly by installation, not startup.
     from app.database import Base
+
     Base.metadata.create_all(engine)
     from app.document_identity import metadata as identity_metadata
+
     identity_metadata.create_all(engine)
     sessions = sessionmaker(engine, expire_on_commit=False)
     with sessions.begin() as db:
-        db.add_all([Company(id='company-a', name='Empresa A', rfc='AAA010101AA1'),
-                    Company(id='company-b', name='Empresa B', rfc='BBB020202BB2')])
+        db.add_all(
+            [
+                Company(id='company-a', name='Empresa A', rfc='AAA010101AA1'),
+                Company(id='company-b', name='Empresa B', rfc='BBB020202BB2'),
+            ]
+        )
     external = tmp_path / 'authorized'
     external.mkdir()
     settings = StorageSettings(tmp_path / 'private', tmp_path / 'legacy', (external,))
@@ -54,13 +70,21 @@ def actor(company_id, *permissions):
 
 def test_shared_document_requires_write_for_every_linked_company(core):
     from app.models import DocumentCompanyLink
+
     service, sessions, root = core
     doc = service.upload(ADMIN, io.BytesIO(XML), 'shared.xml', company_id='company-a')
     with sessions.begin() as db:
-        db.add(DocumentCompanyLink(document_id=doc.id, company_id='company-b', role='receiver',
-                                   method='manual', confirmed_by=ADMIN.subject))
-    limited = StorageActor('mixed-permissions', frozenset({'company-a','company-b'}),
-                           frozenset({'read','write'}), write_company_ids=frozenset({'company-a'}))
+        db.add(
+            DocumentCompanyLink(
+                document_id=doc.id, company_id='company-b', role='receiver', method='manual', confirmed_by=ADMIN.subject
+            )
+        )
+    limited = StorageActor(
+        'mixed-permissions',
+        frozenset({'company-a', 'company-b'}),
+        frozenset({'read', 'write'}),
+        write_company_ids=frozenset({'company-a'}),
+    )
     assert service.document(limited, doc.id).id == doc.id
     with pytest.raises(StorageError, match='forbidden'):
         service.upload(limited, io.BytesIO(XML), 'new.xml', document_id=doc.id, expected_revision=1)
@@ -99,15 +123,20 @@ def test_local_scan_continues_after_denied_directory_and_limits(tmp_path, monkey
     (tmp_path / 'denied').mkdir()
     (tmp_path / 'ok.pdf').write_bytes(PDF)
     original = os.scandir
+
     def scandir(path):
         if Path(path).name == 'denied':
             raise PermissionError('Sensitive physical path must not be returned')
         return original(path)
+
     monkeypatch.setattr(os, 'scandir', scandir)
     entries = list(LocalFolderProvider(tmp_path, (tmp_path,)).enumerate())
     assert any(isinstance(e, ScanIssue) and e.code == 'access_denied' for e in entries)
     assert any(isinstance(e, FileMetadata) and e.key == 'ok.pdf' for e in entries)
-    assert any(isinstance(e, ScanIssue) and e.code == 'scan_limit' for e in LocalFolderProvider(tmp_path, (tmp_path,), max_entries=0).enumerate())
+    assert any(
+        isinstance(e, ScanIssue) and e.code == 'scan_limit'
+        for e in LocalFolderProvider(tmp_path, (tmp_path,), max_entries=0).enumerate()
+    )
 
 
 def test_reparse_points_are_not_followed(tmp_path):
@@ -119,6 +148,7 @@ def test_reparse_points_are_not_followed(tmp_path):
     link = root / 'junction'
     if os.name == 'nt':
         import _winapi
+
         _winapi.CreateJunction(str(outside), str(link))
     else:
         link.symlink_to(outside, target_is_directory=True)
@@ -152,10 +182,14 @@ def test_internal_private_atomic_storage_and_validation(tmp_path):
     with repo.open_read(stored.key) as stream:
         assert stream.read() == XML
     assert not list((tmp_path / 'private' / '.staging').iterdir())
-    for name, payload, code in [('a.key', b'secret', 'unsupported_format'), ('a.pfx', b'secret', 'unsupported_format'),
-                                ('a.pdf', b'not pdf', 'invalid_format'), ('a.pdf', b'%PDF- PRIVATE KEY', 'protected_file'),
-                                ('a.xml', b'<!DOCTYPE x [<!ENTITY e "secret">]><x>&e;</x>', 'invalid_format'),
-                                ('a.pdf', b'', 'empty_file')]:
+    for name, payload, code in [
+        ('a.key', b'secret', 'unsupported_format'),
+        ('a.pfx', b'secret', 'unsupported_format'),
+        ('a.pdf', b'not pdf', 'invalid_format'),
+        ('a.pdf', b'%PDF- PRIVATE KEY', 'protected_file'),
+        ('a.xml', b'<!DOCTYPE x [<!ENTITY e "secret">]><x>&e;</x>', 'invalid_format'),
+        ('a.pdf', b'', 'empty_file'),
+    ]:
         with pytest.raises(StorageError, match=code):
             repo.put(io.BytesIO(payload), name)
     assert [e.key for e in repo.enumerate() if isinstance(e, FileMetadata)] == [stored.key]
@@ -179,6 +213,7 @@ def test_internal_publish_failure_and_size_limit_leave_no_partial_files(tmp_path
 def test_internal_name_collision_never_overwrites_or_removes_another_staging_file(tmp_path, monkeypatch):
     from types import SimpleNamespace
     from app.storage import internal
+
     repo = InternalStorageProvider(tmp_path / 'private')
     token = 'a' * 32
     monkeypatch.setattr(internal, 'uuid4', lambda: SimpleNamespace(hex=token))
@@ -260,7 +295,10 @@ def test_external_observations_are_incremental_and_read_only(core):
     with sessions() as db:
         assert db.scalar(select(func.count()).select_from(DocumentVersion)) == 2
         assert db.scalar(select(func.count()).select_from(DocumentLocation)) == 2
-        assert db.scalar(select(DocumentLocation.availability).join(DocumentVersion).where(DocumentVersion.number == 2)) == 'missing'
+        assert (
+            db.scalar(select(DocumentLocation.availability).join(DocumentVersion).where(DocumentVersion.number == 2))
+            == 'missing'
+        )
     path.write_bytes(PDF + b' v2')
     with service.read(ADMIN, initial.id) as restored:
         assert restored.stream.read() == PDF + b' v2'
@@ -295,7 +333,11 @@ def test_sources_are_admin_only_smb_is_explicitly_unavailable(core):
         with pytest.raises(StorageError, match='smb_not_configured'):
             operation()
     with sessions.begin() as db:
-        db.add(StorageSource(id='pending-smb', label='Servidor pendiente', kind='windows_smb', enabled=True, configuration={}))
+        db.add(
+            StorageSource(
+                id='pending-smb', label='Servidor pendiente', kind='windows_smb', enabled=True, configuration={}
+            )
+        )
     listing = service.sources(ADMIN)
     assert next(s for s in listing if s.id == 'pending-smb').state == 'pending_configuration'
 
@@ -304,8 +346,10 @@ def test_windows_unc_is_rejected_before_any_filesystem_probe(tmp_path, monkeypat
     if os.name != 'nt':
         pytest.skip('Windows UNC path handling')
     from app.storage import paths
+
     def no_probe(path):
         raise AssertionError('UNC must be rejected before a filesystem or network probe')
+
     monkeypatch.setattr(paths, 'check_no_links', no_probe)
     with pytest.raises(StorageError, match='smb_not_configured'):
         LocalFolderProvider(Path(r'\\not-a-real-server\share'), (tmp_path,))
@@ -314,6 +358,7 @@ def test_windows_unc_is_rejected_before_any_filesystem_probe(tmp_path, monkeypat
 def test_existing_document_api_cannot_bypass_managed_storage(client):
     c = company(client).json()
     from app.database import SessionLocal, DATA
+
     service = StorageService(SessionLocal, StorageSettings(DATA / 'cs-storage', DATA / 'documents'))
     doc = service.upload(ADMIN, io.BytesIO(PDF), 'managed.pdf', company_id=c['id'])
     assert client.get('/api/documents/' + doc.id + '/download', headers=A).content == PDF

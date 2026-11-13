@@ -1,21 +1,34 @@
 """Test code-only update against the prior generated local installer fixture."""
-import base64,hashlib,io,json,subprocess,sys,zipfile
+
+import base64, hashlib, io, json, subprocess, sys, zipfile
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]
+
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def main():
-    work=ROOT/'.qa/excel-fix-test';work.mkdir(exist_ok=False)
-    source=work/'setup';archive=ROOT.parent/'ENTREGAS/ContaSuite_RC1_Correccion_Excel.zip'
+    work = ROOT / '.qa/excel-fix-test'
+    work.mkdir(exist_ok=False)
+    source = work / 'setup'
+    archive = ROOT.parent / 'ENTREGAS/ContaSuite_RC1_Correccion_Excel.zip'
     with zipfile.ZipFile(archive) as z:
-        manifest=json.loads(z.read('PACKAGE_SHA256.json'))
-        assert all(hashlib.sha256(z.read(n)).hexdigest()==v for n,v in manifest.items());z.extractall(source)
-    target=ROOT/'.qa/local-installer-final/installed'
-    assert target.is_relative_to(ROOT/'.qa') and (target/'LOCAL_INSTALLATION.json').is_file()
+        manifest = json.loads(z.read('PACKAGE_SHA256.json'))
+        assert all(hashlib.sha256(z.read(n)).hexdigest() == v for n, v in manifest.items())
+        z.extractall(source)
+    target = ROOT / '.qa/local-installer-final/installed'
+    assert target.is_relative_to(ROOT / '.qa') and (target / 'LOCAL_INSTALLATION.json').is_file()
     from openpyxl import Workbook
-    book=Workbook();sheet=book.active;sheet.append(['Empresa','RFC']);sheet.append(['Synthetic update test','AAA010101AA1']);sheet['A2'].hyperlink='https://example.invalid/never-request'
-    stream=io.BytesIO();book.save(stream);book.close()
-    payload={'source':str(source),'target':str(target),'workbook':base64.b64encode(stream.getvalue()).decode()}
-    code="""import base64,json,sys,hashlib,subprocess
+
+    book = Workbook()
+    sheet = book.active
+    sheet.append(['Empresa', 'RFC'])
+    sheet.append(['Synthetic update test', 'AAA010101AA1'])
+    sheet['A2'].hyperlink = 'https://example.invalid/never-request'
+    stream = io.BytesIO()
+    book.save(stream)
+    book.close()
+    payload = {'source': str(source), 'target': str(target), 'workbook': base64.b64encode(stream.getvalue()).decode()}
+    code = """import base64,json,sys,hashlib,subprocess
 from pathlib import Path
 from local_setup import marker
 from local_runtime import start,stop,alive
@@ -42,9 +55,29 @@ try:
  print(json.dumps({'updated':True,'database_counts_preserved':True,'configuration_preserved':True,'running_installation_restarted':True,'previous_code_backed_up':True,'installed_reader_test':'passed'}))
 finally:stop(root)
 """
-    result=subprocess.run([str(source/'runtime/python.exe'),'-B','-c',code],input=json.dumps(payload),text=True,capture_output=True,timeout=240,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if result.returncode:raise RuntimeError(result.stdout+'\n'+result.stderr)
+    result = subprocess.run(
+        [str(source / 'runtime/python.exe'), '-B', '-c', code],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        timeout=240,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+    )
+    if result.returncode:
+        raise RuntimeError(result.stdout + '\n' + result.stderr)
     print(result.stdout)
-    report={'synthetic_only':True,'package_sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'code_update':'passed','counts_and_configuration_preserved':True,'running_installation_restarted':True,'installed_hyperlink_workbook':'passed','real_workbook_examined':False}
-    (work/'results.json').write_text(json.dumps(report,indent=2));print(json.dumps(report))
-if __name__=='__main__':main()
+    report = {
+        'synthetic_only': True,
+        'package_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
+        'code_update': 'passed',
+        'counts_and_configuration_preserved': True,
+        'running_installation_restarted': True,
+        'installed_hyperlink_workbook': 'passed',
+        'real_workbook_examined': False,
+    }
+    (work / 'results.json').write_text(json.dumps(report, indent=2))
+    print(json.dumps(report))
+
+
+if __name__ == '__main__':
+    main()

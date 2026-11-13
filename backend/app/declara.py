@@ -1,4 +1,5 @@
 """Adaptador web de Declara: planes revisables y copias, sin sesión SAT remota."""
+
 import csv
 import json
 import shutil
@@ -55,11 +56,15 @@ def load_plan(ident):
 def summary(infos, expected_rfc):
     candidates = [i.rfc for i in infos if i.rfc and i.status not in {'ERROR', 'OMITIDO', 'RFC DIFERENTE'}]
     primary = Counter(candidates).most_common(1)[0][0] if candidates else None
-    return {'total': len(infos), 'rename': sum(i.status == 'RENOMBRAR' for i in infos),
-            'correct': sum(i.status == 'CORRECTO' for i in infos),
-            'excluded': sum(i.status not in ELIGIBLE for i in infos),
-            'special': sum(i.is_resico or i.is_salarios for i in infos),
-            'primary_rfc': primary, 'rfc_matches': primary == expected_rfc if primary else True}
+    return {
+        'total': len(infos),
+        'rename': sum(i.status == 'RENOMBRAR' for i in infos),
+        'correct': sum(i.status == 'CORRECTO' for i in infos),
+        'excluded': sum(i.status not in ELIGIBLE for i in infos),
+        'special': sum(i.is_resico or i.is_salarios for i in infos),
+        'primary_rfc': primary,
+        'rfc_matches': primary == expected_rfc if primary else True,
+    }
 
 
 def control_months(infos, expected_rfc):
@@ -123,7 +128,9 @@ def base_folder(root):
         child = children[0]
         if any(p.is_file() and p.suffix.lower() == '.pdf' for p in child.iterdir()):
             return child
-    raise ValueError('Selecciona los PDF de una empresa y ejercicio, directamente en la carpeta base. No se combinan subcarpetas.')
+    raise ValueError(
+        'Selecciona los PDF de una empresa y ejercicio, directamente en la carpeta base. No se combinan subcarpetas.'
+    )
 
 
 def analyze(ident):
@@ -137,7 +144,9 @@ def analyze(ident):
         for i in infos:
             i.sha256 = motor.sha256_file(i.path)
         save_plan(ident, infos)
-        nested = sum(p.is_file() and p.suffix.lower() == '.pdf' and p.parent != base for p in (root / 'input').rglob('*'))
+        nested = sum(
+            p.is_file() and p.suffix.lower() == '.pdf' and p.parent != base for p in (root / 'input').rglob('*')
+        )
         with SessionLocal() as db:
             run = get_run(db, ident)
             refresh_run(run, infos)
@@ -145,15 +154,25 @@ def analyze(ident):
             if ignored:
                 warnings.append(f'Se omitieron {ignored} archivos que no son PDF.')
             if nested:
-                warnings.append(f'{nested} PDF de subcarpetas no se analizaron; el motor sólo procesa archivos directos.')
+                warnings.append(
+                    f'{nested} PDF de subcarpetas no se analizaron; el motor sólo procesa archivos directos.'
+                )
             if len({i.year for i in infos if i.year}) > 1:
-                warnings.append('Hay documentos de varios ejercicios. Revisa los nombres: el motor original no agrega el año al nombre final.')
+                warnings.append(
+                    'Hay documentos de varios ejercicios. Revisa los nombres: el motor original no agrega el año al nombre final.'
+                )
             if not run.summary['rfc_matches']:
-                warnings.append('El RFC principal detectado no coincide con la empresa seleccionada. No se publicará control mensual ni se generarán copias; selecciona la empresa correcta en una nueva carga.')
+                warnings.append(
+                    'El RFC principal detectado no coincide con la empresa seleccionada. No se publicará control mensual ni se generarán copias; selecciona la empresa correcta en una nueva carga.'
+                )
             if any(i.status not in ELIGIBLE for i in infos):
-                warnings.append('Los PDF omitidos, con error o con RFC diferente no se incluyen en el ZIP. Sus originales se conservan.')
+                warnings.append(
+                    'Los PDF omitidos, con error o con RFC diferente no se incluyen en el ZIP. Sus originales se conservan.'
+                )
             if any(i.preserve_special_name for i in infos):
-                warnings.append('Algunos RESICO/SALARIOS conservan su nombre por metadatos incompletos. Los archivos sin ejercicio no completan el control mensual.')
+                warnings.append(
+                    'Algunos RESICO/SALARIOS conservan su nombre por metadatos incompletos. Los archivos sin ejercicio no completan el control mensual.'
+                )
             run.warnings = warnings
             run.status = 'analyzed'
             run.message = 'Análisis terminado. Revisa los nombres y el control documental.'
@@ -164,8 +183,13 @@ def analyze(ident):
 
 
 @router.post('/runs', status_code=202)
-async def start(background: BackgroundTasks, company_id: str = Form(...), short_name: str = Form(...),
-                files: list[UploadFile] = File(...), db: Session = Depends(session)):
+async def start(
+    background: BackgroundTasks,
+    company_id: str = Form(...),
+    short_name: str = Form(...),
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(session),
+):
     company = db.get(Company, company_id)
     if not company:
         raise HTTPException(404, 'Empresa no encontrada')
@@ -199,8 +223,14 @@ async def start(background: BackgroundTasks, company_id: str = Form(...), short_
                     out.write(chunk)
         if not size:
             raise ValueError('La entrada está vacía.')
-        run = DeclaraRun(id=ident, company_id=company.id, expected_rfc=company.rfc, short_name=short_name,
-                         name=path.name[:255] if is_zip else f'{len(files)} PDF', message='Preparando PDF.')
+        run = DeclaraRun(
+            id=ident,
+            company_id=company.id,
+            expected_rfc=company.rfc,
+            short_name=short_name,
+            name=path.name[:255] if is_zip else f'{len(files)} PDF',
+            message='Preparando PDF.',
+        )
         db.add(run)
         db.commit()
         background.add_task(analyze, ident)
@@ -236,7 +266,10 @@ def detail(ident: str, db: Session = Depends(session)):
         if run.status in {'analyzed', 'generated'} and run.evaluated_on != date.today().isoformat():
             refresh_run(run, infos)
             db.commit()
-        records = [{**asdict(i), 'path': i.path.relative_to(folder(ident) / 'input').as_posix(), 'index': n} for n, i in enumerate(infos)]
+        records = [
+            {**asdict(i), 'path': i.path.relative_to(folder(ident) / 'input').as_posix(), 'index': n}
+            for n, i in enumerate(infos)
+        ]
     return {'run': run, 'records': records}
 
 
@@ -253,8 +286,11 @@ class ResolveIn(RevisionIn):
 @router.post('/runs/{ident}/resolve')
 def resolve(ident: str, data: ResolveIn, db: Session = Depends(session)):
     run = get_run(db, ident)
-    changed = db.execute(update(DeclaraRun).where(DeclaraRun.id == ident, DeclaraRun.status == 'analyzed', DeclaraRun.revision == data.revision)
-                         .values(status='editing'))
+    changed = db.execute(
+        update(DeclaraRun)
+        .where(DeclaraRun.id == ident, DeclaraRun.status == 'analyzed', DeclaraRun.revision == data.revision)
+        .values(status='editing')
+    )
     db.commit()
     if not changed.rowcount:
         raise HTTPException(409, 'El análisis cambió o está en curso. Actualiza antes de resolver.')
@@ -278,10 +314,18 @@ def resolve(ident: str, data: ResolveIn, db: Session = Depends(session)):
         info.expected_name = name
         info.status = 'RENOMBRAR'
         info.manual_override = True
-        info.detail = 'Resuelto manualmente como duplicado/consecutivo.' if data.action == 'duplicate' else f'Tipo de documento seleccionado manualmente: {data.choice}.'
+        info.detail = (
+            'Resuelto manualmente como duplicado/consecutivo.'
+            if data.action == 'duplicate'
+            else f'Tipo de documento seleccionado manualmente: {data.choice}.'
+        )
         if data.action == 'type':
-            others = {i.expected_name.casefold() for i in infos if i is not info and i.expected_name and i.status in ELIGIBLE}
-            if name.casefold() in others or (info.expected_path.exists() and info.expected_path.resolve() != info.path.resolve()):
+            others = {
+                i.expected_name.casefold() for i in infos if i is not info and i.expected_name and i.status in ELIGIBLE
+            }
+            if name.casefold() in others or (
+                info.expected_path.exists() and info.expected_path.resolve() != info.path.resolve()
+            ):
                 alt = motor.next_duplicate_name(info, infos)
                 if not alt:
                     raise ValueError('No se encontró un nombre libre.')
@@ -296,7 +340,9 @@ def resolve(ident: str, data: ResolveIn, db: Session = Depends(session)):
         db.commit()
     except Exception as exc:
         db.rollback()
-        db.execute(update(DeclaraRun).where(DeclaraRun.id == ident, DeclaraRun.status == 'editing').values(status='analyzed'))
+        db.execute(
+            update(DeclaraRun).where(DeclaraRun.id == ident, DeclaraRun.status == 'editing').values(status='analyzed')
+        )
         db.commit()
         if isinstance(exc, ValueError):
             raise HTTPException(422, str(exc)) from exc
@@ -336,15 +382,31 @@ def generate(ident):
                     raise ValueError('El contenido cambió durante el proceso.')
                 z.write(final, final.name)
             for i in infos:
-                rows.append({'archivo': i.path.name, 'nombre_final': i.expected_name or '', 'estado': 'RENOMBRADO' if i.status == 'RENOMBRAR' else i.status,
-                             'rfc': i.rfc or '', 'ejercicio': i.year or '', 'mes': i.month or '', 'tipo': i.declaration_type or '',
-                             'detalle': i.detail, 'manual': i.manual_override, 'sha256': i.sha256})
+                rows.append(
+                    {
+                        'archivo': i.path.name,
+                        'nombre_final': i.expected_name or '',
+                        'estado': 'RENOMBRADO' if i.status == 'RENOMBRAR' else i.status,
+                        'rfc': i.rfc or '',
+                        'ejercicio': i.year or '',
+                        'mes': i.month or '',
+                        'tipo': i.declaration_type or '',
+                        'detalle': i.detail,
+                        'manual': i.manual_override,
+                        'sha256': i.sha256,
+                    }
+                )
         (root / 'result_pending.zip').replace(root / 'result.zip')
         with (root / 'auditoria.csv').open('w', encoding='utf-8-sig', newline='') as out:
             writer = csv.DictWriter(out, fieldnames=list(rows[0]))
             writer.writeheader()
             for row in rows:
-                writer.writerow({k: "'" + str(v) if str(v).startswith(('=', '+', '-', '@', '\t', '\r')) else v for k, v in row.items()})
+                writer.writerow(
+                    {
+                        k: "'" + str(v) if str(v).startswith(('=', '+', '-', '@', '\t', '\r')) else v
+                        for k, v in row.items()
+                    }
+                )
         with SessionLocal() as db:
             run = get_run(db, ident)
             run.status = 'generated'
@@ -363,8 +425,11 @@ def start_generate(ident: str, data: RevisionIn, background: BackgroundTasks, db
         raise HTTPException(422, 'El RFC detectado no coincide con la empresa seleccionada.')
     if not (run.summary.get('rename', 0) + run.summary.get('correct', 0)):
         raise HTTPException(422, 'No hay PDF reconocidos para generar.')
-    changed = db.execute(update(DeclaraRun).where(DeclaraRun.id == ident, DeclaraRun.status == 'analyzed', DeclaraRun.revision == data.revision)
-                         .values(status='generating', message='Preparando copias y aplicando nombres.'))
+    changed = db.execute(
+        update(DeclaraRun)
+        .where(DeclaraRun.id == ident, DeclaraRun.status == 'analyzed', DeclaraRun.revision == data.revision)
+        .values(status='generating', message='Preparando copias y aplicando nombres.')
+    )
     db.commit()
     if not changed.rowcount:
         raise HTTPException(409, 'El análisis cambió o ya fue ejecutado. Actualiza para revisar.')
@@ -390,5 +455,8 @@ def download(ident: str, kind: str = 'zip', db: Session = Depends(session)):
         raise HTTPException(409, 'Los resultados aún no están listos.')
     if kind not in {'zip', 'csv'}:
         raise HTTPException(422, 'Selecciona ZIP o CSV.')
-    return FileResponse(folder(ident) / ('result.zip' if kind == 'zip' else 'auditoria.csv'),
-                        filename=f'DECLARA_{run.expected_rfc}.{kind}', media_type='application/zip' if kind == 'zip' else 'text/csv; charset=utf-8')
+    return FileResponse(
+        folder(ident) / ('result.zip' if kind == 'zip' else 'auditoria.csv'),
+        filename=f'DECLARA_{run.expected_rfc}.{kind}',
+        media_type='application/zip' if kind == 'zip' else 'text/csv; charset=utf-8',
+    )

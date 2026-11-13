@@ -1,4 +1,5 @@
 """Archivos subidos y copias verificadas; el motor de escritorio permanece intacto."""
+
 import json
 import re
 import shutil
@@ -37,11 +38,19 @@ def get_run(db, ident):
 def safe_path(name):
     raw = name.replace('\\', '/')
     parts = raw.split('/')
-    if (not raw or len(raw) > 700 or raw.startswith('/') or
-        any(not p or p in ('.', '..') or p.endswith((' ', '.')) or
-            re.search(r'[<>:"|?*\x00-\x1f]', p) or
-            re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?', p, re.I)
-            for p in parts)):
+    if (
+        not raw
+        or len(raw) > 700
+        or raw.startswith('/')
+        or any(
+            not p
+            or p in ('.', '..')
+            or p.endswith((' ', '.'))
+            or re.search(r'[<>:"|?*\x00-\x1f]', p)
+            or re.fullmatch(r'(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?', p, re.I)
+            for p in parts
+        )
+    ):
         raise ValueError('La entrada contiene una ruta no válida para Windows.')
     return PurePosixPath(raw)
 
@@ -89,12 +98,16 @@ def source_root(source):
         child = children[0]
         if any(p.is_dir() and p.name.casefold() in ('emitidos', 'recibidos', 'reportes') for p in child.iterdir()):
             return child
-    raise ValueError('La carpeta base debe contener Emitidos, Recibidos o Reportes. Conserva las rutas Tipo/RFC/AAAA-MM/archivo.')
+    raise ValueError(
+        'La carpeta base debe contener Emitidos, Recibidos o Reportes. Conserva las rutas Tipo/RFC/AAAA-MM/archivo.'
+    )
 
 
 def progress(ident, status, message):
     with SessionLocal() as db:
-        db.execute(update(OrganizadorRun).where(OrganizadorRun.id == ident).values(status=status, message=message[:1000]))
+        db.execute(
+            update(OrganizadorRun).where(OrganizadorRun.id == ident).values(status=status, message=message[:1000])
+        )
         db.commit()
 
 
@@ -106,9 +119,14 @@ def load_plan(ident):
 def public_records(plan, records):
     source = Path(plan.options.source)
     target = Path(plan.options.destination)
-    return [{**r, 'source': Path(r['source']).relative_to(source).as_posix(),
-             'destination': Path(r['destination']).relative_to(target).as_posix() if r['destination'] else ''}
-            for r in records]
+    return [
+        {
+            **r,
+            'source': Path(r['source']).relative_to(source).as_posix(),
+            'destination': Path(r['destination']).relative_to(target).as_posix() if r['destination'] else '',
+        }
+        for r in records
+    ]
 
 
 def analyze(ident):
@@ -118,8 +136,10 @@ def analyze(ident):
         source = source_root(root / 'input')
         with SessionLocal() as db:
             options = get_run(db, ident).options
-        plan = motor.analyze(motor.Options(source=str(source), destination=str(root / 'output'), operation='copy',
-                             **options), lambda n, total, m: progress(ident, 'analyzing', m))
+        plan = motor.analyze(
+            motor.Options(source=str(source), destination=str(root / 'output'), operation='copy', **options),
+            lambda n, total, m: progress(ident, 'analyzing', m),
+        )
         (root / 'plan.json').write_text(json.dumps(asdict(plan), ensure_ascii=False), encoding='utf-8')
         used = {Path(i.source).resolve() for i in plan.items if i.state == 'Listo'}
         unselected = sum(p.is_file() and p.resolve() not in used for p in source.rglob('*'))
@@ -127,11 +147,21 @@ def analyze(ident):
         if ignored:
             warnings.append(f'Se omitieron {ignored} archivos de formatos no admitidos.')
         if unselected:
-            warnings.append(f'{unselected} archivos no coinciden con las rutas o filtros elegidos; no se organizarán. Las subcarpetas no se recorren.')
+            warnings.append(
+                f'{unselected} archivos no coinciden con las rutas o filtros elegidos; no se organizarán. Las subcarpetas no se recorren.'
+            )
         if not plan.ready:
-            warnings.append('No hay archivos listos. Revisa RFC, ejercicio, meses y estructura de origen. Se pueden generar las carpetas vacías del periodo.')
-        summary = {'ready': len(plan.ready), 'omitted': sum(i.state == 'Omitido' for i in plan.items),
-                   'unselected': unselected, 'copied': 0, 'duplicates': 0, 'errors': 0}
+            warnings.append(
+                'No hay archivos listos. Revisa RFC, ejercicio, meses y estructura de origen. Se pueden generar las carpetas vacías del periodo.'
+            )
+        summary = {
+            'ready': len(plan.ready),
+            'omitted': sum(i.state == 'Omitido' for i in plan.items),
+            'unselected': unselected,
+            'copied': 0,
+            'duplicates': 0,
+            'errors': 0,
+        }
         with SessionLocal() as db:
             run = get_run(db, ident)
             run.status = 'analyzed'
@@ -159,21 +189,41 @@ def generate(ident):
         (root / 'result_pending.zip').replace(root / 'result.zip')
         with SessionLocal() as db:
             run = get_run(db, ident)
-            run.summary = {**run.summary, 'copied': sum(r['state'] == 'Copiado' for r in records),
-                           'duplicates': sum(r['state'] == 'Duplicado' for r in records), 'errors': result.errors}
+            run.summary = {
+                **run.summary,
+                'copied': sum(r['state'] == 'Copiado' for r in records),
+                'duplicates': sum(r['state'] == 'Duplicado' for r in records),
+                'errors': result.errors,
+            }
             run.status = 'generated'
-            run.message = 'Organización terminada.' if not result.errors else 'Organización terminada con errores. Revisa la auditoría.'
+            run.message = (
+                'Organización terminada.'
+                if not result.errors
+                else 'Organización terminada con errores. Revisa la auditoría.'
+            )
             db.add(Audit(company_id=run.company_id, action='Organizador CFDI: copias verificadas generadas'))
             db.commit()
     except Exception as exc:
-        progress(ident, 'error', 'No se pudo organizar: ' + str(exc) + '. Carga nuevamente la entrada para repetir el proceso.')
+        progress(
+            ident,
+            'error',
+            'No se pudo organizar: ' + str(exc) + '. Carga nuevamente la entrada para repetir el proceso.',
+        )
 
 
 @router.post('/runs', status_code=202)
-async def start(background: BackgroundTasks, files: list[UploadFile] = File(...),
-                rfc: str = Form(...), year: int = Form(...), months: str = Form(...),
-                kinds: str = Form(''), extensions: str = Form(''),
-                reports: bool = Form(True), company_id: str = Form(''), db: Session = Depends(session)):
+async def start(
+    background: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+    rfc: str = Form(...),
+    year: int = Form(...),
+    months: str = Form(...),
+    kinds: str = Form(''),
+    extensions: str = Form(''),
+    reports: bool = Form(True),
+    company_id: str = Form(''),
+    db: Session = Depends(session),
+):
     if company_id and not db.get(Company, company_id):
         raise HTTPException(404, 'Empresa no encontrada')
     if not files or len(files) > 1000:
@@ -185,9 +235,14 @@ async def start(background: BackgroundTasks, files: list[UploadFile] = File(...)
     size = 0
     seen = set()
     try:
-        options = dict(rfc=rfc.strip().upper(), year=year, months=sorted(set(int(m) for m in months.split(',') if m)),
-                       kinds=list(dict.fromkeys(k for k in kinds.split(',') if k)),
-                       extensions=list(dict.fromkeys(e for e in extensions.split(',') if e)), reports=reports)
+        options = dict(
+            rfc=rfc.strip().upper(),
+            year=year,
+            months=sorted(set(int(m) for m in months.split(',') if m)),
+            kinds=list(dict.fromkeys(k for k in kinds.split(',') if k)),
+            extensions=list(dict.fromkeys(e for e in extensions.split(',') if e)),
+            reports=reports,
+        )
         motor.validate(motor.Options(source=str(source), destination=str(root / 'output'), operation='copy', **options))
         is_zip = len(files) == 1 and Path(files[0].filename or '').suffix.lower() == '.zip'
         for file in files:
@@ -208,8 +263,13 @@ async def start(background: BackgroundTasks, files: list[UploadFile] = File(...)
                     out.write(chunk)
         if not size:
             raise ValueError('La entrada está vacía.')
-        run = OrganizadorRun(id=ident, company_id=company_id or None, options=options,
-                             name=path.name[:255] if is_zip else f'{len(files)} archivos', message='Preparando entrada.')
+        run = OrganizadorRun(
+            id=ident,
+            company_id=company_id or None,
+            options=options,
+            name=path.name[:255] if is_zip else f'{len(files)} archivos',
+            message='Preparando entrada.',
+        )
         db.add(run)
         db.commit()
         background.add_task(analyze, ident)
@@ -247,8 +307,11 @@ def detail(ident: str, db: Session = Depends(session)):
 @router.post('/runs/{ident}/generate', status_code=202)
 def start_generate(ident: str, background: BackgroundTasks, db: Session = Depends(session)):
     get_run(db, ident)
-    changed = db.execute(update(OrganizadorRun).where(OrganizadorRun.id == ident, OrganizadorRun.status == 'analyzed')
-                         .values(status='generating', message='Copiando y verificando SHA-256.'))
+    changed = db.execute(
+        update(OrganizadorRun)
+        .where(OrganizadorRun.id == ident, OrganizadorRun.status == 'analyzed')
+        .values(status='generating', message='Copiando y verificando SHA-256.')
+    )
     db.commit()
     if not changed.rowcount:
         raise HTTPException(409, 'Primero termina el análisis. Cada análisis sólo se ejecuta una vez.')
@@ -263,6 +326,8 @@ def download(ident: str, kind: str = 'zip', db: Session = Depends(session)):
         raise HTTPException(409, 'Los resultados aún no están listos.')
     if kind not in ('zip', 'csv'):
         raise HTTPException(422, 'Selecciona ZIP o CSV.')
-    return FileResponse(folder(ident) / ('result.zip' if kind == 'zip' else 'auditoria.csv'),
-                        filename=f'ORGANIZADOR_{run.options["rfc"]}_{run.options["year"]}.{kind}',
-                        media_type='application/zip' if kind == 'zip' else 'text/csv; charset=utf-8')
+    return FileResponse(
+        folder(ident) / ('result.zip' if kind == 'zip' else 'auditoria.csv'),
+        filename=f'ORGANIZADOR_{run.options["rfc"]}_{run.options["year"]}.{kind}',
+        media_type='application/zip' if kind == 'zip' else 'text/csv; charset=utf-8',
+    )

@@ -34,13 +34,23 @@ def test_storage_routes_require_installation_auth(client):
 
 def test_catalog_upload_search_filters_and_public_metadata(client):
     c = company(client).json()
-    first = upload(client, 'factura_%.xml', XML, company_id=c['id'], period='2026-10', document_type='cfdi', category='General')
+    first = upload(
+        client, 'factura_%.xml', XML, company_id=c['id'], period='2026-10', document_type='cfdi', category='General'
+    )
     assert first.status_code == 201, first.text
     second = upload(client, 'sin-empresa.pdf')
     assert second.status_code == 201
-    for params in ({'q': c['rfc']}, {'q': c['name']}, {'q': '2026-10'}, {'q': '_%'},
-                   {'year': 2026, 'month': 10}, {'format': 'xml'}, {'document_type': 'cfdi'},
-                   {'company_id': c['id']}, {'source_id': 'cs_internal', 'format': 'xml'}):
+    for params in (
+        {'q': c['rfc']},
+        {'q': c['name']},
+        {'q': '2026-10'},
+        {'q': '_%'},
+        {'year': 2026, 'month': 10},
+        {'format': 'xml'},
+        {'document_type': 'cfdi'},
+        {'company_id': c['id']},
+        {'source_id': 'cs_internal', 'format': 'xml'},
+    ):
         result = client.get('/api/storage/documents', headers=A, params=params)
         assert result.status_code == 200, result.text
         page = result.json()
@@ -115,7 +125,9 @@ def test_verified_download_preview_and_versions(client):
     assert detail['versions'][0]['sha256'] == hashlib.sha256(XML).hexdigest()
     assert client.post(base + '/verify', headers=A).status_code == 200
     with SessionLocal() as db:
-        assert db.scalar(select(StorageEvent).where(StorageEvent.action == 'content_read', StorageEvent.document_id == ident))
+        assert db.scalar(
+            select(StorageEvent).where(StorageEvent.action == 'content_read', StorageEvent.document_id == ident)
+        )
 
 
 def test_legacy_adoption_preserves_bytes_and_id_and_checks_integrity_on_old_route(client):
@@ -136,7 +148,10 @@ def test_legacy_adoption_preserves_bytes_and_id_and_checks_integrity_on_old_rout
     assert client.get('/api/documents/' + ident + '/download', headers=A).content == PDF
     with SessionLocal() as db:
         assert db.get(Document, ident).storage_name == storage_name
-        assert db.scalar(select(func.count()).select_from(DocumentVersion).where(DocumentVersion.document_id == ident)) == 1
+        assert (
+            db.scalar(select(func.count()).select_from(DocumentVersion).where(DocumentVersion.document_id == ident))
+            == 1
+        )
     path.write_bytes(PDF + b'changed')  # DATA is the test_api disposable directory, never the installation DATA.
     altered = client.get('/api/documents/' + ident + '/download', headers=A)
     assert altered.status_code == 409 and PDF not in altered.content
@@ -147,8 +162,19 @@ def certificate_and_key():
     key = ec.generate_private_key(ec.SECP256R1())
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'CS-Storage synthetic certificate')])
     now = datetime.now(timezone.utc)
-    cert = x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key()).serial_number(1234).not_valid_before(now).not_valid_after(now + timedelta(days=30)).sign(key, hashes.SHA256())
-    return cert.public_bytes(serialization.Encoding.DER), key.private_bytes(serialization.Encoding.DER, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1234)
+        .not_valid_before(now)
+        .not_valid_after(now + timedelta(days=30))
+        .sign(key, hashes.SHA256())
+    )
+    return cert.public_bytes(serialization.Encoding.DER), key.private_bytes(
+        serialization.Encoding.DER, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    )
 
 
 def test_public_cer_is_preserved_but_private_or_appended_key_is_rejected(client):
@@ -158,14 +184,24 @@ def test_public_cer_is_preserved_but_private_or_appended_key_is_rejected(client)
     base = '/api/storage/documents/' + uploaded.json()['id']
     assert client.get(base + '/content', headers=A).content == cert
     assert client.get(base + '/content?preview=true', headers=A).status_code == 415
-    for filename, data in [('privada.cer', private), ('mixto.cer', cert + private), ('clave.key', private), ('firma.pfx', private)]:
+    for filename, data in [
+        ('privada.cer', private),
+        ('mixto.cer', cert + private),
+        ('clave.key', private),
+        ('firma.pfx', private),
+    ]:
         assert upload(client, filename, data).status_code == 422
     assert client.get('/api/storage/documents?format=cer', headers=A).json()['total'] == 1
 
 
 def test_content_validation_and_metadata_limits(client):
-    for name, data in [('falso.pdf', b'not a PDF'), ('falso.xml', b'<!DOCTYPE x [<!ENTITY e "x">]><x>&e;</x>'),
-                       ('key.pdf', b'%PDF- PRIVATE KEY'), ('../escape.pdf', PDF), ('empty.pdf', b'')]:
+    for name, data in [
+        ('falso.pdf', b'not a PDF'),
+        ('falso.xml', b'<!DOCTYPE x [<!ENTITY e "x">]><x>&e;</x>'),
+        ('key.pdf', b'%PDF- PRIVATE KEY'),
+        ('../escape.pdf', PDF),
+        ('empty.pdf', b''),
+    ]:
         assert upload(client, name, data).status_code == 422
     assert upload(client, period='2026-13').status_code == 422
     assert upload(client, document_type='inventado').status_code == 422
@@ -188,20 +224,33 @@ def test_external_missing_and_changed_files_return_safe_error_statuses(client, t
     row = client.get('/api/storage/documents/' + doc.id, headers=A).json()['document']
     assert row['availability'] == 'missing'
     path.write_bytes(PDF)
-    assert client.post('/api/storage/documents/' + doc.id + '/verify', headers=A).json()['document']['availability'] == 'available'
+    assert (
+        client.post('/api/storage/documents/' + doc.id + '/verify', headers=A).json()['document']['availability']
+        == 'available'
+    )
     path.write_bytes(PDF + b'changed')
     assert client.get('/api/storage/documents/' + doc.id + '/content', headers=A).status_code == 409
 
 
 def test_download_rejects_oversized_or_invalid_old_attachments(client):
     c = company(client).json()
-    for name, content in [('fake.cer', b'not cert'), ('private.cer', certificate_and_key()[1]), ('fake.pdf', b'not pdf')]:
-        assert client.post('/api/companies/' + c['id'] + '/documents', headers=A, files={'file': (name, content)}).status_code == 422
+    for name, content in [
+        ('fake.cer', b'not cert'),
+        ('private.cer', certificate_and_key()[1]),
+        ('fake.pdf', b'not pdf'),
+    ]:
+        assert (
+            client.post(
+                '/api/companies/' + c['id'] + '/documents', headers=A, files={'file': (name, content)}
+            ).status_code
+            == 422
+        )
     assert client.get('/api/storage/documents', headers=A).json()['total'] == 0
 
 
 def test_historical_download_keeps_original_version_name(client):
     import io
+
     service = StorageService(SessionLocal, StorageSettings.from_environment(DATA))
     admin = StorageActor('test-version-owner', admin=True)
     first = service.upload(admin, io.BytesIO(PDF), 'antes.pdf')

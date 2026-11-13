@@ -1,4 +1,5 @@
 """Server-trusted identities. Installation key stops working after the first named account."""
+
 import hashlib
 import os
 import secrets
@@ -44,13 +45,24 @@ class Principal:
 
     def storage_actor(self):
         from .storage.service import StorageActor
-        return StorageActor(self.subject, self.company_ids,
-            frozenset({'read'} | ({'write'} if self.write_company_ids else set())), self.admin,
-            write_company_ids=self.write_company_ids)
+
+        return StorageActor(
+            self.subject,
+            self.company_ids,
+            frozenset({'read'} | ({'write'} if self.write_company_ids else set())),
+            self.admin,
+            write_company_ids=self.write_company_ids,
+        )
 
     def public(self):
-        return dict(id=self.subject, display_name=self.display_name, admin=self.admin, bootstrap=self.bootstrap,
-                    company_ids=sorted(self.company_ids), write_company_ids=sorted(self.write_company_ids))
+        return dict(
+            id=self.subject,
+            display_name=self.display_name,
+            admin=self.admin,
+            bootstrap=self.bootstrap,
+            company_ids=sorted(self.company_ids),
+            write_company_ids=sorted(self.write_company_ids),
+        )
 
 
 def audit(actor_id, action, outcome='success', code=None):
@@ -60,7 +72,12 @@ def audit(actor_id, action, outcome='success', code=None):
 
 def installation_key(credentials):
     token = os.getenv('APP_TOKEN', '')
-    return len(token) >= 24 and credentials is not None and len(credentials.credentials) <= 512 and secrets.compare_digest(credentials.credentials.encode(), token.encode())
+    return (
+        len(token) >= 24
+        and credentials is not None
+        and len(credentials.credentials) <= 512
+        and secrets.compare_digest(credentials.credentials.encode(), token.encode())
+    )
 
 
 def same_origin(request):
@@ -74,7 +91,11 @@ def same_origin(request):
 def session_secure(request):
     if request.url.scheme == 'https':
         return True
-    if request.url.hostname in {'localhost', '127.0.0.1', '::1', 'testserver'} and request.client and request.client.host in {'127.0.0.1', '::1', 'testclient'}:
+    if (
+        request.url.hostname in {'localhost', '127.0.0.1', '::1', 'testserver'}
+        and request.client
+        and request.client.host in {'127.0.0.1', '::1', 'testclient'}
+    ):
         return False
     raise HTTPException(400, 'Las cuentas requieren HTTPS fuera del equipo local.')
 
@@ -89,20 +110,39 @@ def auth(request: Request, credentials: HTTPAuthorizationCredentials | None = Se
             row = db.get(UserSession, ident)
             user = db.get(UserAccount, row.user_id) if row else None
             stamp = now()
-            if row and user and user.enabled and row.revoked_at is None and utc(row.expires_at) > stamp and utc(row.last_seen_at) + timedelta(minutes=30) > stamp:
+            if (
+                row
+                and user
+                and user.enabled
+                and row.revoked_at is None
+                and utc(row.expires_at) > stamp
+                and utc(row.last_seen_at) + timedelta(minutes=30) > stamp
+            ):
                 session_secure(request)
                 principal = Principal(user.id, user.display_name, user.admin, session_id=ident)
                 request.state.principal = principal
                 if request.method not in SAFE_METHODS:
                     csrf = request.headers.get('x-csrf-token', '')
                     if not csrf or len(csrf) > 128 or not secrets.compare_digest(digest(csrf), row.csrf_hash):
-                        raise HTTPException(403, 'La sesión requiere una comprobación de seguridad. Actualiza la página.')
+                        raise HTTPException(
+                            403, 'La sesión requiere una comprobación de seguridad. Actualiza la página.'
+                        )
                 grants = db.scalars(select(UserCompanyGrant).where(UserCompanyGrant.user_id == user.id)).all()
-                principal = Principal(user.id, user.display_name, user.admin,
-                    frozenset(g.company_id for g in grants), frozenset(g.company_id for g in grants if g.access == 'write'), session_id=ident)
+                principal = Principal(
+                    user.id,
+                    user.display_name,
+                    user.admin,
+                    frozenset(g.company_id for g in grants),
+                    frozenset(g.company_id for g in grants if g.access == 'write'),
+                    session_id=ident,
+                )
                 activity = request.method not in SAFE_METHODS or request.headers.get('x-contasuite-activity') == '1'
                 if activity and utc(row.last_seen_at) + timedelta(minutes=1) < stamp:
-                    db.execute(update(UserSession).where(UserSession.id == ident, UserSession.revoked_at.is_(None)).values(last_seen_at=stamp))
+                    db.execute(
+                        update(UserSession)
+                        .where(UserSession.id == ident, UserSession.revoked_at.is_(None))
+                        .values(last_seen_at=stamp)
+                    )
                 request.state.principal = principal
                 return principal
         state = db.get(IdentityState, 'identity')

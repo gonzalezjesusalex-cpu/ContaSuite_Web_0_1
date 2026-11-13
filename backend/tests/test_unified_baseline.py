@@ -1,4 +1,5 @@
 """Single Alembic chain: unified baseline cs_0006 over the former independent migration chains."""
+
 import importlib.util
 import os
 import subprocess
@@ -17,11 +18,17 @@ from app.storage.migrate import STORAGE_HEAD, schema_revision, upgrade_schema, u
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
 HEAD = 'cs_0006_unified_baseline'
-OLD_CHAIN = [('fiscal_migrations', '001_control_obligaciones'), ('credential_migrations', '001_vault'),
-             ('import_migrations', '001_reconciliation'), ('integral_migrations', '001_integral'),
-             ('company_migrations', '001_archive'), ('lote4_migrations', '001_lifecycle'),
-             ('lote4_migrations', '002_schedule'), ('integral_migrations', '002_evidence_history'),
-             ('integral_migrations', '003_document_identity')]
+OLD_CHAIN = [
+    ('fiscal_migrations', '001_control_obligaciones'),
+    ('credential_migrations', '001_vault'),
+    ('import_migrations', '001_reconciliation'),
+    ('integral_migrations', '001_integral'),
+    ('company_migrations', '001_archive'),
+    ('lote4_migrations', '001_lifecycle'),
+    ('lote4_migrations', '002_schedule'),
+    ('integral_migrations', '002_evidence_history'),
+    ('integral_migrations', '003_document_identity'),
+]
 
 
 def local_engine(path):
@@ -30,6 +37,7 @@ def local_engine(path):
     @event.listens_for(engine, 'connect')
     def foreign_keys(conn, _):
         conn.execute('PRAGMA foreign_keys=ON')
+
     return engine
 
 
@@ -48,7 +56,10 @@ def old_procedure(engine):
 def snapshot(engine):
     with engine.connect() as connection:
         names = [n for n in inspect(connection).get_table_names() if n != 'alembic_version']
-        return {n: sorted(map(tuple, connection.exec_driver_sql('SELECT * FROM "' + n + '"').all()), key=repr) for n in names}
+        return {
+            n: sorted(map(tuple, connection.exec_driver_sql('SELECT * FROM "' + n + '"').all()), key=repr)
+            for n in names
+        }
 
 
 def test_fresh_database_reaches_single_head_and_is_compatible(tmp_path):
@@ -94,8 +105,20 @@ def test_schema_admin_status_is_read_only(tmp_path):
         engine.dispose()
     env = {k: v for k, v in os.environ.items() if not k.startswith(('APP_TOKEN', 'AGENT_TOKEN'))}
     env.update(DATABASE_URL='sqlite:///' + str(database), PYTHON_DOTENV_DISABLED='1')
-    result = subprocess.run([sys.executable, '-B', str(ROOT / 'scripts' / 'schema_admin.py'), '--data-dir',
-                             str(tmp_path / 'data'), '--status'], env=env, capture_output=True, text=True, timeout=120)
+    result = subprocess.run(
+        [
+            sys.executable,
+            '-B',
+            str(ROOT / 'scripts' / 'schema_admin.py'),
+            '--data-dir',
+            str(tmp_path / 'data'),
+            '--status',
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
     assert result.returncode == 0, result.stderr
     assert 'Revision: ' + STORAGE_HEAD + ' (head: ' + HEAD + ') - update pending' in result.stdout
     assert 'Schema compatible' in result.stdout
@@ -109,7 +132,21 @@ def test_schema_admin_status_is_read_only(tmp_path):
 
 def test_status_cannot_be_combined_with_apply(tmp_path):
     env = dict(os.environ, DATABASE_URL='sqlite:///' + str(tmp_path / 'x.db'), PYTHON_DOTENV_DISABLED='1')
-    result = subprocess.run([sys.executable, '-B', str(ROOT / 'scripts' / 'schema_admin.py'), '--data-dir',
-                             str(tmp_path / 'data'), '--status', '--apply', '--new'], env=env, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(
+        [
+            sys.executable,
+            '-B',
+            str(ROOT / 'scripts' / 'schema_admin.py'),
+            '--data-dir',
+            str(tmp_path / 'data'),
+            '--status',
+            '--apply',
+            '--new',
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
     assert result.returncode == 2 and 'read-only' in result.stderr
     assert not (tmp_path / 'x.db').exists()

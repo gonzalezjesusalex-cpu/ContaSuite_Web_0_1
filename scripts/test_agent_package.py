@@ -1,19 +1,32 @@
 """Managed agent and backed-up full-folder queue, on generated data only."""
-import argparse,hashlib,json,subprocess,sys,zipfile
+
+import argparse, hashlib, json, subprocess, sys, zipfile
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]
+
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--run-id',default='final');args=parser.parse_args();assert args.run_id.isalnum()
-    work=ROOT/'.qa'/('agent-package-'+args.run_id);work.mkdir(exist_ok=False)
-    setup=work/'setup';archive=ROOT.parent/'ENTREGAS/ContaSuite_RC1_Agente_Windows.zip'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--run-id', default='final')
+    args = parser.parse_args()
+    assert args.run_id.isalnum()
+    work = ROOT / '.qa' / ('agent-package-' + args.run_id)
+    work.mkdir(exist_ok=False)
+    setup = work / 'setup'
+    archive = ROOT.parent / 'ENTREGAS/ContaSuite_RC1_Agente_Windows.zip'
     with zipfile.ZipFile(archive) as z:
-        hashes=json.loads(z.read('PACKAGE_SHA256.json'));assert all(hashlib.sha256(z.read(n)).hexdigest()==h for n,h in hashes.items());z.extractall(setup)
-    target=ROOT/'.qa/local-installer-final/installed'
-    assert target.is_relative_to(ROOT/'.qa')
-    fixture=work/'authorized-fixture';fixture.mkdir();(fixture/'safe.xml').write_text('<Comprobante/>');(fixture/'password.xml').write_text('SYNTHETIC EXCLUDED')
-    payload={'setup':str(setup),'target':str(target),'fixture':str(fixture)}
-    code="""import sys,json,time,subprocess
+        hashes = json.loads(z.read('PACKAGE_SHA256.json'))
+        assert all(hashlib.sha256(z.read(n)).hexdigest() == h for n, h in hashes.items())
+        z.extractall(setup)
+    target = ROOT / '.qa/local-installer-final/installed'
+    assert target.is_relative_to(ROOT / '.qa')
+    fixture = work / 'authorized-fixture'
+    fixture.mkdir()
+    (fixture / 'safe.xml').write_text('<Comprobante/>')
+    (fixture / 'password.xml').write_text('SYNTHETIC EXCLUDED')
+    payload = {'setup': str(setup), 'target': str(target), 'fixture': str(fixture)}
+    code = """import sys,json,time,subprocess
 from pathlib import Path
 from apply_excel_fix import apply
 from apply_agent import FILES
@@ -63,8 +76,28 @@ try:
  print(json.dumps({'agent_connected':True,'agent_inventory_delivered':True,'backup_created':True,'document_queue_completed':True,'secret_excluded':True,'source_unchanged':True}))
 finally:stop(root)
 """
-    result=subprocess.run([str(setup/'runtime/python.exe'),'-B','-c',code],input=json.dumps(payload),text=True,capture_output=True,timeout=300,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-    if result.returncode:raise RuntimeError(result.stdout+'\n'+result.stderr)
+    result = subprocess.run(
+        [str(setup / 'runtime/python.exe'), '-B', '-c', code],
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        timeout=300,
+        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+    )
+    if result.returncode:
+        raise RuntimeError(result.stdout + '\n' + result.stderr)
     print(result.stdout)
-    (work/'results.json').write_text(json.dumps({'synthetic_only':True,'package_sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'agent_and_full_folder_queue':'passed'},indent=2))
-if __name__=='__main__':main()
+    (work / 'results.json').write_text(
+        json.dumps(
+            {
+                'synthetic_only': True,
+                'package_sha256': hashlib.sha256(archive.read_bytes()).hexdigest(),
+                'agent_and_full_folder_queue': 'passed',
+            },
+            indent=2,
+        )
+    )
+
+
+if __name__ == '__main__':
+    main()

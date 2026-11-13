@@ -17,9 +17,19 @@ def archive(entries):
 
 
 def upload(client, entries, **options):
-    return client.post('/api/organizador/runs', headers=A,
-                       files={'files': ('entrada.zip', archive(entries), 'application/zip')},
-                       data={'rfc': RFC, 'year': '2026', 'months': '4,5', 'kinds': 'Emitidos,Recibidos', 'extensions': '.xml,.pdf', **options})
+    return client.post(
+        '/api/organizador/runs',
+        headers=A,
+        files={'files': ('entrada.zip', archive(entries), 'application/zip')},
+        data={
+            'rfc': RFC,
+            'year': '2026',
+            'months': '4,5',
+            'kinds': 'Emitidos,Recibidos',
+            'extensions': '.xml,.pdf',
+            **options,
+        },
+    )
 
 
 def test_web_uses_original_paths_and_preserves_bytes(client):
@@ -65,11 +75,22 @@ def test_web_uses_original_paths_and_preserves_bytes(client):
 
 
 def test_web_folder_filters_and_reports_only(client):
-    response = client.post('/api/organizador/runs', headers=A,
-                          files=[('files', (f'Carpeta/Reportes/RECIBIDOS-{RFC}-202604.xlsx', b'Excel')),
-                                 ('files', (f'Carpeta/Emitidos/{RFC}/2026-04/a.xml', b'XML'))],
-                          data={'rfc': RFC.lower(), 'year': 2026, 'months': '4',
-                                'kinds': 'Recibidos', 'extensions': '', 'reports': 'true'})
+    response = client.post(
+        '/api/organizador/runs',
+        headers=A,
+        files=[
+            ('files', (f'Carpeta/Reportes/RECIBIDOS-{RFC}-202604.xlsx', b'Excel')),
+            ('files', (f'Carpeta/Emitidos/{RFC}/2026-04/a.xml', b'XML')),
+        ],
+        data={
+            'rfc': RFC.lower(),
+            'year': 2026,
+            'months': '4',
+            'kinds': 'Recibidos',
+            'extensions': '',
+            'reports': 'true',
+        },
+    )
     assert response.status_code == 202
     detail = client.get('/api/organizador/runs/' + response.json()['id'], headers=A).json()
     assert detail['run']['summary']['ready'] == 1
@@ -79,8 +100,15 @@ def test_web_folder_filters_and_reports_only(client):
 def test_invalid_input_and_access(client):
     assert client.get('/api/organizador/runs').status_code == 401
     good = {f'Emitidos/{RFC}/2026-04/a.xml': b'xml'}
-    for options in ({'rfc': 'INVALID'}, {'year': 1999}, {'months': '13'}, {'months': ''},
-                    {'kinds': 'Pagos'}, {'extensions': '.key'}, {'extensions': '', 'reports': 'false'}):
+    for options in (
+        {'rfc': 'INVALID'},
+        {'year': 1999},
+        {'months': '13'},
+        {'months': ''},
+        {'kinds': 'Pagos'},
+        {'extensions': '.key'},
+        {'extensions': '', 'reports': 'false'},
+    ):
         assert upload(client, good, **options).status_code == 422
     assert upload(client, good, company_id='missing').status_code == 404
     for bad in ('../escape.xml', 'C:/escape.xml', 'a/CON.xml', 'a/b./c.xml', 'a//b.xml'):
@@ -118,6 +146,7 @@ def test_engine_duplicates_changes_and_move(tmp_path):
 
 def test_web_limits_and_duplicate_paths(client, monkeypatch):
     from app import organizador
+
     good = {f'Emitidos/{RFC}/2026-04/a.xml': b'long enough'}
     monkeypatch.setattr(organizador, 'MAX_UPLOAD', 1)
     assert upload(client, good).status_code == 413
@@ -135,6 +164,7 @@ def test_restart_recovers_incomplete_run(client):
     from app.models import OrganizadorRun
     from app.main import app
     from fastapi.testclient import TestClient
+
     with SessionLocal() as db:
         db.add(OrganizadorRun(name='interrupted', status='generating', options={}))
         db.commit()

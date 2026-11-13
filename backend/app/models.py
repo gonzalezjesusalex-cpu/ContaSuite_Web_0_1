@@ -1,11 +1,29 @@
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import String, Text, ForeignKey, Date, DateTime, JSON, Integer, Boolean, BigInteger, UniqueConstraint, CheckConstraint
+from sqlalchemy import (
+    String,
+    Text,
+    ForeignKey,
+    Date,
+    DateTime,
+    JSON,
+    Integer,
+    Boolean,
+    BigInteger,
+    UniqueConstraint,
+    CheckConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from .database import Base
 
-def uid(): return str(uuid4())
-def now(): return datetime.now(timezone.utc)
+
+def uid():
+    return str(uuid4())
+
+
+def now():
+    return datetime.now(timezone.utc)
+
 
 class Company(Base):
     __tablename__ = 'companies'
@@ -24,6 +42,7 @@ class Company(Base):
     notes: Mapped[str] = mapped_column(Text, default='')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
+
 class Task(Base):
     __tablename__ = 'tasks'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -36,6 +55,7 @@ class Task(Base):
     status: Mapped[str] = mapped_column(String(30), default='Pendiente')
     notes: Mapped[str] = mapped_column(Text, default='')
 
+
 class Obligation(Base):
     __tablename__ = 'obligations'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -47,10 +67,13 @@ class Obligation(Base):
     reference: Mapped[str] = mapped_column(String(180), default='')
     notes: Mapped[str] = mapped_column(Text, default='')
 
+
 class Document(Base):
     __tablename__ = 'documents'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
-    company_id: Mapped[str | None] = mapped_column(ForeignKey('companies.id', ondelete='CASCADE'), nullable=True, index=True)
+    company_id: Mapped[str | None] = mapped_column(
+        ForeignKey('companies.id', ondelete='CASCADE'), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(80), default='General')
     size: Mapped[int] = mapped_column(Integer)
@@ -62,6 +85,7 @@ class Document(Base):
     classification_status: Mapped[str] = mapped_column(String(20), default='pending', server_default='pending')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
+
 class Audit(Base):
     __tablename__ = 'audit_events'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
@@ -69,11 +93,13 @@ class Audit(Base):
     action: Mapped[str] = mapped_column(String(250))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
+
 class Agent(Base):
     __tablename__ = 'agents'
     id: Mapped[str] = mapped_column(String(80), primary_key=True)
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     capabilities: Mapped[list] = mapped_column(JSON, default=list)
+
 
 class Job(Base):
     __tablename__ = 'jobs'
@@ -85,6 +111,7 @@ class Job(Base):
     payload: Mapped[dict] = mapped_column(JSON)
     result: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
 
 class Setting(Base):
     __tablename__ = "settings"
@@ -109,6 +136,7 @@ class Receipt(Base):
     filename: Mapped[str] = mapped_column(String(255))
     storage_name: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
 
 class ReceiptCounter(Base):
     __tablename__ = 'receipt_counters'
@@ -168,7 +196,9 @@ class DeclaraRun(Base):
 
 class StorageSource(Base):
     __tablename__ = 'storage_sources'
-    __table_args__ = (CheckConstraint("kind IN ('local_folder','internal','windows_smb')", name='ck_storage_source_kind'),)
+    __table_args__ = (
+        CheckConstraint("kind IN ('local_folder','internal','windows_smb')", name='ck_storage_source_kind'),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     label: Mapped[str] = mapped_column(String(160))
     kind: Mapped[str] = mapped_column(String(20))
@@ -193,8 +223,10 @@ class StorageWorkerState(Base):
 
 class DocumentVersion(Base):
     __tablename__ = 'document_versions'
-    __table_args__ = (UniqueConstraint('document_id', 'number', name='uq_document_version_number'),
-                     CheckConstraint('number > 0 AND size >= 0', name='ck_document_version_numbers'))
+    __table_args__ = (
+        UniqueConstraint('document_id', 'number', name='uq_document_version_number'),
+        CheckConstraint('number > 0 AND size >= 0', name='ck_document_version_numbers'),
+    )
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     document_id: Mapped[str] = mapped_column(ForeignKey('documents.id'), index=True)
     number: Mapped[int] = mapped_column(Integer)

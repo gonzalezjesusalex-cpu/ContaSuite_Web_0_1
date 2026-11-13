@@ -23,6 +23,7 @@ class StorageSettings:
             if not isinstance(smb_roots, list) or any(not isinstance(p, str) for p in smb_roots):
                 raise ValueError
             from .smb import unc_root
+
             for value in smb_roots:
                 unc_root(value)
             if not isinstance(roots, list) or any(not isinstance(p, str) or not Path(p).is_absolute() for p in roots):
@@ -33,5 +34,10 @@ class StorageSettings:
         except (ValueError, TypeError):
             raise StorageError('invalid_configuration') from None
         # Repository is fixed under private DATA; not under frontend/public.
-        return cls(data / 'cs-storage', data / 'documents', tuple(Path(p) for p in roots), limit * 1024 * 1024,
-                   smb_allowed_roots=tuple(Path(p) for p in smb_roots))
+        return cls(
+            data / 'cs-storage',
+            data / 'documents',
+            tuple(Path(p) for p in roots),
+            limit * 1024 * 1024,
+            smb_allowed_roots=tuple(Path(p) for p in smb_roots),
+        )

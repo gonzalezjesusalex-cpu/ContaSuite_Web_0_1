@@ -1,4 +1,5 @@
 """Provider contracts. A readable provider has no filesystem mutation methods."""
+
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import BinaryIO, Iterator, Protocol
@@ -6,6 +7,7 @@ from typing import BinaryIO, Iterator, Protocol
 
 class StorageError(Exception):
     """Only stable codes cross the service boundary; OS messages may contain secrets."""
+
     def __init__(self, code: str):
         self.code = code
         super().__init__(code)
