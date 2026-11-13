@@ -2,6 +2,8 @@ import json
 
 import os
 
+import re
+
 import secrets
 
 from contextlib import asynccontextmanager
@@ -164,6 +166,19 @@ async def safe_validation_error(request, exc):
     )
 
 
+READ_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+
+# Successful reads that hand out content or the audit log stay audited; other successful reads
+# (state polling, lists, dashboards) are not, so security_events does not grow with every poll.
+AUDITED_READ = re.compile(r'/(download|content|file|pdf|zip|audit)(/|$)')
+
+
+def should_audit(method, template, status_code):
+    if method not in READ_METHODS or status_code >= 400:
+        return True
+    return bool(AUDITED_READ.search(template))
+
+
 @app.middleware('http')
 async def security_audit(request, call_next):
     try:
@@ -191,14 +206,14 @@ async def security_audit(request, call_next):
 
         response.headers['X-Content-Type-Options'] = 'nosniff'
 
-        if request.url.path != '/api/health':
+        route = request.scope.get('route')
+
+        template = getattr(route, 'path', 'unknown')
+
+        if request.url.path != '/api/health' and should_audit(request.method, template, response.status_code):
             from .security import audit
 
             principal = getattr(request.state, 'principal', None)
-
-            route = request.scope.get('route')
-
-            template = getattr(route, 'path', 'unknown')
 
             audit(
                 principal.subject

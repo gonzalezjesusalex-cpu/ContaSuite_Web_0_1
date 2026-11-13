@@ -64,6 +64,10 @@ python scripts/restore_postgres.py --backup <carpeta> --pg-bin <bin-postgres> --
 
 Rechaza bases o carpetas existentes. Comprobar conteos e historial antes de apuntar la aplicación a la base restaurada. La verificación SHA no sustituye el ensayo de restauración.
 
+## Eventos de seguridad
+
+`security_events` registra escrituras, accesos denegados/errores y lecturas que entregan contenido (descargas, archivos, PDF, ZIP, registro de auditoría); las lecturas correctas de consultas y sondeo no se registran. Retención: `CS_SECURITY_EVENT_RETENTION_DAYS` (365 por defecto, mínimo 90, `0` desactiva). El trabajador de alertas purga una vez al día en lotes y deja el evento `security_events_purged`. Purga manual explícita desde `backend/`, con la conexión de la instancia aprovisionada: `python -m app.security_retention --once`. No afecta `storage_events`, la auditoría ni el historial fiscal/documental.
+
 ## Migrar una instancia a otro equipo
 
 Inventariar versión/esquema/conteos, detener escritores con autorización, respaldo conjunto, transferencia protegida, verificación de hashes, restauración en base nueva, comparación de empresas/documentos/versiones/vínculos/revisiones, reprovisionar secretos y raíces. DPAPI no es portable. Nunca sobre la base antigua ni sobre el piloto.

@@ -40,11 +40,20 @@ def main(stop_event=None, argv=None):
 
         indexer = LocalIndexer(StorageService(SessionLocal, StorageSettings.from_environment(DATA)))
 
+    from ..security_retention import DailyPurge
+
+    purge = DailyPurge(SessionLocal)
+
     def alert_job():
         from ..alert_schedule import tick
 
         with SessionLocal.begin() as db:
-            return tick(db, interval=args.alert_interval)
+            result = tick(db, interval=args.alert_interval)
+        try:
+            purge()
+        except Exception as exc:  # noqa: BLE001  A retention problem is reported but must not stop alerts.
+            print('Retención de eventos de seguridad no aplicada:', type(exc).__name__, exc, flush=True)
+        return result
 
     owner = 'worker-' + str(uuid4())
     while stop_event is None or not stop_event.is_set():
