@@ -14,6 +14,27 @@ from app.storage.service import StorageActor
 
 COMPANIES = [{'id': 'company-a', 'rfc': 'AAA010101AA1'}, {'id': 'company-b', 'rfc': 'BBB020202BB2'}]
 
+def test_metadata_traversal_finishes_before_content_processing(core,monkeypatch):
+    service,sessions,root=core
+    (root/'first.xml').write_bytes(xml());(root/'second.xml').write_bytes(xml())
+    source=service.register_local(ADMIN,'Snapshot metadata',str(root)).id
+    provider=service._local(root,())
+    entries=list(provider.enumerate());processed=[]
+    def enumerate_before_processing():
+        for entry in entries:
+            if processed:
+                yield ScanIssue('','scan_limit');return
+            yield entry
+    monkeypatch.setattr(provider,'enumerate',enumerate_before_processing)
+    monkeypatch.setattr(service,'_provider',lambda source:provider)
+    indexer=LocalIndexer(service)
+    def classify_later(doc,companies):
+        processed.append(doc.id)
+        return {'type':'unknown','period':None,'links':[],'automatic':False,'evidence':{'reason':'synthetic','complete':False}}
+    monkeypatch.setattr(indexer,'_classification',classify_later)
+    result=run(indexer,source)
+    assert result['status']=='completed' and result['counters']['new']==2
+
 
 def xml(issuer='AAA010101AA1', receiver='XAXX010101000', date='2026-10-02T10:00:00'):
     return (f'<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Fecha="{date}">'

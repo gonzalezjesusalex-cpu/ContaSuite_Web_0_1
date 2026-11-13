@@ -1,10 +1,12 @@
 .env
 .venv/
+.venv*/
 node_modules/
 __pycache__/
 .pytest_cache/
 *.pyc
 *.tsbuildinfo
+*.dump
 data/
 agent/config.json
 frontend/dist/

@@ -1,0 +1,37 @@
+CORRECCION DEL ANALISIS EXCEL · CONTASUITE RC1
+
+SI YA INSTALASTE CONTASUITE:
+1. Extrae este ZIP completo en una carpeta nueva, fuera de la instalación.
+2. Ejecuta ACTUALIZAR_EXCEL.cmd.
+3. Selecciona la carpeta INSTALADA que contiene LOCAL_INSTALLATION.json y
+   ABRIR_CONTASUITE.cmd, no la carpeta donde acabas de extraer la actualización.
+4. Confirma y espera. Se respalda el código anterior en updates, se detiene
+   temporalmente esta instalación y se copian sólo lector/API Excel y frontend.
+   No se migra ni sustituye la base, y no se reemplazan secretos/configuración.
+5. Si estaba abierta, se reinicia; recarga el navegador con Ctrl + F5.
+   Si estaba detenida, abre ABRIR_CONTASUITE desde su carpeta instalada.
+
+No vuelvas a ejecutar INSTALAR_CONTASUITE para actualizar: crea otra base vacía.
+Para una instalación nueva, el asistente INSTALAR_CONTASUITE sigue disponible.
+
+CORRECCIONES:
+- No se considera corrupto un libro por carecer de estilo predeterminado o
+  contener extensiones de presentación que el lector no utiliza.
+- Se permiten hipervínculos HTTP/HTTPS/correo pasivos: no se abren ni descargan.
+  Se siguen bloqueando macros, objetos, conexiones de datos y vínculos a archivos
+  o recursos de red. Las fórmulas no se ejecutan.
+- Los errores explican límites de columnas/filas, falta de encabezados u otros
+  problemas sin revelar valores de las celdas ni contraseñas en el mensaje.
+- Para analizar datos reales, un administrador debe autorizar el análisis.
+  No es necesario declarar falsamente que el archivo es ficticio.
+
+El flujo Excel sigue siendo de propuestas/previsualización: la aplicación
+definitiva de esos registros continúa deshabilitada. No acredita cumplimiento
+fiscal y no importa secretos. Los cambios desde carpetas son un flujo separado.
+
+No se ha inspeccionado el archivo empresarial de la captura del usuario: no
+estaba adjunto. Si persiste un error, el mensaje nuevo permite acotar la causa;
+adjuntar el XLSX o una copia anonimizada permite validar su estructura exacta.
+
+Límites conservados: archivo 8 MB, 24 hojas, 100 columnas, 10.000 filas recorridas
+y 3.000 registros; el archivo comprimido puede ser pequeño y exceder otros límites.

@@ -48,7 +48,7 @@ def test_upgrade_preserves_legacy_ids_bytes_and_unknown_availability(tmp_path):
             assert len(db.scalars(select(DocumentVersion)).all()) == 1
         with engine.connect() as conn:
             assert conn.exec_driver_sql('PRAGMA foreign_key_check').all() == []
-            assert conn.exec_driver_sql('SELECT version_num FROM alembic_version').scalar() == 'cs_storage_0004'
+            assert conn.exec_driver_sql('SELECT version_num FROM alembic_version').scalar() == 'cs_storage_0005'
             assert conn.exec_driver_sql('SELECT COUNT(*) FROM document_company_links').scalar() == 1
             assert conn.exec_driver_sql('SELECT COUNT(*) FROM storage_events').scalar() == 1
         assert hashlib.sha256(original.read_bytes()).hexdigest() == digest

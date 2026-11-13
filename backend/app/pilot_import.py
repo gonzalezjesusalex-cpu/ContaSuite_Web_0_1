@@ -33,23 +33,24 @@ SCAN_SLOT = threading.BoundedSemaphore(1)
 def authorized(p, db):
     p.require_admin()
     if p.bootstrap or not p.session_id: raise HTTPException(403, 'Se requiere una sesión personal.')
-    expected = os.getenv('CS_PILOT_DATABASE', '')
+    local = os.getenv('CS_LOCAL_IMPORT_ENABLED') == '1'
+    expected = os.getenv('CS_LOCAL_IMPORT_DATABASE' if local else 'CS_PILOT_DATABASE', '')
     url = db.get_bind().url
-    if (os.getenv('CS_PILOT_ENABLED') != '1' or not expected.startswith('contasuite_pilot_') or
+    if ((not local and os.getenv('CS_PILOT_ENABLED') != '1') or not expected.startswith('contasuite_local_' if local else 'contasuite_pilot_') or
         url.get_backend_name() != 'postgresql' or url.database != expected or url.host not in {'127.0.0.1','localhost'}):
-        raise HTTPException(423, 'Piloto deshabilitado: requiere PostgreSQL local exclusivo y configuración explícita.')
+        raise HTTPException(423, 'Importación local sin configurar. Usa el instalador local y autoriza las carpetas en Configurar carpetas. Requiere una base PostgreSQL exclusiva; instalar el ZIP anterior no activa este módulo.')
     ready(db)
 
 
 def paths():
     result = roots_from_environment()
-    if len(result) != 2: raise StorageError('unauthorized_root')
+    if not result or (os.getenv('CS_LOCAL_IMPORT_ENABLED') != '1' and len(result) != 2): raise StorageError('unauthorized_root')
     return [LocalFolderProvider(path,tuple(result)).root for path in result]
 
 
 def preview_scan(selected, exclusions):
     if not SCAN_SLOT.acquire(blocking=False): raise HTTPException(409, 'Hay otro análisis local en curso.')
-    try: return scan(selected, exclusions=exclusions,**configured_limits())
+    try: return scan(selected, exclusions=exclusions,expected_count=len(selected) if os.getenv('CS_LOCAL_IMPORT_ENABLED')=='1' else 2,**configured_limits())
     finally: SCAN_SLOT.release()
 
 
@@ -68,13 +69,13 @@ def options(p:Principal=Depends(auth), db=Depends(session)):
     authorized(p, db)
     try:
         return {'folders':[{'id':str(i),'name':path.name,'path':str(path)} for i,path in enumerate(roots_from_environment())],
-                'limits':configured_limits(), 'excluded':list(SECRET_PATTERNS)}
+                'limits':configured_limits(), 'excluded':list(SECRET_PATTERNS),'mode':'local' if os.getenv('CS_LOCAL_IMPORT_ENABLED')=='1' else 'pilot'}
     except StorageError as e: raise storage_http_error(e) from None
 
 
 class PreviewIn(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    folders:list[Literal['0','1']]=Field(min_length=2,max_length=2)
+    folders:list[str]=Field(min_length=1,max_length=20)
     authorized_read:bool
     exclusions:list[str]=Field(default_factory=list,max_length=30)
 
@@ -90,9 +91,14 @@ def recent(p:Principal=Depends(auth),db=Depends(session)):
 @router.post('/preview')
 def preview(payload:PreviewIn, p:Principal=Depends(auth), db=Depends(session)):
     authorized(p, db)
-    if not payload.authorized_read or set(payload.folders)!={'0','1'}: raise HTTPException(422, 'Autoriza la lectura y selecciona las dos carpetas.')
+    local=os.getenv('CS_LOCAL_IMPORT_ENABLED')=='1'
+    if not payload.authorized_read or len(set(payload.folders))!=len(payload.folders) or (not local and set(payload.folders)!={'0','1'}): raise HTTPException(422, 'Autoriza la lectura y selecciona las carpetas requeridas.')
     if any(len(s)>120 for s in payload.exclusions): raise HTTPException(422, 'Exclusión fuera de límites.')
-    try: result = preview_scan(paths(), payload.exclusions)
+    try:
+        permitted=paths()
+        if any(v not in {str(i) for i in range(len(permitted))} for v in payload.folders):raise HTTPException(422,'Carpeta no autorizada.')
+        root_ids=sorted(payload.folders,key=int)
+        result = preview_scan([permitted[int(i)] for i in root_ids], payload.exclusions)
     except StorageError as e: raise storage_http_error(e) from None
     ident = str(uuid4())
     # Include current catalogue conflicts, without merging identities or exposing other users' data.
@@ -116,7 +122,7 @@ def preview(payload:PreviewIn, p:Principal=Depends(auth), db=Depends(session)):
                 candidates.setdefault(c['rfc'], {'rfc':c['rfc'],'name':'','source':'Contenido documental; nombre pendiente'})
         company_rows.append({'kind':'company','folder':folder['id'],'rfc':'','name':'','candidates':list(candidates.values())})
     # Never pick a counterparty or folder-derived identity automatically.
-    summary={'folders':result['folders'],'exclusions':payload.exclusions,'revision':0,'fingerprint':result['fingerprint'],
+    summary={'folders':result['folders'],'root_ids':root_ids,'exclusions':payload.exclusions,'revision':0,'fingerprint':result['fingerprint'],
              'documents':len(result['documents']),'conflicts':sum(d['conflict'] for d in result['documents'])}
     db.execute(sessions.insert().values(id=ident,owner_id=p.subject,idempotency_key=hashlib.sha256(ident.encode()).hexdigest(),
         source='local_pilot',source_sha256=result['fingerprint'],summary=summary,created_at=now(),expires_at=now()+timedelta(hours=4),status='preview'))
@@ -135,7 +141,7 @@ def load(ident:str,p:Principal=Depends(auth),db=Depends(session)):
 
 class LinkIn(BaseModel):
     model_config=ConfigDict(extra='forbid')
-    folder:Literal['0','1']
+    folder:str=Field(pattern=r'^\d{1,2}$')
     role:Literal['owner','issuer','receiver']
 
 
@@ -157,6 +163,8 @@ def decide(ident:str,number:int,payload:DecisionIn,p:Principal=Depends(auth),db=
     row=db.execute(select(rows).where(rows.c.session_id==ident,rows.c.number==number)).mappings().first()
     if not row or row['revision']!=payload.revision:raise HTTPException(409,'La propuesta cambió; actualiza.')
     proposal=dict(row['proposal'])
+    valid_folders={f['id'] for f in value['summary']['folders']}
+    if any(link.folder not in valid_folders for link in payload.links):raise HTTPException(422,'Vínculo a carpeta fuera de este análisis.')
     if proposal['kind']=='company':
         rfc=normalize_rfc(payload.rfc)
         if not valid_rfc(rfc) or not payload.name.strip():raise HTTPException(422,'RFC válido y razón social revisada requeridos.')
@@ -198,14 +206,18 @@ def confirm(ident:str,payload:ConfirmIn,p:Principal=Depends(auth),db=Depends(ses
     value=item(db,p,ident,locked=True)
     if value['status']=='committed':return {'idempotent':True,**value['summary']['imported']}
     if value['summary']['revision']!=payload.revision:raise HTTPException(409,'Revisa la versión actual antes de confirmar.')
-    try:selected=paths()
+    try:
+        permitted=paths()
+        root_ids=value['summary'].get('root_ids',[str(i) for i in range(len(permitted))])
+        if any(i not in {str(n) for n in range(len(permitted))} for i in root_ids):raise HTTPException(409,'La autorización de carpetas cambió.')
+        selected=[permitted[int(i)] for i in root_ids]
     except StorageError as e:
         db.rollback();raise storage_http_error(e) from None
     if [str(p) for p in selected]!=[f['path'] for f in value['summary']['folders']]:raise HTTPException(409,'La autorización de carpetas cambió.')
     records=[r.proposal for r in db.execute(select(rows).where(rows.c.session_id==ident).order_by(rows.c.number))]
     companies=[r for r in records if r['kind']=='company'];docs=[r for r in records if r['kind']=='document']
-    if len({c['rfc'] for c in companies})!=2 or any(not valid_rfc(c['rfc']) or not c['name'] or not c.get('decision') for c in companies):
-        raise HTTPException(422,'Revisa expresamente las dos identidades empresariales distintas.')
+    if len(companies)!=len(selected) or len({c['rfc'] for c in companies})!=len(selected) or any(not valid_rfc(c['rfc']) or not c['name'] or not c.get('decision') for c in companies):
+        raise HTTPException(422,'Revisa expresamente las identidades empresariales distintas de todas las carpetas seleccionadas.')
     try:
         current=preview_scan(selected,value['summary']['exclusions'])
         if current['fingerprint']!=value['source_sha256']:raise HTTPException(409,'Los archivos cambiaron: vuelve a analizar sin importar esta propuesta.')
@@ -273,7 +285,7 @@ def confirm(ident:str,payload:ConfirmIn,p:Principal=Depends(auth),db=Depends(ses
                 core.resolve_review(actor,ident_doc,pending.id,revision,'correct',chosen,reason=row['decision']['reason'])
         result={'companies':sorted(mapping.values()),'documents':len(imported),'pending':sum(db.get(Document,d[0]).classification_status=='pending' for d in imported)}
         db.execute(update(sessions).where(sessions.c.id==ident).values(status='committed',summary={**value['summary'],'imported':result}))
-        audit(db,p,ident,'pilot_confirmed',{'companies':2,'documents':len(imported),'pending':result['pending']})
+        audit(db,p,ident,'pilot_confirmed',{'companies':len(mapping),'documents':len(imported),'pending':result['pending']})
         db.commit();return {'idempotent':False,**result}
     except StorageError as e:
         db.rollback();raise storage_http_error(e) from None

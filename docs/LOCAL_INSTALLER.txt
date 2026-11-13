@@ -1,0 +1,58 @@
+CONTASUITE · INSTALADOR LOCAL DE PRUEBAS
+
+Este paquete crea una instalación independiente con PostgreSQL y Python privados.
+No modifica el piloto 8062, instalaciones anteriores, servicios Windows ni firewall.
+No requiere instalar Python, Node ni PostgreSQL globalmente. Usar Windows 64 bits.
+
+1. Extraer todo el ZIP en una carpeta nueva y abrir INSTALAR_CONTASUITE.cmd.
+   Usar la cuenta habitual de Windows, sin Ejecutar como administrador.
+2. Elegir una carpeta NUEVA, un usuario y una contraseña de mínimo 12 caracteres.
+   Puerto sugerido 8072. Se reservan 8000 y 8062 para instalaciones anteriores.
+3. Opcional: agregar las carpetas documentales locales que autorices (hasta 20).
+   Se autorizan rutas, pero NO se analizan ni importan archivos al instalar.
+4. Pulsar Instalar. El asistente verifica el paquete, crea un clúster PostgreSQL
+   nuevo sólo en loopback, aplica el esquema en una base nueva y crea tu cuenta.
+5. En la carpeta instalada, ejecutar ABRIR_CONTASUITE.cmd. Esperar al navegador.
+   Entrar con el usuario y contraseña elegidos en el asistente.
+   El lanzador abre http://localhost:8072 (o el puerto elegido); usar localhost
+   separa sus cookies de las del piloto abierto en 127.0.0.1:8062.
+6. Empresas > Importar y conciliar > Desde carpeta local. Elegir una o varias
+   carpetas autorizadas, autorizar el análisis, revisar RFC, razón social,
+   documentos y asociaciones, y confirmar expresamente cuando corresponda.
+   Una carpeta representa una identidad empresarial revisada; no se atribuyen
+   automáticamente los documentos por el nombre de carpeta.
+
+Cambiar rutas: ejecutar CONFIGURAR_CARPETAS.cmd en la carpeta INSTALADA, agregar
+las rutas y guardar. El cambio detiene sólo ESTA instalación. Volver a iniciarla
+con ABRIR_CONTASUITE. No agregar la segunda carpeta real del piloto sin autorizar
+expresamente su análisis. No seleccionar carpetas de claves/secretos o respaldos.
+
+Límites del importador interactivo: 200 documentos, 100 MB y 90 segundos por
+análisis; máximo 5000 entradas recorridas. Si se exceden, se aborta sin confirmar
+un inventario parcial. Esta entrega no convierte el analizador masivo del piloto
+en un importador ilimitado. Dividir pruebas en carpetas independientes pequeñas;
+no mover ni modificar archivos originales para intentar saltar los límites.
+
+Los originales PDF/XML/CER públicos se leen sin modificarlos. KEY, secretos,
+credenciales, contenedores y respaldos se excluyen. No se consulta al SAT.
+SMB se configura mediante el conector existente; este asistente acepta rutas
+locales. Las carpetas autorizadas no se copian al paquete ni a la instalación.
+
+DETENER_CONTASUITE.cmd cierra API/trabajadores y PostgreSQL de esta instalación.
+No es necesario mantener una terminal abierta. Este modo de pruebas depende de
+la sesión de Windows: no registra servicio ni promete inicio antes de iniciar
+sesión. Para el servidor LAN definitivo usar el procedimiento de servicio/HTTPS
+de app/docs/INSTALL_RC1.md y su aceptación. No se cambia la seguridad para probar.
+
+Datos: database (PostgreSQL), data (archivos propios), private (configuración
+DPAPI y ACL de usuario), logs. Conservar estas carpetas. No reemplazar versiones
+copiando encima. No borrar para desinstalar: detener y conservar/renombrar la
+carpeta completa preserva los datos. El asistente rechaza destinos existentes.
+La configuración DPAPI pertenece a esta PC. Para otra PC, instalar de nuevo y
+usar una migración respaldada/autorizada; no copiar una base viva ni secretos.
+
+Si falla, la instalación parcial se conserva para diagnóstico y no sobrescribe
+nada. El asistente no guarda tu contraseña de usuario en archivos de texto;
+la base guarda su hash. Anotar tu usuario y guardar la contraseña en tu gestor.
+
+Esta es una candidata de pruebas, no aprobación de producción.

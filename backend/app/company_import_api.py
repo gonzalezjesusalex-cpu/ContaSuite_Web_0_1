@@ -34,7 +34,7 @@ def audit(db,p,ident,action,counts=None):
 def get_session(db,p,ident):
     identity(p,db)
     item=db.execute(select(sessions).where(sessions.c.id==ident)).mappings().first()
-    if not item or item['owner_id']!=p.subject or item['source']=='local_pilot':raise HTTPException(404,'Sesión no disponible.')
+    if not item or item['owner_id']!=p.subject or item['source'] in {'local_pilot','local_batch'}:raise HTTPException(404,'Sesión no disponible.')
     if utc(item['expires_at'])<=now():raise HTTPException(410,'La propuesta caducó; solicita su eliminación y vuelve a analizar.')
     return item
 def summary(proposals):
@@ -58,9 +58,11 @@ def save_preview(db,p,source,digest,proposals,details,companies,alternate_names=
     return load(ident,p,db)
 
 @router.post('/preview/xlsx')
-async def preview_xlsx(request:Request,source:Literal['obligations','fiscal_metadata'],synthetic_only:bool=False,p:Principal=Depends(auth),db=Depends(session)):
+async def preview_xlsx(request:Request,source:Literal['obligations','fiscal_metadata'],synthetic_only:bool=False,authorized_read:bool=False,p:Principal=Depends(auth),db=Depends(session)):
     companies=identity(p,db)
-    if not synthetic_only:raise HTTPException(423,'Sólo está habilitado el análisis de archivos sintéticos en esta iteración.')
+    if not synthetic_only:
+        if not authorized_read:raise HTTPException(423,'Autoriza expresamente el análisis del archivo. No se aplicarán cambios definitivos.')
+        p.require_admin()
     # Raw octet stream avoids multipart spooling sensitive uploads to disk.
     payload=bytearray()
     async for chunk in request.stream():
@@ -68,11 +70,11 @@ async def preview_xlsx(request:Request,source:Literal['obligations','fiscal_meta
         payload.extend(chunk)
     digest=hashlib.sha256(payload).hexdigest()
     try:parsed=read_xlsx(bytes(payload),source)
-    except InvalidWorkbook:raise HTTPException(422,'Archivo no admitido, corrupto o fuera de límites.') from None
+    except InvalidWorkbook as exc:raise HTTPException(422,str(exc)) from None
     finally:payload.clear()
     alt=[{'company_id':r.company_id,'name':r.original_name} for r in db.execute(select(aliases).where(aliases.c.company_id.in_([c['id'] for c in companies])))]
     result=reconcile(parsed['rows'],companies,alt)
-    return save_preview(db,p,source,digest,result,{'sheets':parsed['sheets'],'periods':sorted({s['period'] for s in parsed['sheets'] if s['period']})},companies,alt)
+    return save_preview(db,p,source,digest,result,{'sheets':parsed['sheets'],'presentation_warnings_omitted':parsed['presentation_warnings_omitted'],'periods':sorted({s['period'] for s in parsed['sheets'] if s['period']})},companies,alt)
 
 @router.post('/preview/inventory')
 def inventory(p:Principal=Depends(auth),db=Depends(session)):
@@ -151,7 +153,7 @@ def report(ident:str,p:Principal=Depends(auth),db=Depends(session)):
 def discard(ident:str,p:Principal=Depends(auth),db=Depends(session)):
     identity(p,db)
     item=db.execute(select(sessions).where(sessions.c.id==ident,sessions.c.owner_id==p.subject)).mappings().first()
-    if not item or item['source']=='local_pilot':raise HTTPException(404,'Sesión no disponible.')
+    if not item or item['source'] in {'local_pilot','local_batch'}:raise HTTPException(404,'Sesión no disponible.')
     # No source files were retained; erase staging rows, keep aggregate audit only.
     db.execute(delete(decisions).where(decisions.c.session_id==ident));db.execute(delete(rows).where(rows.c.session_id==ident))
     db.execute(delete(sessions).where(sessions.c.id==ident));audit(db,p,ident,'preview_discarded');db.commit()
@@ -160,7 +162,7 @@ def discard(ident:str,p:Principal=Depends(auth),db=Depends(session)):
 @router.delete('/maintenance/expired')
 def purge_expired(p:Principal=Depends(auth),db=Depends(session)):
     identity(p,db);p.require_admin()
-    expired=list(db.scalars(select(sessions.c.id).where(sessions.c.expires_at<=now(),sessions.c.source!='local_pilot')))
+    expired=list(db.scalars(select(sessions.c.id).where(sessions.c.expires_at<=now(),sessions.c.source.not_in(['local_pilot','local_batch']))))
     if expired:
         db.execute(delete(decisions).where(decisions.c.session_id.in_(expired)))
         db.execute(delete(rows).where(rows.c.session_id.in_(expired)))

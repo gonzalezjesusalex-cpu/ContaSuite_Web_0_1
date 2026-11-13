@@ -1,3 +1,39 @@
+## Importación PRISMA pausada por el usuario
+
+El usuario pidió detener esta tarea para priorizar otra. El agente ya fue instalado y conectado en localhost:8072; el inventario real de PRISMA completó 1.713 archivos sin truncar. La importación CS-Storage fue pausada explícitamente en estado paused, con contador new=1197 y duplicates=3; se liberó su lease sin borrar documentos ni checkpoint. No reanudar ni crear otro trabajo para esta carpeta sin nueva instrucción. Identificadores, respaldo y baseline SHA privados: private/authorized-import.json y private/prisma-before-sha256.json en la instalación Pruebas-20261112-174658. No se realizó aún la verificación final de todos los originales ni se declara importación completa. Suite definitiva 216 aprobadas/1 omitida; paquete agente y e2e aprobados, revisión aditiva cs_storage_0005 aplicada sólo a esta base local con respaldo previo. Piloto 8062 y otras carpetas intactos.
+
+---
+
+## Corrección Excel · 12/11/2026
+
+Lector con diagnósticos seguros y específicos, hipervínculos web/correo pasivos y advertencias inocuas de estilo/extensiones. Fórmulas, macros, vínculos de datos/archivos y límites conservan protección. Análisis de Excel real sólo con autorización explícita y administrador; la aplicación definitiva Excel continúa bloqueada. No se examinó el XLSX empresarial de la captura porque no fue adjunto. Paquete ../ENTREGAS/ContaSuite_RC1_Correccion_Excel.zip con ACTUALIZAR_EXCEL.cmd. Suite 212 aprobadas/1 omitida; actualización sintética preservó conteos/configuración y reinicio. Corrección de código aplicada también a la instalación local nueva en 8072, con respaldo en su carpeta updates, sin migraciones; no se tocó el piloto 8062. Ver docs/EXCEL_FIX.txt y PRUEBAS_CORRECCION_EXCEL.json.
+
+---
+
+## Instalador local independiente · 12/11/2026
+
+Usuario autorizó una instalación de pruebas nueva separada del piloto. Nuevo paquete ../ENTREGAS/ContaSuite_Instalador_Pruebas_RC1.zip, asistente INSTALAR_CONTASUITE, Python/Tk/PostgreSQL privados, credenciales elegidas por usuario y nueva base contasuite_local_*. Puerto sugerido 8072, navegador localhost para separar cookies del piloto 127.0.0.1:8062. No registrar SCM ni abrir LAN en este modo. Carpetas locales explícitas (hasta 20), sin lectura al instalar; importador interactivo reutilizado admite seleccionar una carpeta, conserva revisión/confirmación y límites 200 docs/100 MB/90 s. Piloto estricto conserva sus dos carpetas y su guardia. No importar segunda carpeta real ni migrar piloto sin autorización. Suite 206 aprobadas/1 omitida; ZIP final ensayado con clúster y documentos sintéticos, GUI, cuenta, importación, idempotencia, parada y reinicio persistente. Ver docs/LOCAL_INSTALLER.txt y ../ENTREGAS/COMO_INSTALAR_PRUEBAS.md; sin aprobación de producción.
+
+---
+
+## ContaSuite v1.0 RC1 · 12/11/2026
+
+La petición integral actual autoriza implementación, compilación y generación de paquetes RC1; sustituye prohibiciones históricas de empaquetado. Consultar docs/INSTALL_RC1.md y docs/RC1_VALIDATION.md. Suite aislada: 202 aprobadas/1 omitida. Servicio incorpora alertas/indexación, DPAPI y bloqueo por datos. Entrega en ../ENTREGAS/ContaSuite_v1.0_RC1_20261112.zip, con fuentes aparte. Puerto predeterminado 8062; no iniciar instalación antigua 8000. SCM registrado/reinicio, LAN/TLS, identidad SMB, tarea y respaldo externo requieren aceptación en equipo autorizado. No modificar piloto, importar segunda carpeta ni migrar datos reales sin autorización; no declarar aprobación de producción.
+
+---
+
+## Empresa de primera carpeta importada · autorización expresa
+
+Consultar docs/CS_PILOT_IMPORTACION_PRIMERA.md. Una empresa y 25.271 documentos incorporados en el piloto privado 8062; 18 excluidos. Asociaciones ambiguas y conflictos siguen en revisión. No modificar la base antigua 8000 ni importar la segunda carpeta. No compartir configuración privada/dumps ni declarar v1.0 aprobada.
+
+---
+
+## Primera carpeta autorizada · análisis por lotes
+
+Consultar docs/CS_PILOT_PRIMERA_CARPETA.md. El usuario autorizó la primera carpeta de EMPRESAS PRUEBA; análisis completo con staging privado, sin importación definitiva. Acceso separado 8062. No analizar la segunda carpeta ni usar el lanzador antiguo 8000 para este piloto. Conservar la confirmación humana y los límites/documentación del análisis masivo. No compartir .qa/pilot-first, credenciales, dumps ni metadatos fiscales.
+
+---
+
 ## Piloto local vigente · 12/11/2026
 
 Consultar docs/CS_PILOT_IMPORT_001.md. Flujo desde Empresas → Importar y conciliar → Desde carpeta local, con staging existente, revisión manual y confirmación expresa. Sólo se ensayaron carpetas generadas en PostgreSQL exclusivo contasuite_pilot_synthetic_001. No leer carpetas reales hasta recibir dos rutas y autorización expresa de análisis; no confundir esa autorización con confirmación definitiva. El piloto está deshabilitado por defecto y exige base PostgreSQL local exclusiva CS_PILOT_DATABASE, CS_PILOT_ENABLED y exactamente dos CS_PILOT_ROOTS. No cambiar .env/datos/infraestructura real ni reusar fixtures como empresas reales. No migraciones automáticas. Ver respaldo, inventario y resultados en el informe. v1.0 sigue sin aprobación operativa completa.

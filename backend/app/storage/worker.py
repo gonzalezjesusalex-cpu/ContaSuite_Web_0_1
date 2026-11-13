@@ -13,13 +13,13 @@ def run_once(mode,indexer=None,alert_job=None,owner='worker'):
         job=indexer.claim(owner)
         if job:indexer.run(job,owner)
 
-def main():
+def main(stop_event=None,argv=None):
     parser=argparse.ArgumentParser(description='Trabajador ContaSuite con controles independientes')
     parser.add_argument('--mode',choices=['alerts','index','both'],default='index')
     parser.add_argument('--evaluate-alerts',action='store_true',help='Alias seguro: solo alertas')
     parser.add_argument('--alert-interval',type=int,default=900)
     parser.add_argument('--once',action='store_true')
-    args=parser.parse_args()
+    args=parser.parse_args(argv)
     if args.alert_interval<60:parser.error('Intervalo mínimo: 60 segundos')
     mode='alerts' if args.evaluate_alerts else args.mode
     from ..database import SessionLocal
@@ -34,12 +34,13 @@ def main():
         from ..alert_schedule import tick
         with SessionLocal.begin() as db:return tick(db,interval=args.alert_interval)
     owner='worker-'+str(uuid4())
-    while True:
+    while stop_event is None or not stop_event.is_set():
         try:run_once(mode,indexer,alert_job,owner)
         except Exception:
             print('Trabajo interrumpido; transacción revertida, reintento pendiente.',flush=True)
             if args.once:raise
         if args.once:return
-        time.sleep(3)
+        if stop_event is not None:stop_event.wait(3)
+        else:time.sleep(3)
 
 if __name__=='__main__':main()

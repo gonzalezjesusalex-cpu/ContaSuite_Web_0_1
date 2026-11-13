@@ -52,7 +52,7 @@ def inspect_project(root):
             with sqlite3.connect(uri,uri=True) as connection:
                 version=connection.execute('SELECT version_num FROM alembic_version').fetchone()[0]
                 initialized=bool(connection.execute('SELECT initialized FROM identity_state').fetchone()[0])
-            add('database_schema','ok' if version=='cs_storage_0004' else 'pending','Revisión '+version)
+            add('database_schema','ok' if version in {'cs_storage_0004','cs_storage_0005'} else 'pending','Revisión '+version)
             add('personal_accounts','ok' if initialized else 'pending','Alta inicial completada' if initialized else 'Crear primer administrador al iniciar')
         else:
             add('database_schema','pending','Base no SQLite: comprobar conectividad y migración con el técnico; no se sondea por red')

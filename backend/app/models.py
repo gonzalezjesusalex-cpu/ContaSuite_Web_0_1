@@ -236,7 +236,7 @@ class StorageIndexJob(Base):
     __tablename__ = 'storage_index_jobs'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     source_id: Mapped[str] = mapped_column(ForeignKey('storage_sources.id'), index=True)
-    status: Mapped[str] = mapped_column(String(20), default='queued', index=True)
+    status: Mapped[str] = mapped_column(String(32), default='queued', index=True)
     requested_by: Mapped[str] = mapped_column(String(100))
     checkpoint: Mapped[dict] = mapped_column(JSON, default=dict)
     counters: Mapped[dict] = mapped_column(JSON, default=dict)

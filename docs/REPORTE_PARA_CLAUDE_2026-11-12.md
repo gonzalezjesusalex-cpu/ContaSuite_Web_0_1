@@ -1,3 +1,5 @@
+> Actualización posterior a este corte: ya se autorizó y analizó la primera carpeta. Consultar CS_PILOT_PRIMERA_CARPETA.md para los resultados anonimizados y pendientes actuales. El informe siguiente se conserva como antecedente.
+
 # ContaSuite Web — informe de estado para revisión de Claude
 
 Fecha de corte: 12 de noviembre de 2026. Este documento resume el trabajo de la conversación y los informes actuales del repositorio. No contiene contraseñas, tokens, documentos empresariales ni configuración privada. No sustituye las matrices y evidencias originales.

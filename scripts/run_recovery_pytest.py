@@ -3,7 +3,7 @@ import os,sys,platform,tempfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 parent=ROOT/'.qa'/'integration-recovery-20261111-v3'/'full-suite-temp'
-parent.mkdir(exist_ok=True)
+parent.mkdir(parents=True,exist_ok=True)
 os.environ.update(TMP=str(parent),TEMP=str(parent),PYTHON_DOTENV_DISABLED='1',PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',
     CS_STORAGE_ALLOWED_ROOTS='[]',CS_STORAGE_SMB_ALLOWED_ROOTS='[]',SEED_DEMO='false')
 tempfile.tempdir=str(parent)

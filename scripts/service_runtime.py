@@ -2,7 +2,7 @@
 import argparse,os,sys,threading,ipaddress,json
 from pathlib import Path
 
-def api_server(port=8000,host='127.0.0.1',stop_event=None,on_ready=None,log_config=None):
+def api_server(port=8062,host='127.0.0.1',stop_event=None,on_ready=None,log_config=None):
     import uvicorn
     server=uvicorn.Server(uvicorn.Config('app.main:app',host=host,port=port,workers=1,proxy_headers=True,
         forwarded_allow_ips='127.0.0.1',log_config=log_config or uvicorn.config.LOGGING_CONFIG,timeout_graceful_shutdown=25))
@@ -30,7 +30,7 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--data-dir',type=Path,required=True)
     parser.add_argument('--mode',choices=['api','alerts','index'],default='api')
-    parser.add_argument('--port',type=int,default=8000)
+    parser.add_argument('--port',type=int,default=8062)
     parser.add_argument('--host',default='127.0.0.1')
     parser.add_argument('--allow-lan',action='store_true')
     args=parser.parse_args()

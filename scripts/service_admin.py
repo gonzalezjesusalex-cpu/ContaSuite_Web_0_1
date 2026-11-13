@@ -20,11 +20,14 @@ def plan(root,name,data,logs,config,port):
         ['sc.exe','sidtype',name,'unrestricted'],['sc.exe','failure',name,'reset=','86400','actions=','restart/15000/restart/30000/restart/60000'],
         ['sc.exe','failureflag',name,'1']]
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--probe',action='store_true');parser.add_argument('--apply',action='store_true')
+    parser=argparse.ArgumentParser();parser.add_argument('--probe',action='store_true');parser.add_argument('--apply',action='store_true');parser.add_argument('--status',action='store_true')
     parser.add_argument('--root',type=Path);parser.add_argument('--name',default='ContaSuiteApi')
-    parser.add_argument('--data-dir',type=Path);parser.add_argument('--log-dir',type=Path);parser.add_argument('--config-file',type=Path);parser.add_argument('--port',type=int,default=8000)
+    parser.add_argument('--data-dir',type=Path);parser.add_argument('--log-dir',type=Path);parser.add_argument('--config-file',type=Path);parser.add_argument('--port',type=int,default=8062)
     args=parser.parse_args()
     if args.probe:print(json.dumps(probe()));return
+    if args.status:
+        if not re.fullmatch(r'ContaSuite[A-Za-z0-9_]{0,40}',args.name):parser.error('Dedicated ContaSuite service required')
+        return subprocess.run(['sc.exe','query',args.name],creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0)).returncode
     if not all([args.root,args.data_dir,args.log_dir,args.config_file]):parser.error('Explicit installation/data/log/config paths required')
     commands=plan(args.root,args.name,args.data_dir,args.log_dir,args.config_file,args.port)
     if not args.apply:print(json.dumps({'commands':commands,'applied':False},indent=2));return
@@ -34,4 +37,4 @@ def main():
     if query.returncode!=1060:parser.error('Service exists or cannot be inspected; refusing registration')
     for command in commands:subprocess.run(command,check=True,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     print('Service registered but not started. Provision private ACL/configuration before starting.')
-if __name__=='__main__':main()
+if __name__=='__main__':raise SystemExit(main())

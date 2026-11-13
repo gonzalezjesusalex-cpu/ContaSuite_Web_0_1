@@ -159,7 +159,11 @@ class LocalIndexer:
         seen = dict(checkpoint.get('seen', {}))
         issues = list(checkpoint.get('issues', []))
         processed = 0
-        for entry in provider.enumerate():
+        # Snapshot bounded metadata before expensive content extraction. Otherwise
+        # the provider's traversal deadline includes time spent by this consumer
+        # parsing PDFs and truncates a healthy folder after its first minute.
+        entries=list(provider.enumerate())
+        for entry in entries:
             key_hash = hashlib.sha256(entry.key.casefold().encode()).hexdigest()
             if key_hash in seen:
                 continue

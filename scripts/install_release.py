@@ -10,7 +10,12 @@ def verify(root):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--mode',choices=['Install','Update','Uninstall'],required=True)
     parser.add_argument('--destination',type=Path,required=True);parser.add_argument('--data-dir',type=Path,required=True)
-    parser.add_argument('--backup',type=Path);parser.add_argument('--writers-stopped',action='store_true');args=parser.parse_args()
+    parser.add_argument('--backup',type=Path);parser.add_argument('--writers-stopped',action='store_true')
+    parser.add_argument('--public-url',help='Optional HTTPS LAN address for an Internet shortcut');args=parser.parse_args()
+    if args.public_url:
+        from urllib.parse import urlsplit
+        url=urlsplit(args.public_url)
+        if url.scheme!='https' or not url.hostname or url.username or url.password or any(c in args.public_url for c in '\r\n'):parser.error('HTTPS LAN URL required')
     source=Path(__file__).resolve().parents[2];dest=args.destination.resolve();data=args.data_dir.resolve()
     if not args.destination.is_absolute() or not args.data_dir.is_absolute():parser.error('Absolute installation/data directories required')
     if dest==source or dest.is_relative_to(source) or source.is_relative_to(dest) or data.is_relative_to(dest) or dest.is_relative_to(data):parser.error('Use separate installation, package and data directories')
@@ -29,6 +34,7 @@ def main():
     else:command+=['--backup',str(args.backup)]
     result=subprocess.run(command,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if result.returncode:raise RuntimeError('Schema update failed; retained installation for diagnosis, do not start it')
-    (dest/'INSTALLATION.json').write_text(json.dumps({'release':'CS-RELEASE-CLOSURE-001','mode':args.mode,'data_external':True}),encoding='utf-8')
+    (dest/'INSTALLATION.json').write_text(json.dumps({'release':'ContaSuite-v1.0-RC1','mode':args.mode,'data_external':True}),encoding='utf-8')
+    if args.public_url:(dest/'ContaSuite.url').write_text('[InternetShortcut]\nURL='+args.public_url+'\n',encoding='utf-8')
     print('Installation prepared; service/network registration remains explicit:',dest)
 if __name__=='__main__':main()

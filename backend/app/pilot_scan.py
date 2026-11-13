@@ -29,8 +29,9 @@ def configured_limits():
 
 def roots_from_environment():
     try:
-        values = json.loads(os.environ.get('CS_PILOT_ROOTS', '[]'))
-        if not isinstance(values, list) or len(values) not in (0, 2):
+        local = os.getenv('CS_LOCAL_IMPORT_ENABLED') == '1'
+        values = json.loads(os.environ.get('CS_LOCAL_IMPORT_ROOTS' if local else 'CS_PILOT_ROOTS', '[]'))
+        if not isinstance(values, list) or (not 0<=len(values)<=20 if local else len(values) not in (0, 2)):
             raise ValueError
         # Reject UNC/device/relative paths before any filesystem probe.
         paths = [Path(v) for v in values if isinstance(v, str)]
@@ -65,14 +66,15 @@ def extract(content, name):
         return {'type': 'unknown', 'period': None, 'evidence': {'reason': 'extraction_failed', 'complete': False, 'rfcs': []}, 'identities': []}
 
 
-def scan(paths, *, max_files=200, max_bytes=100*1024*1024, max_seconds=90, exclusions=()):
+def scan(paths, *, max_files=200, max_bytes=100*1024*1024, max_seconds=90, exclusions=(), expected_count=2):
     start = time.monotonic()
     all_rows, folders = [], []
     total = 0
     providers = [LocalFolderProvider(p, tuple(paths), exclusions=SECRET_PATTERNS+tuple(exclusions),
                  max_entries=5000, max_file_bytes=25*1024*1024, max_seconds=max_seconds) for p in paths]
-    if len(providers) != 2 or any(a.root.is_relative_to(b.root) or b.root.is_relative_to(a.root)
-                                 for a, b in [(providers[0], providers[1])]):
+    if len(providers) != expected_count or not 1<=expected_count<=20 or any(
+        a.root.is_relative_to(b.root) or b.root.is_relative_to(a.root)
+        for i,a in enumerate(providers) for b in providers[i+1:]):
         raise StorageError('invalid_configuration')
     for index, provider in enumerate(providers):
         folder = {'id': str(index), 'name': provider.root.name, 'path': str(provider.root), 'files': 0,
