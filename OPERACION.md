@@ -27,6 +27,14 @@ python scripts/schema_admin.py --data-dir <carpeta-datos-nueva> --new --apply
 
 Requiere `DATABASE_URL` explícita en el entorno del proceso (no lee `.env`). `--new` rechaza una base que ya tenga empresas. Sin `--apply` sólo verifica compatibilidad.
 
+### Diagnosticar el esquema de cualquier base
+
+```bash
+python scripts/schema_admin.py --data-dir <carpeta-datos> --status
+```
+
+Sólo lectura. Muestra la revisión Alembic actual, la revisión `head` y si el esquema es compatible. Todo el esquema está en una sola cadena Alembic (`backend/migrations/versions`): `cs_storage_0001`–`0005` y la línea base unificada `cs_0006_unified_baseline`, que incorpora las antiguas cadenas `*_migrations/` (congeladas; los cambios nuevos van en `0007` y siguientes). Una base preparada antes de la unificación aparece como `cs_storage_0005 ... update pending`: sigue arrancando, y se registra en `head` con la actualización normal (respaldo + `--apply --backup`). No ejecutar `alembic current` a mano desde `backend/`: `env.py` cargaría el `.env` de la carpeta.
+
 ## Actualizar
 
 1. Detener la instancia y cualquier escritor externo (agente, indexador).
