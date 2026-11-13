@@ -8,5 +8,20 @@ extend-exclude = [
     "backend/migrations", "backend/*_migrations",
 ]
 
+[lint]
+# Default rules (E4, E7, E9, F) plus bugbear and silent/blind exception handlers (plan, point 18).
+extend-select = ["B", "BLE001", "S110"]
+ignore = [
+    "E712",  # SQLAlchemy column expressions require `== True/False`.
+    "B008",  # FastAPI dependencies (Depends/File/Form) are declared as default arguments.
+]
+
+[lint.per-file-ignores]
+# Pytest fixtures are imported from test_api and re-bound as parameters; tests prepare an isolated
+# environment before importing the application.
+"backend/tests/**" = ["F401", "F811", "F403", "F405", "E402"]
+# Scripts adjust sys.path before importing the backend.
+"scripts/**" = ["E402"]
+
 [format]
 quote-style = "preserve"

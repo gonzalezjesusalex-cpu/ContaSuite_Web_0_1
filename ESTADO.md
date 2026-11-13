@@ -34,6 +34,15 @@ Conexión/descarga SAT automática, OCR, validación fiscal externa, revelación
 - Frontend: compilación TypeScript/Vite correcta en RC1 (12/11/2026); advertencia de chunk principal >500 KB. En este equipo falta Node.js para repetirla.
 - Rendimiento RC1 del dashboard con 25.271 documentos: ~2,5 s y 92 consultas (plan, punto 5).
 
+## Linters (línea base 13/11/2026, sin corregir)
+
+Comandos: `.venv\Scripts\python -m ruff check .` y `npm --prefix frontend run lint`. Formato: `ruff format --check .` y `npm --prefix frontend run format:check`.
+
+- **ruff check: 225 hallazgos.** 80 importaciones sin uso (F401, sobre todo `app`/`scripts`; algunas pueden registrar modelos por efecto lateral), 62 importaciones múltiples en una línea (E401), 35 `except Exception` amplios (BLE001, plan punto 18), 16 importaciones fuera de cabecera en `app` (E402), 11 nombres ambiguos `l`/`O` (E741), 7 variables sin uso (F841: `integral_dashboard.py` `base_ids`/`today`, `pilot_batch_extract.py` `guard`), 4 `raise` sin `from` (B904), 3 `zip` sin `strict` (B905), 3 lambdas asignadas (E731), 2 variables de bucle sin uso (B007), 1 f-string sin campos (F541), 1 `try/except/pass` (S110).
+- **ESLint: 3 errores, 6 advertencias.** `Recopila.tsx`: importación `InputHTMLAttributes` y parámetro `i` sin uso, un `any`. `react-hooks/exhaustive-deps`: `ui.tsx:32` (ref en limpieza de efecto), `Companies.tsx:65` (`tabs`) y `:104` (`setParams`), `Credentials.tsx:467` (`load`), `IntegralDashboard.tsx:144` (`setContext`), `Receipts.tsx:167` (`item`). `rules-of-hooks`: sin infracciones.
+
+Las correcciones que cambian comportamiento (dependencias de hooks, excepciones) se tratan una a una con su prueba.
+
 ## Pendientes
 
 Ver [PLAN_FINALIZACION.md](PLAN_FINALIZACION.md). Resumen:
