@@ -1,13 +1,219 @@
-import {useCallback,useEffect,useState} from 'react';
-import {api} from '../api';
-import {Kpi} from '../components/ui';
-import {stitchCard,stitchButton} from '../components/stitch';
-type Analysis={imported_documents?:number;id:string;status:string;summary:{total:number;processed:number;counts?:Record<string,number>;types?:Record<string,number>;identity_candidates?:{rfc:string;name:string;occurrences:number}[];additional_candidates?:number}};
-type Row={number:number;key:string;type?:string;status:string;size:number;error?:string;duplicate?:boolean;conflict?:boolean;result?:{period?:string;evidence:{cfdi_uuid?:string;suggested_label?:string}}};
-export default function BatchPilot({onBack}:{onBack:()=>void}){
- const [analysis,setAnalysis]=useState<Analysis|null>(null),[rows,setRows]=useState<Row[]>([]),[offset,setOffset]=useState(0),[filter,setFilter]=useState('all'),[filteredTotal,setFilteredTotal]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState('');
- const reload=useCallback(async()=>{setBusy(true);setError('');try{const r=await api<{analysis:Analysis|null}>('/pilot-batches');setAnalysis(r.analysis);if(r.analysis){const p=await api<{items:Row[];total:number}>(`/pilot-batches/${r.analysis.id}/rows?offset=${offset}&limit=50&state=${filter}`);setRows(p.items);setFilteredTotal(p.total)}}catch(e){setError((e as Error).message)}finally{setBusy(false)}},[offset,filter]);
- useEffect(()=>{void reload()},[reload]);
- useEffect(()=>{if(analysis?.status!=='analysing')return;const timer=window.setInterval(()=>void reload(),15000);return()=>window.clearInterval(timer)},[analysis?.status,reload]);
- return <section className={stitchCard+' padded stitch-live-module company-importer pilot-import'} aria-busy={busy}><div className="card-title"><div><h2>Primera carpeta · análisis por lotes</h2><p>Análisis privado y seguimiento de importación autorizada.</p></div><button className={stitchButton} onClick={onBack}>Otras fuentes</button></div><p>Los originales se leen sin modificarlos. Los candidatos pueden ser contrapartes; su frecuencia no determina la empresa. No se confirma cumplimiento ni se consulta al SAT.</p><button className={stitchButton} disabled={busy} onClick={()=>void reload()}>Actualizar avance</button>{error&&<p role="alert" className="error-banner">{error}</p>}{!analysis&&!error&&<p role="status">No hay análisis disponible en esta base.</p>}{analysis&&<><p role="status">{analysis.status==='preview'?'Análisis terminado; revisión pendiente.':'Análisis en curso; avances guardados.'}</p><div className="kpi-grid four"><Kpi label="Inventariados" value={analysis.summary.total} detail="Primera carpeta autorizada"/><Kpi label="Procesados" value={analysis.summary.processed} detail="Con puntos de recuperación"/><Kpi label="Conflictos" value={analysis.summary.counts?.conflicts??'Pendiente'} detail="Evaluación global al finalizar"/><Kpi label="Errores" value={analysis.summary.counts?.errors??'Pendiente'} detail="No equivalen a cumplimiento"/></div><details><summary>Identidades declaradas encontradas; requieren revisión humana</summary><div className="import-grid"><table><thead><tr><th>RFC declarado</th><th>Nombre declarado</th><th>Apariciones</th></tr></thead><tbody>{analysis.summary.identity_candidates?.map(c=><tr key={c.rfc}><td>{c.rfc}</td><td>{c.name}</td><td>{c.occurrences}</td></tr>)}</tbody></table></div><p>Otros candidatos: {analysis.summary.additional_candidates??0}. Ninguna empresa ha sido seleccionada automáticamente.</p></details><label className="field"><span>Estado documental</span><select value={filter} onChange={e=>{setFilter(e.target.value);setOffset(0)}}><option value="all">Todos los archivos</option><option value="conflicts">Conflictos UUID</option><option value="duplicates">Contenido duplicado</option><option value="errors">Errores</option><option value="unknown">Sin clasificar</option></select></label><div className="import-grid"><table><thead><tr><th>Registro</th><th>Archivo relativo</th><th>Clasificación / periodo</th><th>Incidencia</th></tr></thead><tbody>{rows.map(r=><tr key={r.number}><td>{r.number}</td><td>{r.key}</td><td>{r.result?.evidence.suggested_label||r.type||'Pendiente'} · {r.result?.period||'Sin periodo'}</td><td>{r.error||(r.conflict?'Conflicto UUID':r.duplicate?'Contenido duplicado':r.status==='analysed'?'Analizado, sin verificar':'Pendiente')}</td></tr>)}</tbody></table></div><div className="actions"><button className={stitchButton} disabled={busy||offset===0} onClick={()=>setOffset(Math.max(0,offset-50))}>Anterior</button><span>{filteredTotal?offset+1:0}–{Math.min(offset+50,filteredTotal)} de {filteredTotal}</span><button className={stitchButton} disabled={busy||offset+50>=filteredTotal} onClick={()=>setOffset(offset+50)}>Siguiente</button></div><p>{analysis.imported_documents?`${analysis.imported_documents} documentos incorporados al catálogo por autorización expresa. Consulta Dashboard general, Directorio y Documentos.`:"La importación definitiva permanece deshabilitada en este análisis masivo."}</p><p> Primero deben revisarse la identidad de la empresa y las incidencias; el análisis no crea asociaciones automáticamente.</p></>}</section>
+import { useCallback, useEffect, useState } from 'react';
+import { api } from '../api';
+import { Kpi } from '../components/ui';
+import { stitchCard, stitchButton } from '../components/stitch';
+type Analysis = {
+  imported_documents?: number;
+  id: string;
+  status: string;
+  summary: {
+    total: number;
+    processed: number;
+    counts?: Record<string, number>;
+    types?: Record<string, number>;
+    identity_candidates?: { rfc: string; name: string; occurrences: number }[];
+    additional_candidates?: number;
+  };
+};
+type Row = {
+  number: number;
+  key: string;
+  type?: string;
+  status: string;
+  size: number;
+  error?: string;
+  duplicate?: boolean;
+  conflict?: boolean;
+  result?: { period?: string; evidence: { cfdi_uuid?: string; suggested_label?: string } };
+};
+export default function BatchPilot({ onBack }: { onBack: () => void }) {
+  const [analysis, setAnalysis] = useState<Analysis | null>(null),
+    [rows, setRows] = useState<Row[]>([]),
+    [offset, setOffset] = useState(0),
+    [filter, setFilter] = useState('all'),
+    [filteredTotal, setFilteredTotal] = useState(0),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  const reload = useCallback(async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const r = await api<{ analysis: Analysis | null }>('/pilot-batches');
+      setAnalysis(r.analysis);
+      if (r.analysis) {
+        const p = await api<{ items: Row[]; total: number }>(
+          `/pilot-batches/${r.analysis.id}/rows?offset=${offset}&limit=50&state=${filter}`,
+        );
+        setRows(p.items);
+        setFilteredTotal(p.total);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }, [offset, filter]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+  useEffect(() => {
+    if (analysis?.status !== 'analysing') return;
+    const timer = window.setInterval(() => void reload(), 15000);
+    return () => window.clearInterval(timer);
+  }, [analysis?.status, reload]);
+  return (
+    <section className={stitchCard + ' padded stitch-live-module company-importer pilot-import'} aria-busy={busy}>
+      <div className="card-title">
+        <div>
+          <h2>Primera carpeta · análisis por lotes</h2>
+          <p>Análisis privado y seguimiento de importación autorizada.</p>
+        </div>
+        <button className={stitchButton} onClick={onBack}>
+          Otras fuentes
+        </button>
+      </div>
+      <p>
+        Los originales se leen sin modificarlos. Los candidatos pueden ser contrapartes; su frecuencia no determina la
+        empresa. No se confirma cumplimiento ni se consulta al SAT.
+      </p>
+      <button className={stitchButton} disabled={busy} onClick={() => void reload()}>
+        Actualizar avance
+      </button>
+      {error && (
+        <p role="alert" className="error-banner">
+          {error}
+        </p>
+      )}
+      {!analysis && !error && <p role="status">No hay análisis disponible en esta base.</p>}
+      {analysis && (
+        <>
+          <p role="status">
+            {analysis.status === 'preview'
+              ? 'Análisis terminado; revisión pendiente.'
+              : 'Análisis en curso; avances guardados.'}
+          </p>
+          <div className="kpi-grid four">
+            <Kpi label="Inventariados" value={analysis.summary.total} detail="Primera carpeta autorizada" />
+            <Kpi label="Procesados" value={analysis.summary.processed} detail="Con puntos de recuperación" />
+            <Kpi
+              label="Conflictos"
+              value={analysis.summary.counts?.conflicts ?? 'Pendiente'}
+              detail="Evaluación global al finalizar"
+            />
+            <Kpi
+              label="Errores"
+              value={analysis.summary.counts?.errors ?? 'Pendiente'}
+              detail="No equivalen a cumplimiento"
+            />
+          </div>
+          <details>
+            <summary>Identidades declaradas encontradas; requieren revisión humana</summary>
+            <div className="import-grid">
+              <table>
+                <thead>
+                  <tr>
+                    <th>RFC declarado</th>
+                    <th>Nombre declarado</th>
+                    <th>Apariciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analysis.summary.identity_candidates?.map((c) => (
+                    <tr key={c.rfc}>
+                      <td>{c.rfc}</td>
+                      <td>{c.name}</td>
+                      <td>{c.occurrences}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p>
+              Otros candidatos: {analysis.summary.additional_candidates ?? 0}. Ninguna empresa ha sido seleccionada
+              automáticamente.
+            </p>
+          </details>
+          <label className="field">
+            <span>Estado documental</span>
+            <select
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="all">Todos los archivos</option>
+              <option value="conflicts">Conflictos UUID</option>
+              <option value="duplicates">Contenido duplicado</option>
+              <option value="errors">Errores</option>
+              <option value="unknown">Sin clasificar</option>
+            </select>
+          </label>
+          <div className="import-grid">
+            <table>
+              <thead>
+                <tr>
+                  <th>Registro</th>
+                  <th>Archivo relativo</th>
+                  <th>Clasificación / periodo</th>
+                  <th>Incidencia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.number}>
+                    <td>{r.number}</td>
+                    <td>{r.key}</td>
+                    <td>
+                      {r.result?.evidence.suggested_label || r.type || 'Pendiente'} ·{' '}
+                      {r.result?.period || 'Sin periodo'}
+                    </td>
+                    <td>
+                      {r.error ||
+                        (r.conflict
+                          ? 'Conflicto UUID'
+                          : r.duplicate
+                            ? 'Contenido duplicado'
+                            : r.status === 'analysed'
+                              ? 'Analizado, sin verificar'
+                              : 'Pendiente')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="actions">
+            <button
+              className={stitchButton}
+              disabled={busy || offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - 50))}
+            >
+              Anterior
+            </button>
+            <span>
+              {filteredTotal ? offset + 1 : 0}–{Math.min(offset + 50, filteredTotal)} de {filteredTotal}
+            </span>
+            <button
+              className={stitchButton}
+              disabled={busy || offset + 50 >= filteredTotal}
+              onClick={() => setOffset(offset + 50)}
+            >
+              Siguiente
+            </button>
+          </div>
+          <p>
+            {analysis.imported_documents
+              ? `${analysis.imported_documents} documentos incorporados al catálogo por autorización expresa. Consulta Dashboard general, Directorio y Documentos.`
+              : 'La importación definitiva permanece deshabilitada en este análisis masivo.'}
+          </p>
+          <p>
+            {' '}
+            Primero deben revisarse la identidad de la empresa y las incidencias; el análisis no crea asociaciones
+            automáticamente.
+          </p>
+        </>
+      )}
+    </section>
+  );
 }

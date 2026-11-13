@@ -9,5 +9,9 @@ import '@fontsource/material-symbols-outlined';
 import './styles.css';
 import './stitch-refinements.css';
 import App from './App';
-const router=createBrowserRouter([{path:'*',element:<App/>}]);
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><RouterProvider router={router}/></React.StrictMode>);
+const router = createBrowserRouter([{ path: '*', element: <App /> }]);
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <RouterProvider router={router} />
+  </React.StrictMode>,
+);
