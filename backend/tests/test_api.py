@@ -1,5 +1,6 @@
 import importlib.util
 import atexit
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -198,10 +199,14 @@ def test_database_survives_app_restart(client):
         assert second.get('/api/state', headers=A).json()['companies'][0]['id'] == c['id']
 
 
-def test_scanner_only_authorized_paths(tmp_path):
+def load_agent():
     spec = importlib.util.spec_from_file_location('agent', Path(__file__).resolve().parents[2] / 'agent' / 'agent.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+def scanner_folders(tmp_path):
     allowed = tmp_path / 'allowed'
     allowed.mkdir()
     (allowed / 'test.pdf').write_bytes(b'pdf')
@@ -210,18 +215,56 @@ def test_scanner_only_authorized_paths(tmp_path):
     outside = tmp_path / 'outside'
     outside.mkdir()
     (outside / 'private.xml').write_bytes(b'private')
+    return allowed, outside
+
+
+def test_scanner_only_authorized_paths_and_no_secrets(tmp_path):
+    module = load_agent()
+    allowed, outside = scanner_folders(tmp_path)
+    assert not hasattr(module, 'scan_folder')  # single inventory path for every launcher
+    result = module.safe_inventory(str(allowed), [str(allowed)])
+    assert {f['name'] for f in result['files']} == {'test.pdf'}
+    assert all('content' not in f for f in result['files'])
+    assert (allowed / 'test.key').read_bytes() == b'secret'
+    from app.storage.providers import StorageError
+
+    with pytest.raises(StorageError):
+        module.safe_inventory(str(outside), [str(allowed)])
+
+
+def test_scanner_does_not_follow_links_outside_folder(tmp_path):
+    module = load_agent()
+    allowed, outside = scanner_folders(tmp_path)
     try:
         (allowed / 'escape').symlink_to(outside, target_is_directory=True)
     except OSError as exc:
         if getattr(exc, 'winerror', None) == 1314:
             pytest.skip('Windows no permite crear enlaces simbólicos sin privilegios o modo desarrollador')
         raise
-    result = module.scan_folder(str(allowed), [str(allowed)])
-    assert {f['name'] for f in result['files']} == {'test.pdf', 'test.key'}
-    assert all('content' not in f for f in result['files'])
-    assert (allowed / 'test.key').read_bytes() == b'secret'
-    with pytest.raises(ValueError):
-        module.scan_folder(str(outside), [str(allowed)])
+    result = module.safe_inventory(str(allowed), [str(allowed)])
+    assert 'private.xml' not in {f['name'] for f in result['files']}
+
+
+def test_console_launcher_delegates_to_safe_run(tmp_path, monkeypatch):
+    module = load_agent()
+    calls = []
+    monkeypatch.setattr(module, 'run', lambda config: calls.append(config))
+    config = tmp_path / 'config.json'
+    base = {'api_url': 'http://127.0.0.1:8062', 'agent_id': 'local', 'allowed_roots': [str(tmp_path)]}
+    config.write_text(json.dumps({**base, 'token': 'synthetic-file-token-1234567'}), encoding='utf-8')
+    monkeypatch.setenv('CONTA_AGENT_TOKEN', 'synthetic-environment-token-123')
+    module.main(['--config', str(config)])
+    assert calls == [{**base, 'token': 'synthetic-environment-token-123'}]
+    monkeypatch.delenv('CONTA_AGENT_TOKEN')
+    for invalid, message in (
+        ({**base, 'allowed_roots': [], 'token': 'x' * 24}, 'allowed_roots'),
+        ({**base, 'token': 'short'}, 'token'),
+        ({**base, 'api_url': 'http://192.0.2.10:8062', 'token': 'x' * 24}, 'HTTPS'),
+    ):
+        config.write_text(json.dumps(invalid), encoding='utf-8')
+        with pytest.raises(SystemExit, match=message):
+            module.main(['--config', str(config)])
+    assert len(calls) == 1
 
 
 def test_startup_never_seeds_even_when_old_flag_is_set(client):
