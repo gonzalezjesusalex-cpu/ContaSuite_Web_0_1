@@ -11,6 +11,27 @@ def main():
     parser.add_argument('--output', type=Path, default=ROOT.parent / 'ENTREGAS/ContaSuite_v1.0_RC1_20261112.zip')
     args = parser.parse_args()
     assert (args.runtime / 'python312._pth').is_file()
+    # Antivirus or temp-folder cleanup can silently delete executables from a staged runtime; never
+    # ship a package whose interpreter, OpenSSL or SQLite/ctypes extensions are missing.
+    missing = [
+        name
+        for name in [
+            'python.exe',
+            'python312.dll',
+            'python312.zip',
+            'vcruntime140.dll',
+            'DLLs/_ssl.pyd',
+            'DLLs/libssl-3.dll',
+            'DLLs/libcrypto-3.dll',
+            'DLLs/_ctypes.pyd',
+            'DLLs/_socket.pyd',
+            'DLLs/_hashlib.pyd',
+            'DLLs/pyexpat.pyd',
+        ]
+        if not (args.runtime / name).is_file()
+    ]
+    if missing:
+        parser.error('Incomplete private runtime (rebuild it): ' + ', '.join(missing))
     names = {}
     for folder in [
         'backend/app',
