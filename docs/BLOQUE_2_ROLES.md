@@ -48,7 +48,12 @@ Aplicación en servidor (punto 2):
 1. Migración `0007`: `UserAccount.role` (con respaldo), cuentas y sesión con rol.
 2. Migración `0008` (`user_company_actions`), catálogo en `backend/app/permissions.py`, `Principal.can()/require()` en servidor y sustitución de los controles operativos; pruebas negativas de escalada. Pendientes de conectar: `carpeta.analizar` (Bloque 4) y `documentos.clasificar` (la decisión de clasificación sigue en la revisión global del administrador).
 2b. Migración `0009` (`created_by` en ejecuciones de Recopila, CFDI y Declara y en recibos) y acceso por `recopila/cfdi/declara/recibos.usar` (`backend/app/run_access.py`): el módulo se abre con la acción en al menos una empresa; se ven las ejecuciones propias y las de empresas con la acción; las anteriores sin empresa ni autor, sólo el administrador. En Recibos, la configuración del emisor y borrar clientes siguen siendo del administrador.
-3. Gestión de usuarios: contador crea auxiliares con plantillas; último administrador; deshabilitados.
+3. Gestión de usuarios (`/api/auth/users`, `/api/auth/catalog`):
+   - El administrador gestiona todas las cuentas; el contador, sólo auxiliares que compartan alguna de sus empresas con escritura, y sólo ve y cambia los permisos de esas empresas (los demás se conservan).
+   - El contador sólo crea auxiliares, con al menos una de sus empresas, y no concede acciones que él no tenga.
+   - Nombre, estado y contraseña de un auxiliar que también trabaja en empresas ajenas sólo los cambia el administrador.
+   - Los auxiliares nuevos o editados guardan siempre acciones explícitas (lectura = ninguna; escritura sin elegir = el alcance anterior a los roles). Cambiar a otro rol borra sus acciones.
+   - Sigue vigente: no se quita el último administrador; un usuario deshabilitado pierde sus sesiones. Ocultarlo al asignar responsable va con el punto 5.
 4. Migración `0010`: `Audit` con actor, valor anterior y nuevo en todos los cambios de empresa.
 5. Responsable por `id` de usuario: `Company.accountant_id`, respaldo del texto, grant `write`, decisión sobre el acceso del anterior, conciliación en revisión humana.
 6. Historial de responsable en el expediente.

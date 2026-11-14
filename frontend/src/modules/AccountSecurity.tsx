@@ -4,7 +4,9 @@ import { Field, Modal } from '../components/ui';
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
 import type { Company, CurrentUser } from '../types';
 
-type Grant = { company_id: string; access: string };
+// `actions`: an auxiliary's explicit actions, sent back unchanged; a changed access drops them and the
+// server applies the default for that access.
+type Grant = { company_id: string; access: string; actions?: string[] | null };
 type Account = {
   id: string;
   username: string;

@@ -111,9 +111,11 @@ def test_accounts_api_uses_server_roles(client):  # noqa: F811
     login(client, 'conta')
     me = client.get('/api/auth/me').json()
     assert me['role'] == 'contador' and not me['admin']
-    assert client.get('/api/auth/users').status_code == 403
+    # An accountant only sees auxiliaries of its own companies (none yet) and cannot reach its own account.
+    assert client.get('/api/auth/users').json() == []
     body = {'revision': conta.json()['revision'], 'display_name': 'C', 'role': 'admin', 'enabled': True}
-    assert client.put('/api/auth/users/' + conta.json()['id'], json=body).status_code == 403
+    assert client.put('/api/auth/users/' + conta.json()['id'], json=body).status_code == 404
+    assert client.get('/api/auth/audit').status_code == 403
 
 
 def test_demoting_the_last_admin_is_refused(client):  # noqa: F811

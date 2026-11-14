@@ -547,7 +547,9 @@ def test_account_creation_includes_state_and_grants_atomically(client):
         },
     )
     assert created.status_code == 201, created.text
-    assert not created.json()['enabled'] and created.json()['grants'] == [{'company_id': c['id'], 'access': 'read'}]
+    assert not created.json()['enabled'] and created.json()['grants'] == [
+        {'company_id': c['id'], 'access': 'read', 'actions': None}
+    ]
     assert client.post('/api/auth/login', json={'username': 'disabled-admin', 'password': PASSWORD}).status_code == 401
     invalid = client.post(
         '/api/auth/users',

@@ -30,6 +30,51 @@ ACTIONS = READ_ACTIONS | WRITE_ACTIONS
 LEGACY_WRITE_ACTIONS = frozenset({'documentos.subir', 'obligaciones.editar', 'calendario.gestionar', 'tareas.editar'})
 
 
+# Quick templates for an auxiliar's actions in one company (always on top of the `.ver` actions).
+# `carpeta.analizar` is never part of a template; it can only be chosen explicitly.
+TEMPLATES = {
+    'consulta': {'label': 'Solo consulta', 'actions': frozenset()},
+    'captura': {'label': 'Captura de documentos', 'actions': frozenset({'documentos.subir', 'tareas.editar'})},
+    'apoyo_fiscal': {
+        'label': 'Apoyo fiscal',
+        'actions': frozenset(
+            {'obligaciones.editar', 'tareas.editar', 'recopila.usar', 'cfdi.usar', 'declara.usar', 'recibos.usar'}
+        ),
+    },
+}
+
+LABELS = {
+    'empresa.ver': 'Ver la empresa',
+    'documentos.ver': 'Ver documentos',
+    'obligaciones.ver': 'Ver obligaciones',
+    'tareas.ver': 'Ver tareas',
+    'historial.ver': 'Ver historial',
+    'empresa.editar': 'Editar datos de la empresa',
+    'empresa.archivar': 'Archivar la empresa',
+    'documentos.subir': 'Subir y adjuntar documentos',
+    'documentos.clasificar': 'Clasificar documentos',
+    'documentos.eliminar': 'Eliminar documentos',
+    'obligaciones.editar': 'Capturar obligaciones y control fiscal',
+    'obligaciones.verificar': 'Verificar evidencias',
+    'calendario.gestionar': 'Gestionar fechas del calendario',
+    'tareas.editar': 'Crear y editar tareas',
+    'recopila.usar': 'Usar Recopila',
+    'cfdi.usar': 'Usar CFDI',
+    'declara.usar': 'Usar Declara',
+    'recibos.usar': 'Usar Recibos',
+    'carpeta.analizar': 'Analizar carpeta con el agente',
+}
+
+
+def catalog():
+    """Public description of the catalog for the account screens; carries no account data."""
+    return {
+        'read': sorted(READ_ACTIONS),
+        'actions': [{'id': a, 'label': LABELS[a]} for a in sorted(WRITE_ACTIONS)],
+        'templates': [{'id': k, 'label': v['label'], 'actions': sorted(v['actions'])} for k, v in TEMPLATES.items()],
+    }
+
+
 def company_actions(role, write, explicit=None):
     """Actions a non-admin account has in one company it holds a grant for.
 

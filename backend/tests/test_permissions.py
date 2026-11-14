@@ -2,7 +2,7 @@
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from test_api import client, company  # noqa: F401  Isolated environment before app imports.
 from test_accounts import PASSWORD, XML, login, setup, upload
@@ -59,10 +59,13 @@ def account(c, username, role, grants=(), actions=None):
     )
     assert created.status_code == 201, created.text
     if actions is not None:
+        # Overwrite what the API stored: a list sets explicit actions; 'migrated' leaves none at all,
+        # as for an account converted by cs_0007 whose actions were never set.
+        uid = created.json()['id']
         with SessionLocal.begin() as db:
-            db.add_all(
-                [UserCompanyAction(user_id=created.json()['id'], company_id=cid, action=a) for cid, a in actions]
-            )
+            db.execute(delete(UserCompanyAction).where(UserCompanyAction.user_id == uid))
+            if actions != 'migrated':
+                db.add_all([UserCompanyAction(user_id=uid, company_id=cid, action=a) for cid, a in actions])
     return created.json()
 
 
@@ -84,7 +87,7 @@ def office(client):  # noqa: F811
     setup(client)
     account(client, 'conta', 'contador', [(a, 'write'), (b, 'read')])
     account(client, 'aux', 'auxiliar', [(a, 'write'), (b, 'read')], actions=[(a, 'tareas.editar')])
-    account(client, 'legacy', 'auxiliar', [(a, 'write')])
+    account(client, 'legacy', 'auxiliar', [(a, 'write')], actions='migrated')
     return client, a, b, other
 
 
@@ -106,7 +109,7 @@ def test_contador_operates_its_companies_but_not_the_system(office):
     assert doc.status_code == 201, doc.text
     assert c.delete('/api/documents/' + doc.json()['id']).status_code == 204
     for denied in [
-        c.get('/api/auth/users'),
+        c.get('/api/auth/audit'),
         c.post('/api/fiscal-control/catalog', json={'label': 'Nueva', 'periodicity': 'monthly'}),
         c.post('/api/jobs', json={'company_id': a, 'agent_id': 'x'}),
         c.put('/api/receipts/settings', json={'receiver': 'X', 'place': 'Y'}),
