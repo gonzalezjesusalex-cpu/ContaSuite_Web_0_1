@@ -501,6 +501,9 @@ async def analyze_csf(
     except CsfError as exc:
         raise HTTPException(422, str(exc)) from None
     rfc = result['fields'].get('rfc')
+    if company_id and rfc != get(db, Company, company_id).rfc:
+        # Updating a company only accepts its own constancia; nothing is merged across RFCs.
+        raise HTTPException(422, 'La constancia no corresponde al RFC de esta empresa.')
     existing = db.scalar(select(Company).where(Company.rfc == rfc)) if rfc else None
     if existing and existing.id != company_id:
         # Never merged: the user is offered the existing company, or only told that it exists.

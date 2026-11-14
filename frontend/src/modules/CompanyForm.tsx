@@ -39,6 +39,20 @@ const blank = {
 };
 type Form = Record<string, string> & { person_type: Company['person_type'] };
 const DATES = ['operations_start', 'csf_issued_on'];
+const LABELS: Record<string, string> = {
+  person_type: 'Tipo de contribuyente',
+  rfc: 'RFC',
+  idcif: 'idCIF',
+  curp: 'CURP',
+  name: 'Razón social / Nombre',
+  trade_name: 'Nombre comercial',
+  location: 'Ciudad / Estado',
+  regime: 'Régimen principal',
+  operations_start: 'Inicio de operaciones',
+  padron_status: 'Estatus en el padrón',
+  csf_issued_on: 'Fecha de emisión',
+  notes: 'Observaciones fiscales',
+};
 const ADDRESS: [string, string][] = [
   ['tax_postal_code', 'Código postal'],
   ['tax_street_type', 'Tipo de vialidad'],
@@ -141,6 +155,20 @@ export default function CompanyForm({
     const el = document.querySelector<HTMLFormElement>('.registration-form');
     if (el) markDirty(el);
   }
+  // Update from a new constancia (existing company): the reading is shown as a list of changes first.
+  const [pending, setPending] = useState<{ result: CsfResult; file: File } | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const changes = pending
+    ? Object.entries(pending.result.fields).flatMap(([key, value]) => {
+        if (typeof value !== 'string' || !(key in blank) || (form[key] || '') === value) return [];
+        const label = LABELS[key] || ADDRESS.find(([k]) => k === key)?.[1] || key;
+        return [{ key, label, before: form[key] || 'vacío', after: value }];
+      })
+    : [];
+  const regimeChange =
+    pending &&
+    JSON.stringify((pending.result.fields.regimes || []).map((r) => r.label)) !==
+      JSON.stringify((company?.regimes || []).map((r) => r.label));
   const low = new Set(csf?.low_confidence || []);
   // Label helper: marks values taken from the constancia, in amber when the reading needs review.
   const mark = (key: string, input: ReactNode) => (
@@ -282,6 +310,103 @@ export default function CompanyForm({
           <div className="form-grid">
             {step === 0 && !company && csfMode === 'choose' && (
               <CsfCard ocrAvailable={ocrAvailable} onResult={applyCsf} onManual={() => setCsfMode('manual')} />
+            )}
+            {step === 0 && company && !pending && (
+              <div className="wide">
+                {updating ? (
+                  <CsfCard
+                    title="Actualizar desde una constancia nueva"
+                    ocrAvailable={ocrAvailable}
+                    companyId={company.id}
+                    onResult={(result, file) => setPending({ result, file })}
+                    onManual={() => setUpdating(false)}
+                  />
+                ) : (
+                  <button type="button" className="btn" onClick={() => setUpdating(true)}>
+                    Actualizar desde una constancia nueva
+                  </button>
+                )}
+              </div>
+            )}
+            {step === 0 && pending && (
+              <section className="csf-card wide" aria-label="Cambios de la constancia nueva">
+                <strong>Cambios que trae la constancia nueva</strong>
+                {changes.length === 0 && !regimeChange ? (
+                  <p className="muted">Los datos leídos coinciden con los registrados.</p>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Dato</th>
+                          <th>Registrado</th>
+                          <th>En la constancia</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {changes.map((c) => (
+                          <tr key={c.key}>
+                            <td>{c.label}</td>
+                            <td>{c.before}</td>
+                            <td
+                              className={pending.result.low_confidence.includes(c.key) ? 'low-confidence' : undefined}
+                            >
+                              {c.after}
+                            </td>
+                          </tr>
+                        ))}
+                        {regimeChange && (
+                          <tr>
+                            <td>Regímenes vigentes</td>
+                            <td>{(company?.regimes || []).map((r) => r.label).join('; ') || 'Sin registrar'}</td>
+                            <td>
+                              {(pending.result.fields.regimes || []).map((r) => r.label).join('; ') || 'Sin reconocer'}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {pending.result.obligations.length > 0 && (
+                  <p className="muted">
+                    La constancia lista {pending.result.obligations.length} obligaciones; revísalas en el paso 2.
+                  </p>
+                )}
+                {pending.result.warnings.length > 0 && (
+                  <ul className="csf-warnings-list">
+                    {pending.result.warnings.map((w) => (
+                      <li key={w}>{w}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => {
+                      applyCsf(pending.result, pending.file);
+                      setPending(null);
+                      setUpdating(false);
+                    }}
+                  >
+                    Aplicar al formulario
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setPending(null);
+                      setUpdating(false);
+                    }}
+                  >
+                    Descartar
+                  </button>
+                </div>
+                <small className="muted">
+                  Aplicar sólo llena el formulario; los cambios se guardan cuando confirmes «Guardar cambios».
+                </small>
+              </section>
             )}
             {step === 0 && csfMode === 'read' && csf && (
               <p className="csf-summary wide" role="status">
