@@ -4,6 +4,8 @@ Resumen operativo. Los procedimientos detallados del paquete RC1 siguen en `docs
 
 Reglas comunes: nunca restaurar ni instalar encima de una base o carpeta de datos existente; nunca escribir secretos en argumentos, scripts o registros; respaldar y ensayar la restauración antes de cualquier actualización.
 
+`DATABASE_URL` es obligatoria en cualquier modo: sin ella, o con las credenciales de ejemplo (`contasuite:contasuite` o la contraseña `CAMBIAR` de `.env.example`), la API no arranca. No existe conexión por defecto.
+
 ## Instalar
 
 ### Servidor (servicio Windows + HTTPS en LAN)

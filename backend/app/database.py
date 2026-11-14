@@ -8,8 +8,18 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / '.env')
 DATA = Path(os.getenv('DATA_DIR', str(ROOT / 'data'))).resolve()
-URL = os.getenv('DATABASE_URL', 'postgresql+psycopg://contasuite:contasuite@127.0.0.1:5432/contasuite')
+URL = os.getenv('DATABASE_URL', '').strip()
+if not URL:
+    raise RuntimeError(
+        'DATABASE_URL no está configurada. Defínela en el entorno del servicio o en el .env de la instancia; '
+        'ContaSuite no usa credenciales por defecto.'
+    )
 parsed_url = make_url(URL)
+# Example credentials (former built-in default and .env.example placeholder) are never accepted.
+if parsed_url.password == 'CAMBIAR' or (parsed_url.username, parsed_url.password) == ('contasuite', 'contasuite'):
+    raise RuntimeError(
+        'DATABASE_URL usa credenciales de ejemplo. Configura una contraseña propia para la base de la instancia.'
+    )
 if (
     parsed_url.get_backend_name() == 'sqlite'
     and parsed_url.database
