@@ -1,5 +1,5 @@
 import { markDirty } from '../dirtyForms';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Save, FolderOpen, ShieldCheck } from 'lucide-react';
 import { clearDirtyForms } from '../navigationGuard';
@@ -46,8 +46,17 @@ export default function CompanyForm({
       : blank,
   );
   const [step, setStep] = useState(0);
+  const [regimes, setRegimes] = useState<{ code: string; label: string; fisica: boolean; moral: boolean }[]>([]);
+  useEffect(() => {
+    const abort = new AbortController();
+    api<typeof regimes>('/sat/regimes', 'GET', undefined, abort.signal)
+      .then(setRegimes)
+      .catch(() => undefined); // the stored value stays selectable; saving still validates on the server
+    return () => abort.abort();
+  }, []);
   const [responsibleId, setResponsibleId] = useState(company?.accountant_id || '');
   const [previousAccess, setPreviousAccess] = useState<PreviousAccess | ''>('');
+  const shownRegimes = regimes.filter((r) => (form.person_type === 'Moral' ? r.moral : r.fisica));
   const responsibleChanged = admin && responsibleId !== (company?.accountant_id || '');
   const [busy, setBusy] = useState(false);
   const set = (key: keyof typeof form, value: string) => setForm((v) => ({ ...v, [key]: value }));
@@ -218,17 +227,15 @@ export default function CompanyForm({
               <>
                 <Field label="Régimen fiscal principal *" wide>
                   <select value={form.regime} onChange={(e) => set('regime', e.target.value)}>
-                    {[
-                      '601 - General de Ley Personas Morales',
-                      '603 - Personas Morales con Fines no Lucrativos',
-                      '605 - Sueldos y Salarios',
-                      '606 - Arrendamiento',
-                      '612 - Personas Físicas con Actividades Empresariales',
-                      '624 - Coordinados',
-                      '625 - Plataformas Tecnológicas',
-                      '626 - Régimen Simplificado de Confianza',
-                    ].map((v) => (
-                      <option key={v}>{v}</option>
+                    {!form.regime && <option value="">Selecciona el régimen</option>}
+                    {/* A stored value outside the catalog (older data) stays selectable until it is changed. */}
+                    {form.regime && !shownRegimes.some((r) => r.label === form.regime) && (
+                      <option value={form.regime}>{form.regime}</option>
+                    )}
+                    {shownRegimes.map((r) => (
+                      <option key={r.code} value={r.label}>
+                        {r.label}
+                      </option>
                     ))}
                   </select>
                 </Field>

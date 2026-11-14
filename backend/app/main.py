@@ -473,6 +473,14 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), princ
     return company
 
 
+@app.get('/api/sat/regimes', dependencies=APP)
+def sat_regimes():
+    """SAT regime catalog (c_RegimenFiscal) for the company form (Bloque 1)."""
+    from .sat_regimes import catalog
+
+    return catalog()
+
+
 @app.get('/api/companies/{id}/history', dependencies=APP)
 def company_history(
     id: str,
