@@ -547,7 +547,7 @@ export default function App() {
                               </dd>
                             </div>
                           </dl>
-                          <h3>Agentes locales</h3>
+                          <h3 id="agentes">Agentes locales</h3>
                           {state?.agents.length ? (
                             state.agents.map((a) => (
                               <div className="agent-line" key={a.id}>

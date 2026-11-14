@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, FolderSearch, FileText, ShieldCheck, KeyRound } from 'lucide-react';
+import { Archive, ArrowLeft, Pencil, FolderSearch, FileText, ShieldCheck, KeyRound } from 'lucide-react';
 import { api, dateLabel, today } from '../api';
 import { Badge, Kpi, Heading } from '../components/ui';
 import { Records } from './Records';
@@ -18,7 +18,7 @@ import type { Company, State } from '../types';
 import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../companyNavigation';
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
-import { CompanySwitcher, CompanyViews } from './CompanyHeader';
+import { CompanySwitcher, CompanyViews, MoreMenu } from './CompanyHeader';
 export default function Dossier({
   company: c,
   state,
@@ -69,6 +69,15 @@ export default function Dossier({
   const responsible = state.responsibles?.find((r) => r.id === c.accountant_id) || null;
   const [agentId, setAgentId] = useState('');
   const jobs = state.jobs.filter((j) => j.company_id === c.id);
+  // Why «Analizar carpeta» cannot run now, in plain words (Bloque 3). The authorized folders live in the
+  // agent's configuration, so a folder outside them is only known from the failed analysis it returns.
+  const scanAgent = state.agents.find((a) => a.online && a.capabilities.includes('scan_folder'));
+  const scanBlocked = !c.folder
+    ? 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.'
+    : !scanAgent
+      ? 'El agente local está desconectado: inícialo en el equipo Windows con las carpetas autorizadas.'
+      : null;
+  const lastFailure = jobs[0]?.status === 'failed' ? jobs[0].result.error || 'sin detalle' : null;
   async function archiveCompany() {
     if (
       !confirmDiscard() ||
@@ -146,46 +155,65 @@ export default function Dossier({
           title={c.name}
           description={`RFC: ${c.rfc} · Persona ${c.person_type} · ${c.regime}`}
           actions={
-            // Each action by the role's permission in this company (Bloque 2), not by `admin`.
-            <>
-              {can(me, 'recopila.usar', c.id) && (
-                <Link className="btn" to={'/recopilador-cfdi?empresa=' + c.id}>
-                  <FolderSearch size={16} />
-                  Recopila
-                </Link>
-              )}
+            // Each action by the role's permission in this company (Bloque 2), not by `admin` (Bloque 3).
+            <div className="dossier-actions">
               {can(me, 'recibos.usar', c.id) && (
                 <Link className="btn" to={'/recibos?empresa=' + c.id}>
                   <FileText size={16} />
                   Emitir recibo
                 </Link>
               )}
-              {can(me, 'empresa.archivar', c.id) && (
-                <button
-                  className="btn"
-                  disabled={busy || !state.archive_available}
-                  onClick={() => void archiveCompany()}
-                >
-                  {c.archived ? 'Restaurar empresa' : 'Archivar empresa'}
-                </button>
-              )}
-              {can(me, 'empresa.editar', c.id) && (
-                <Link className="btn" to={'/empresas/' + c.id + '/editar?' + params}>
-                  <Pencil size={16} />
-                  Editar
-                </Link>
-              )}
               {/* Folder analysis still runs through the administrator's agent until Bloque 4. */}
               {me.admin && (
-                <button className="btn primary" disabled={busy || !c.folder} onClick={scan}>
+                <button
+                  className="btn primary"
+                  disabled={busy || !!scanBlocked}
+                  aria-describedby={scanBlocked ? 'scan-reason' : undefined}
+                  onClick={scan}
+                >
                   <FolderSearch size={17} />
                   Analizar carpeta
                 </button>
               )}
-            </>
+              {(can(me, 'recopila.usar', c.id) ||
+                can(me, 'empresa.editar', c.id) ||
+                can(me, 'empresa.archivar', c.id)) && (
+                <MoreMenu label="Más acciones de la empresa">
+                  {can(me, 'recopila.usar', c.id) && (
+                    <Link role="menuitem" to={'/recopilador-cfdi?empresa=' + c.id}>
+                      <FolderSearch size={16} />
+                      Recopila
+                    </Link>
+                  )}
+                  {can(me, 'empresa.editar', c.id) && (
+                    <Link role="menuitem" to={'/empresas/' + c.id + '/editar?' + params}>
+                      <Pencil size={16} />
+                      Editar
+                    </Link>
+                  )}
+                  {can(me, 'empresa.archivar', c.id) && (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      disabled={busy || !state.archive_available}
+                      onClick={() => void archiveCompany()}
+                    >
+                      <Archive size={16} />
+                      {c.archived ? 'Restaurar empresa' : 'Archivar empresa'}
+                    </button>
+                  )}
+                </MoreMenu>
+              )}
+            </div>
           }
         />
       </div>
+      {me.admin && (scanBlocked || lastFailure) && (
+        <p className="action-reason" id="scan-reason" role="status">
+          {scanBlocked || 'El último análisis falló: ' + lastFailure}{' '}
+          <Link to="/configuracion#agentes">Instrucciones del agente</Link>
+        </p>
+      )}
       <div className="dossier-meta">
         {c.is_demo && <Badge tone="blue">EMPRESA DEMO</Badge>}
         <Badge>Control fiscal por periodo</Badge>
