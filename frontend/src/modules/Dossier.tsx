@@ -18,6 +18,7 @@ import type { Company, State } from '../types';
 import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../companyNavigation';
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
+import { CompanySwitcher, CompanyViews } from './CompanyHeader';
 export default function Dossier({
   company: c,
   state,
@@ -30,7 +31,6 @@ export default function Dossier({
   notify: (m: string) => void;
 }) {
   const navigate = useNavigate();
-  const [includeArchived, setIncludeArchived] = useState(false);
   const [archiveError, setArchiveError] = useState('');
   const [params, setParams] = useSearchParams();
   const section = dossierSection(params.get('tab'));
@@ -100,9 +100,6 @@ export default function Dossier({
   useEffect(() => {
     document.querySelector<HTMLElement>('.dossier-heading h1')?.focus();
   }, [c.id]);
-  const choices = state.companies
-    .filter((x) => x.id === c.id || includeArchived || x.archived === false)
-    .sort((a, b) => a.name.localeCompare(b.name, 'es'));
   async function scan() {
     setBusy(true);
     try {
@@ -122,39 +119,20 @@ export default function Dossier({
   const documentPanel = <Documents key={c.id} companyId={c.id} notify={notify} refresh={refresh} />;
   return (
     <>
-      {section === 'Resumen' && <FiscalSummary period={period} companyId={c.id} />}
-      <div className="card padded">
-        <label>
-          Empresa
-          <select
-            aria-label="Cambiar empresa"
-            value={c.id}
-            onChange={(e) => {
-              if (confirmDiscard()) navigate(dossierUrl(e.target.value, section, period, params));
-            }}
-          >
-            {choices.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.name}
-                {x.archived ? ' · Archivada' : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Link
-          className="btn"
-          to={'/empresas?' + new URLSearchParams({ tab: 'Panel', vista: 'General', period, company_id: c.id })}
-        >
-          Dashboard de empresa
+      <div className="dossier-topbar">
+        <Link className="back-link breadcrumb" to={directoryUrl(params)}>
+          <ArrowLeft size={16} />
+          Directorio de empresas
         </Link>
-        <Link className="btn" to={'/empresas?' + new URLSearchParams({ tab: 'Obligaciones', period })}>
-          Control de obligaciones
-        </Link>
-        <label>
-          <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} />
-          Incluir archivadas autorizadas
-        </label>
+        <CompanySwitcher
+          companies={state.companies}
+          companyId={c.id}
+          onChange={(id) => {
+            if (confirmDiscard()) navigate(dossierUrl(id, section, period, params));
+          }}
+        />
       </div>
+      <CompanyViews current="Expediente" companyId={c.id} period={period} context={params} />
       {c.archived && (
         <p className="error-banner" role="alert">
           Empresa archivada. Puedes registrar información con tus permisos habituales; guardar no restaura la empresa.
@@ -162,10 +140,6 @@ export default function Dossier({
       )}
       {!state.archive_available && <p role="status">Archivado pendiente de activar mediante migración autorizada.</p>}
       {archiveError && <p role="alert">{archiveError}</p>}
-      <Link className="back-link" to={directoryUrl(params)}>
-        <ArrowLeft size={16} />
-        Volver al directorio de empresas
-      </Link>
       <div className="dossier-heading">
         <div className="company-avatar big">{c.name.slice(0, 2).toUpperCase()}</div>
         <Heading

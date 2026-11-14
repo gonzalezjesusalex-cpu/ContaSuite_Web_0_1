@@ -9,6 +9,7 @@ import IntegralDashboard from './IntegralDashboard';
 import CompanyImporter from './CompanyImporter';
 import Credentials, { AlertCenter } from './Credentials';
 import FiscalControl from './FiscalControl';
+import { CompanySwitcher, CompanyViews } from './CompanyHeader';
 import { useFiscalRead, fiscalStatus, exportFiscal, type Summary } from './fiscalRead';
 import { confirmDiscard } from '../navigationGuard';
 import { companiesSection, companiesSections, companiesUrl, companiesViews } from '../companyNavigation';
@@ -30,6 +31,8 @@ export default function Companies({
   notify: (m: string) => void;
 }) {
   const [params, setParams] = useSearchParams();
+  // Opened for one company (Bloque 3): the dashboard and the obligations control show its switcher.
+  const focused = params.get('company_id') || '';
   const [tab, setTab] = useState(() => target(params.get('tab'), params.get('vista')).section);
   const [vista, setVista] = useState(() => target(params.get('tab'), params.get('vista')).view);
   useEffect(() => {
@@ -174,8 +177,28 @@ export default function Companies({
           ))}
         </div>
       )}
+      {focused && (tab === 'Panel' || tab === 'Obligaciones') && (
+        <div className="dossier-topbar">
+          <CompanySwitcher
+            companies={state.companies}
+            companyId={focused}
+            onChange={(id) => {
+              if (!confirmDiscard()) return;
+              const q = new URLSearchParams(params);
+              q.set('company_id', id);
+              setParams(q);
+            }}
+          />
+          <CompanyViews current={tab === 'Panel' ? 'Dashboard' : 'Obligaciones'} companyId={focused} period={period} />
+        </div>
+      )}
       {tab === 'Panel' ? (
-        <IntegralDashboard state={state} period={period} view={vista === 'General' ? 'Dashboard general' : vista} />
+        <IntegralDashboard
+          key={focused}
+          state={state}
+          period={period}
+          view={vista === 'General' ? 'Dashboard general' : vista}
+        />
       ) : tab === 'Importar' ? (
         <CompanyImporter state={state} />
       ) : tab === 'Credenciales' ? (
@@ -192,7 +215,7 @@ export default function Companies({
               Obligaciones del periodo CSV
             </button>
           </div>
-          <FiscalControl state={state} period={period} notify={notify} />
+          <FiscalControl state={state} period={period} notify={notify} companyId={focused || undefined} />
         </>
       ) : tab === 'Documentos' && vista === 'Expedientes por empresa' ? (
         <div className="card">
