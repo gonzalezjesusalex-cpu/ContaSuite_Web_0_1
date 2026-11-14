@@ -1289,15 +1289,6 @@ dd {
   gap: 12px;
   margin: 12px 0;
 }
-.settings-reference {
-  margin-top: 20px;
-}
-.settings-reference summary {
-  padding: 18px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-}
 .integration-notice {
   display: flex;
   align-items: center;

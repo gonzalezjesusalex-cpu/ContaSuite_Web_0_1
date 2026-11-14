@@ -32,7 +32,6 @@ const Companies = lazy(() => import('./modules/Companies'));
 const CompanyForm = lazy(() => import('./modules/CompanyForm'));
 const Dossier = lazy(() => import('./modules/Dossier'));
 const TasksAndDeadlines = lazy(() => import('./modules/TasksAndDeadlines'));
-const DesignPreview = lazy(() => import('./modules/DesignPreview'));
 const Receipts = lazy(() => import('./modules/Receipts'));
 const Recopila = lazy(() => import('./modules/Recopila'));
 const Organizador = lazy(() => import('./modules/Organizador'));
@@ -422,15 +421,6 @@ export default function App() {
                   path="/declara"
                   element={identity?.admin ? <Declara {...shared} /> : <Navigate to="/empresas" replace />}
                 />
-                {nav[1].items
-                  .filter((i) => !['/recibos', '/recopilador-cfdi', '/organizador-cfdi', '/declara'].includes(i.path))
-                  .map((i) => (
-                    <Route
-                      key={i.path}
-                      path={i.path}
-                      element={<DesignPreview module={i.path.slice(1)} title={i.title} />}
-                    />
-                  ))}
                 <Route
                   path="/configuracion"
                   element={
@@ -527,10 +517,6 @@ export default function App() {
                           onEnded={ended}
                         />
                       )}
-                      <details className="card settings-reference">
-                        <summary>Ver propuesta visual original de Stitch</summary>
-                        <DesignPreview module="configuracion" title="Configuración" />
-                      </details>
                     </>
                   }
                 />
