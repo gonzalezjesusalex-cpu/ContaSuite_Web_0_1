@@ -17,7 +17,7 @@ from app.storage.migrate import STORAGE_HEAD, schema_revision, upgrade_schema, u
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
-HEAD = 'cs_0006_unified_baseline'
+HEAD = 'cs_0007_user_role'
 OLD_CHAIN = [
     ('fiscal_migrations', '001_control_obligaciones'),
     ('credential_migrations', '001_vault'),
@@ -119,9 +119,11 @@ def test_schema_admin_status_is_read_only(tmp_path):
         text=True,
         timeout=120,
     )
-    assert result.returncode == 0, result.stderr
+    # Since cs_0007 (user roles) an old database needs the explicit update before the application accepts it;
+    # --status only reports it.
+    assert result.returncode == 1, result.stderr
     assert 'Revision: ' + STORAGE_HEAD + ' (head: ' + HEAD + ') - update pending' in result.stdout
-    assert 'Schema compatible' in result.stdout
+    assert 'Schema incompatible: user_accounts.role:missing' in result.stdout
     engine = local_engine(database)
     try:
         assert schema_revision(engine) == (STORAGE_HEAD, HEAD)

@@ -85,7 +85,9 @@ def test_fresh_database_and_frozen_migration_schema_match_models(tmp_path):
             'login_throttles',
             'security_events',
         ):
-            assert {c.name for c in Base.metadata.tables[name].columns} == {
+            # Columns added after the frozen storage chain, by later revisions of the single Alembic history.
+            later = {'user_accounts': {'role'}}.get(name, set())
+            assert {c.name for c in Base.metadata.tables[name].columns} - later == {
                 c['name'] for c in inspector.get_columns(name)
             }, name
         columns = {c['name']: c for c in inspector.get_columns('documents')}

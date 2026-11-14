@@ -12,8 +12,10 @@ from sqlalchemy import (
     BigInteger,
     UniqueConstraint,
     CheckConstraint,
+    event,
+    inspect,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 from .database import Base
 
 
@@ -313,16 +315,45 @@ class IdentityState(Base):
     initialized: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+ROLES = ('admin', 'contador', 'auxiliar')
+
+
 class UserAccount(Base):
     __tablename__ = 'user_accounts'
+    __table_args__ = (CheckConstraint("role IN ('admin', 'contador', 'auxiliar')", name='ck_user_account_role'),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     username: Mapped[str] = mapped_column(String(64), unique=True)
     display_name: Mapped[str] = mapped_column(String(100))
     password_hash: Mapped[str] = mapped_column(String(255))
+    # `role` is the source of truth (migration cs_0007). `admin` stays in step for code and scripts that still
+    # read or assign the boolean; the validators below keep both columns consistent whichever one is set.
+    role: Mapped[str] = mapped_column(String(20), server_default='auxiliar')
     admin: Mapped[bool] = mapped_column(Boolean, default=False)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     revision: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    @validates('role')
+    def _valid_role(self, _key, value):
+        if value not in ROLES:
+            raise ValueError('Rol de usuario no válido.')
+        return value
+
+
+@event.listens_for(UserAccount, 'before_insert')
+def _role_on_insert(_mapper, _connection, user):
+    # An explicit role wins; otherwise the legacy boolean decides (admin, or the least privileged role).
+    if user.role is None:
+        user.role = 'admin' if user.admin else 'auxiliar'
+    user.admin = user.role == 'admin'
+
+
+@event.listens_for(UserAccount, 'before_update')
+def _role_on_update(_mapper, _connection, user):
+    if inspect(user).attrs.role.history.has_changes():
+        user.admin = user.role == 'admin'
+    elif inspect(user).attrs.admin.history.has_changes():
+        user.role = 'admin' if user.admin else ('auxiliar' if user.role == 'admin' else user.role)
 
 
 class UserCompanyGrant(Base):

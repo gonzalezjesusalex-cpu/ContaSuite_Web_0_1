@@ -33,6 +33,21 @@ XML = b'<?xml version="1.0"?><Comprobante Fecha="2026-10-01"/>'
 ADMIN = StorageActor('test-administrator', admin=True)
 
 
+def apply_revision(engine, name):
+    """Run one Alembic revision's upgrade() directly (no version bookkeeping) on a test engine."""
+    import importlib.util
+    from pathlib import Path
+    from alembic.operations import Operations
+    from alembic.runtime.migration import MigrationContext
+
+    path = Path(__file__).resolve().parents[1] / 'migrations' / 'versions' / (name + '.py')
+    spec = importlib.util.spec_from_file_location('revision_' + name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
+        module.upgrade()
+
+
 @pytest.fixture
 def core(tmp_path):
     engine = create_engine('sqlite:///' + str(tmp_path / 'storage.db'))
@@ -49,6 +64,9 @@ def core(tmp_path):
     from app.document_identity import metadata as identity_metadata
 
     identity_metadata.create_all(engine)
+    # Later revisions that alter tables created by the storage chain (create_all skips existing tables).
+    # Module tables such as the vault stay absent on purpose: their guards are tested without them.
+    apply_revision(engine, '0007_user_role')
     sessions = sessionmaker(engine, expire_on_commit=False)
     with sessions.begin() as db:
         db.add_all(

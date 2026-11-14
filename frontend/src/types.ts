@@ -2,6 +2,7 @@ export interface CurrentUser {
   id: string;
   display_name: string;
   admin: boolean;
+  role: 'admin' | 'contador' | 'auxiliar';
   bootstrap: boolean;
   company_ids: string[];
   write_company_ids: string[];

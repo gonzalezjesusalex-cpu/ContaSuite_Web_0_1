@@ -35,14 +35,11 @@ def client():
     if database.exists():
         database.unlink()
     from app.receipt_migration import migrate_receipts
-    from app.storage.migrate import upgrade_storage
+    from app.storage.migrate import upgrade_schema
 
+    # Same steps as scripts/schema_admin.py --new --apply: the whole Alembic chain up to head.
     migrate_receipts(engine)
-    upgrade_storage(engine)
-    from app.schema_compatibility import metadatas
-
-    for metadata in metadatas():
-        metadata.create_all(engine)
+    upgrade_schema(engine)
     with TestClient(app) as client:
         yield client
 

@@ -10,6 +10,7 @@ type Account = {
   username: string;
   display_name: string;
   admin: boolean;
+  role: 'admin' | 'contador' | 'auxiliar';
   enabled: boolean;
   revision: number;
   grants: Grant[];
@@ -313,6 +314,8 @@ function Editor({
   const [grants, setGrants] = useState<Grant[]>(account?.grants || []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Until the role editor arrives (Bloque 2), "Colaborador" keeps an existing non-admin role or creates an auxiliar.
+  const role = admin ? 'admin' : account?.role === 'contador' ? 'contador' : 'auxiliar';
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -322,12 +325,12 @@ function Editor({
         await api('/auth/users/' + account.id, 'PUT', {
           revision: account.revision,
           display_name: name,
-          admin,
+          role,
           enabled,
           grants,
           ...(password ? { password } : {}),
         });
-      else await api('/auth/users', 'POST', { username, display_name: name, password, admin, enabled, grants });
+      else await api('/auth/users', 'POST', { username, display_name: name, password, role, enabled, grants });
       setPassword('');
       onSaved();
     } catch (e) {

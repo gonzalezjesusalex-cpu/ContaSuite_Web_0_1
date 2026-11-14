@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, update
 from .database import SessionLocal
-from .models import IdentityState, UserAccount, UserCompanyGrant, UserSession, SecurityEvent, now
+from .models import ROLES, IdentityState, UserAccount, UserCompanyGrant, UserSession, SecurityEvent, now
 
 security = HTTPBearer(auto_error=False)
 SESSION_COOKIE = 'contasuite_session'
@@ -34,6 +34,14 @@ class Principal:
     write_company_ids: frozenset[str] = frozenset()
     bootstrap: bool = False
     session_id: str | None = None
+    role: str | None = None
+
+    def __post_init__(self):
+        # Role comes from the server-side account; `admin` is derived from it and both must agree.
+        role = self.role or ('admin' if self.admin else 'auxiliar')
+        if role not in ROLES or self.admin != (role == 'admin'):
+            raise ValueError('Rol de sesión incoherente.')
+        object.__setattr__(self, 'role', role)
 
     def require_admin(self):
         if not self.admin:
@@ -59,6 +67,7 @@ class Principal:
             id=self.subject,
             display_name=self.display_name,
             admin=self.admin,
+            role=self.role,
             bootstrap=self.bootstrap,
             company_ids=sorted(self.company_ids),
             write_company_ids=sorted(self.write_company_ids),
@@ -119,7 +128,9 @@ def auth(request: Request, credentials: HTTPAuthorizationCredentials | None = Se
                 and utc(row.last_seen_at) + timedelta(minutes=30) > stamp
             ):
                 session_secure(request)
-                principal = Principal(user.id, user.display_name, user.admin, session_id=ident)
+                principal = Principal(
+                    user.id, user.display_name, user.role == 'admin', session_id=ident, role=user.role
+                )
                 request.state.principal = principal
                 if request.method not in SAFE_METHODS:
                     csrf = request.headers.get('x-csrf-token', '')
@@ -131,10 +142,11 @@ def auth(request: Request, credentials: HTTPAuthorizationCredentials | None = Se
                 principal = Principal(
                     user.id,
                     user.display_name,
-                    user.admin,
+                    user.role == 'admin',
                     frozenset(g.company_id for g in grants),
                     frozenset(g.company_id for g in grants if g.access == 'write'),
                     session_id=ident,
+                    role=user.role,
                 )
                 activity = request.method not in SAFE_METHODS or request.headers.get('x-contasuite-activity') == '1'
                 if activity and utc(row.last_seen_at) + timedelta(minutes=1) < stamp:

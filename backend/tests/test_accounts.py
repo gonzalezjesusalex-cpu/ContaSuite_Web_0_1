@@ -45,7 +45,13 @@ def setup(c):
 
 def add_user(c, username='reader', grants=(), admin=False):
     result = c.post(
-        '/api/auth/users', json={'username': username, 'display_name': username, 'password': PASSWORD, 'admin': admin}
+        '/api/auth/users',
+        json={
+            'username': username,
+            'display_name': username,
+            'password': PASSWORD,
+            'role': 'admin' if admin else 'auxiliar',
+        },
     )
     assert result.status_code == 201, result.text
     user = result.json()
@@ -55,7 +61,7 @@ def add_user(c, username='reader', grants=(), admin=False):
             json={
                 'revision': user['revision'],
                 'display_name': username,
-                'admin': admin,
+                'role': 'admin' if admin else 'auxiliar',
                 'enabled': True,
                 'grants': [{'company_id': cid, 'access': access} for cid, access in grants],
             },
@@ -289,7 +295,7 @@ def test_non_admin_cannot_reach_legacy_modules_admin_functions_or_supply_identit
     assert (
         client.post(
             '/api/auth/users',
-            json={'username': 'attacker', 'password': PASSWORD, 'display_name': 'Attacker', 'admin': True},
+            json={'username': 'attacker', 'password': PASSWORD, 'display_name': 'Attacker', 'role': 'admin'},
         ).status_code
         == 403
     )
@@ -317,7 +323,7 @@ def test_permissions_updates_deactivation_and_revocation_invalidate_sessions(cli
             json={
                 'revision': user['revision'],
                 'display_name': 'Reader',
-                'admin': False,
+                'role': 'auxiliar',
                 'enabled': False,
                 'grants': [],
             },
@@ -331,7 +337,7 @@ def test_permissions_updates_deactivation_and_revocation_invalidate_sessions(cli
             json={
                 'revision': user['revision'],
                 'display_name': 'Reader',
-                'admin': False,
+                'role': 'auxiliar',
                 'enabled': True,
                 'grants': [],
             },
@@ -348,11 +354,11 @@ def test_permissions_updates_deactivation_and_revocation_invalidate_sessions(cli
 def test_last_administrator_stale_changes_and_invalid_grants(client):
     admin = setup(client)
     user = client.get('/api/auth/users').json()[0]
-    base = {'revision': user['revision'], 'display_name': 'Admin', 'admin': True, 'enabled': True, 'grants': []}
+    base = {'revision': user['revision'], 'display_name': 'Admin', 'role': 'admin', 'enabled': True, 'grants': []}
     assert client.put('/api/auth/users/' + admin, json={**base, 'enabled': False}).status_code == 409
-    assert client.put('/api/auth/users/' + admin, json={**base, 'admin': False}).status_code == 409
+    assert client.put('/api/auth/users/' + admin, json={**base, 'role': 'auxiliar'}).status_code == 409
     reader = add_user(client)
-    payload = {**base, 'admin': False, 'revision': reader['revision']}
+    payload = {**base, 'role': 'auxiliar', 'revision': reader['revision']}
     assert (
         client.put(
             '/api/auth/users/' + reader['id'],
@@ -485,7 +491,7 @@ def test_administrator_reset_password_and_secure_https_cookie(client):
             json={
                 'revision': user['revision'],
                 'display_name': 'Reader',
-                'admin': False,
+                'role': 'auxiliar',
                 'enabled': True,
                 'grants': [],
                 'password': NEW_PASSWORD,
@@ -534,7 +540,7 @@ def test_account_creation_includes_state_and_grants_atomically(client):
             'username': 'disabled-admin',
             'password': PASSWORD,
             'display_name': 'Disabled',
-            'admin': True,
+            'role': 'admin',
             'enabled': False,
             'grants': [{'company_id': c['id'], 'access': 'read'}],
         },

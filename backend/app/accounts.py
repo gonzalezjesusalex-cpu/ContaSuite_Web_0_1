@@ -7,7 +7,7 @@ import hashlib
 import secrets
 import threading
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, Security
 from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -82,6 +82,9 @@ class Login(Input):
         return value.lower()
 
 
+Role = Literal['admin', 'contador', 'auxiliar']
+
+
 class Grant(Input):
     company_id: str = Field(min_length=1, max_length=36)
     access: str = Field(pattern='^(read|write)$')
@@ -90,7 +93,7 @@ class Grant(Input):
 class AccountCreate(Login):
     password: str = Field(min_length=12, max_length=128)
     display_name: str = Field(min_length=1, max_length=100, pattern=r'^[^\x00-\x1f]+$')
-    admin: bool = False
+    role: Role = 'auxiliar'
     enabled: bool = True
     grants: list[Grant] = Field(default_factory=list, max_length=1000)
 
@@ -104,7 +107,7 @@ class AccountEdit(Input):
     revision: int = Field(ge=1)
     display_name: str = Field(min_length=1, max_length=100, pattern=r'^[^\x00-\x1f]+$')
     enabled: bool
-    admin: bool
+    role: Role
     grants: list[Grant] = Field(default_factory=list, max_length=1000)
     password: str | None = Field(None, min_length=12, max_length=128)
 
@@ -152,7 +155,8 @@ def public_user(db, user):
         id=user.id,
         username=user.username,
         display_name=user.display_name,
-        admin=user.admin,
+        admin=user.role == 'admin',
+        role=user.role,
         enabled=user.enabled,
         revision=user.revision,
         grants=[
@@ -193,7 +197,7 @@ def bootstrap(
         if state is None or state.initialized:
             raise HTTPException(409, 'La administración inicial ya está configurada.')
         user = UserAccount(
-            username=payload.username, display_name=payload.display_name, password_hash=encoded, admin=True
+            username=payload.username, display_name=payload.display_name, password_hash=encoded, role='admin'
         )
         db.add(user)
         db.flush()
@@ -336,7 +340,7 @@ def create_user(payload: AccountCreate, principal: AdminDep):
                 username=payload.username,
                 display_name=payload.display_name,
                 password_hash=encoded,
-                admin=payload.admin,
+                role=payload.role,
                 enabled=payload.enabled,
             )
             db.add(user)
@@ -359,20 +363,22 @@ def edit_user(ident: str, payload: AccountEdit, principal: AdminDep):
         user = db.get(UserAccount, ident)
         if not user:
             raise HTTPException(404, 'Cuenta no encontrada.')
-        if not payload.enabled or not payload.admin:
+        if not payload.enabled or payload.role != 'admin':
             others = db.scalar(
                 select(func.count())
                 .select_from(UserAccount)
-                .where(UserAccount.id != ident, UserAccount.enabled == True, UserAccount.admin == True)
+                .where(UserAccount.id != ident, UserAccount.enabled == True, UserAccount.role == 'admin')
             )
-            if user.admin and user.enabled and not others:
+            if user.role == 'admin' and user.enabled and not others:
                 raise HTTPException(409, 'Debe permanecer al menos un administrador activo.')
         grants = {g.company_id: g.access for g in payload.grants}
         if len(grants) != len(payload.grants) or any(db.get(Company, cid) is None for cid in grants):
             raise HTTPException(422, 'Revisa las empresas y permisos seleccionados.')
         values = dict(
             display_name=payload.display_name,
-            admin=payload.admin,
+            # A bulk UPDATE skips the ORM hooks that keep `admin` in step, so both columns are written here.
+            role=payload.role,
+            admin=payload.role == 'admin',
             enabled=payload.enabled,
             revision=payload.revision + 1,
         )
@@ -446,7 +452,7 @@ def recover_admin():
         user = db.scalar(select(UserAccount).where(UserAccount.username == args.username.lower()))
         if user is None:
             parser.error('Cuenta inexistente; no se creará una cuenta implícita.')
-        user.password_hash, user.enabled, user.admin = encoded, True, True
+        user.password_hash, user.enabled, user.role = encoded, True, 'admin'
         user.revision += 1
         revoke(db, user.id)
         db.add(SecurityEvent(actor_id='local_recovery', action='account_recovered:' + user.id, outcome='success'))

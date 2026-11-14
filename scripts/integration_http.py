@@ -119,7 +119,7 @@ def main():
                 json={
                     'display_name': 'Lector revocado',
                     'enabled': True,
-                    'admin': False,
+                    'role': 'auxiliar',
                     'revision': reader['revision'],
                     'grants': [],
                 },
