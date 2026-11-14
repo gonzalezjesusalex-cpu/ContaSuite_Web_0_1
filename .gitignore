@@ -11,3 +11,5 @@ data/
 agent/config.json
 frontend/dist/
 .qa/
+frontend/test-results/
+frontend/playwright-report/

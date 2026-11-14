@@ -32,6 +32,14 @@ Pruebas:
 cd backend && python -m pytest -q
 npm --prefix frontend run build
 npm --prefix frontend exec -- tsc --noEmit -p frontend/tsconfig.json
+node --test frontend/tests/
+```
+
+Prueba E2E de humo (Playwright: primer acceso, sesión, empresas, expediente, subir y descargar documento). Requiere el frontend compilado; levanta su propio servidor sintético (`scripts/e2e_server.py`, SQLite temporal, puerto 8097) y no lee `.env` ni toca datos reales. Usa el Edge instalado; `E2E_PYTHON` indica el Python con `backend/requirements-dev.txt`:
+
+```bash
+npm --prefix frontend run build
+E2E_PYTHON=.venv/Scripts/python npm --prefix frontend run e2e
 ```
 
 Servidor de desarrollo: configurar un `.env` propio (ver `.env.example`, nunca uno con datos reales) y ejecutar `npm --prefix frontend run dev` (Vite 4173 + FastAPI). `scripts/dev.mjs` acepta `CONTA_PYTHON` con la ruta del Python preparado.

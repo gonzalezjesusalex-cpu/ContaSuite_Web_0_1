@@ -7,8 +7,9 @@
     "dev": "node ../scripts/dev.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\" \"tests/**/*.mjs\" \"*.{ts,cjs,js,json,html}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\" \"tests/**/*.mjs\" \"*.{ts,cjs,js,json,html}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\" \"tests/**/*.mjs\" \"e2e/**/*.ts\" \"*.{ts,cjs,js,json,html}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\" \"tests/**/*.mjs\" \"e2e/**/*.ts\" \"*.{ts,cjs,js,json,html}\"",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.0",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
+    "@playwright/test": "1.65.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
