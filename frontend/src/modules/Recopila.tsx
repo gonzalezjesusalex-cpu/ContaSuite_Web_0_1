@@ -1,17 +1,28 @@
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
-import { useEffect, useRef, useState, type InputHTMLAttributes } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Archive, Download, Eye, FileText, FolderOpen, RefreshCw, Upload } from 'lucide-react';
 import { api, getToken, dateLabel } from '../api';
 import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
 import type { State } from '../types';
+// Counters reported by the Recopila engine adapter; any other keys are informative only.
+type RunSummary = {
+  policy_pages?: number;
+  policy_pdf_files?: number;
+  policies_with_document?: number;
+  policies_without_document?: number;
+  leftover_cfdi_pdfs?: number;
+  cfdi_xml_parsed?: number;
+  months_desc?: string[];
+  [key: string]: unknown;
+};
 type Run = {
   id: string;
   company_id: string | null;
   name: string;
   status: string;
   message: string;
-  summary: Record<string, any>;
+  summary: RunSummary;
   warnings: string[];
   by_month: boolean;
   created_at: string;
@@ -227,7 +238,7 @@ export default function Recopila({
     setError('');
     setDetail(null);
   }
-  const summary = detail?.run.summary || {};
+  const summary: RunSummary = detail?.run.summary || {};
   const policies = (detail?.policies || []).filter(
     (p) =>
       (!filter || p.status === filter) &&
@@ -418,7 +429,7 @@ export default function Recopila({
                       </tr>
                     </thead>
                     <tbody>
-                      {visible.map((p, i) => (
+                      {visible.map((p) => (
                         <tr
                           key={p.source + ':' + p.page}
                           className={policy?.source === p.source && policy?.page === p.page ? 'receipt-selected' : ''}

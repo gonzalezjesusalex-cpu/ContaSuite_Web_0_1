@@ -83,6 +83,9 @@ export default function Companies({
       },
       { replace: true },
     );
+    // setParams changes identity on every URL change (React Router 7); as a dependency this URL sync
+    // would re-run after its own write. It only has to follow the page state below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, vista, period, query, accountant, status, archive, sort]);
   const all = directory;
   const list = all.filter((c) => !status || statusOf(c, state, period, fiscal?.company_summaries[c.id]) === status);

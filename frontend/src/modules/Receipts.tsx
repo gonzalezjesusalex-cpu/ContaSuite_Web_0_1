@@ -164,6 +164,9 @@ export default function Receipts({
       clearTimeout(timer);
       controller.abort();
     };
+    // Depends on every field of Item (not on the object): a new object with the same values must not
+    // request the PDF preview again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     item.company_id,
     item.client_id,

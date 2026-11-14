@@ -141,6 +141,9 @@ export default function IntegralDashboard({
       },
       { replace: true },
     );
+    // setContext changes identity on every URL change (React Router 7); as a dependency this URL sync
+    // would re-run after its own write. It only has to follow the selected company.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [company]);
   useEffect(() => {
     const update = () => {

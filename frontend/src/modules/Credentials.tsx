@@ -1,5 +1,5 @@
 import CertificateLifecycle from './CertificateLifecycle';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Field, Modal, Kpi } from '../components/ui';
@@ -439,32 +439,35 @@ export function AlertCenter({ state }: { state: State }) {
     [company, setCompany] = useState(''),
     [status, setStatus] = useState('pending'),
     [busy, setBusy] = useState(false);
-  async function load(refresh = false) {
-    setBusy(true);
-    setError('');
-    try {
-      if (refresh) await api('/credentials/alerts/refresh', 'POST');
-      const q = new URLSearchParams({
-        offset: String(page * 50),
-        limit: '50',
-        include_archived: String(includeArchived),
-      });
-      if (company) q.set('company_id', company);
-      if (status) q.set('state', status);
-      if (source) q.set('source', source);
-      if (filter) q.set('priority', filter);
-      const r = await api<{ alerts: Alert[]; total: number }>('/credentials/alerts?' + q);
-      setData(r.alerts);
-      setTotal(r.total);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const load = useCallback(
+    async (refresh = false) => {
+      setBusy(true);
+      setError('');
+      try {
+        if (refresh) await api('/credentials/alerts/refresh', 'POST');
+        const q = new URLSearchParams({
+          offset: String(page * 50),
+          limit: '50',
+          include_archived: String(includeArchived),
+        });
+        if (company) q.set('company_id', company);
+        if (status) q.set('state', status);
+        if (source) q.set('source', source);
+        if (filter) q.set('priority', filter);
+        const r = await api<{ alerts: Alert[]; total: number }>('/credentials/alerts?' + q);
+        setData(r.alerts);
+        setTotal(r.total);
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [page, company, status, source, filter, includeArchived],
+  );
   useEffect(() => {
     void load();
-  }, [page, company, status, source, filter, includeArchived]);
+  }, [load]);
   useEffect(() => setPage(0), [company, status, source, filter, includeArchived]);
   return (
     <section className={stitchCard + ' padded stitch-live-module'}>
