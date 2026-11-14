@@ -1,4 +1,5 @@
-import json, sys
+import json
+import sys
 import httpx
 from release_lab import LAB, configuration
 

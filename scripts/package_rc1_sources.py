@@ -1,6 +1,9 @@
 """Ship reproducible source inputs without operational data, real reports or credentials."""
 
-import argparse, hashlib, json, zipfile
+import argparse
+import hashlib
+import json
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

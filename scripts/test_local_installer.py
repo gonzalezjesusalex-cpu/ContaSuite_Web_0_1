@@ -1,6 +1,14 @@
 """End-to-end offline installer test; creates only generated folders and a new cluster."""
 
-import argparse, hashlib, json, os, secrets, subprocess, sys, time, zipfile
+import argparse
+import hashlib
+import json
+import os
+import secrets
+import subprocess
+import sys
+import time
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

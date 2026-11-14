@@ -1,6 +1,13 @@
 """Full private-runtime install/update/retirement and service-host tests, synthetic only."""
 
-import json, os, sys, zipfile, hashlib, subprocess, time, argparse
+import json
+import os
+import sys
+import zipfile
+import hashlib
+import subprocess
+import time
+import argparse
 from pathlib import Path
 from release_lab import LAB, configuration
 from integration_runtime import ROOT, RUN as PREVIOUS, BIN, call

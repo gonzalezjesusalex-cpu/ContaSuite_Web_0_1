@@ -1,6 +1,9 @@
 """Restore into NEW synthetic databases only; verify all table counts and local file hashes."""
 
-import sys, json, hashlib, subprocess
+import sys
+import json
+import hashlib
+import subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

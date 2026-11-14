@@ -1,6 +1,11 @@
 """Measure the real dashboard against 25,271 synthetic PostgreSQL documents only."""
 
-import argparse, json, os, sys, time, statistics
+import argparse
+import json
+import os
+import sys
+import time
+import statistics
 from pathlib import Path
 from release_lab import configuration
 from integration_runtime import ROOT, RUN, BIN, call

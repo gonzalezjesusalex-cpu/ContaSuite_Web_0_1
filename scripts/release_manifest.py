@@ -1,6 +1,10 @@
 """Exact release source diff, excluding operational configuration and data."""
 
-import os, json, zipfile, hashlib, difflib
+import os
+import json
+import zipfile
+import hashlib
+import difflib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

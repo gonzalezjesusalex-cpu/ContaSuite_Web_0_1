@@ -1,6 +1,9 @@
 """Validate the authorized import with counts only; no fiscal metadata in diagnostics."""
 
-import sys, json, hashlib, os
+import sys
+import json
+import hashlib
+import os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -13,7 +16,8 @@ def main():
     c, env = configuration()
     access = json.loads((RUN / 'access.json').read_text())
     base = access['url']
-    import httpx, psycopg
+    import httpx
+    import psycopg
     from psycopg import sql
 
     credentials = dict(

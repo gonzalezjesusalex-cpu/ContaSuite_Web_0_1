@@ -1,6 +1,12 @@
 """Background supervisor for the isolated per-user installation; no SCM/network changes."""
 
-import argparse, json, os, subprocess, sys, threading, time
+import argparse
+import json
+import os
+import subprocess
+import sys
+import threading
+import time
 from pathlib import Path
 from local_setup import marker, start_postgres, stop_postgres, FLAGS
 from secure_config import load

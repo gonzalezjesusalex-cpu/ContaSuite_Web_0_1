@@ -1,6 +1,7 @@
 """Agent lifecycle bound to this installation, using its encrypted service configuration."""
 
-import importlib.util, json
+import importlib.util
+import json
 from pathlib import Path
 from datetime import datetime, timezone
 from local_setup import marker

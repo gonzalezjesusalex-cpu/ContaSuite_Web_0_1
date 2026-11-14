@@ -1,6 +1,7 @@
 """Final reimport against the explicitly synthetic pilot; no bootstrap or real folders."""
 
-import sys, json
+import sys
+import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

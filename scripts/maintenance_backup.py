@@ -2,7 +2,13 @@
 Configuration is external and ACL protected. Runs under the backup service identity.
 """
 
-import argparse, json, os, subprocess, sys, hashlib, shutil
+import argparse
+import json
+import os
+import subprocess
+import sys
+import hashlib
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from restore_postgres import verify

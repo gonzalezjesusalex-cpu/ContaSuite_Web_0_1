@@ -1,6 +1,10 @@
 """Reversible code-only correction for an existing isolated local installation."""
 
-import argparse, json, shutil, threading, queue
+import argparse
+import json
+import shutil
+import threading
+import queue
 from datetime import datetime, timezone
 from pathlib import Path
 from local_setup import marker

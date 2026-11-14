@@ -1,6 +1,11 @@
 """Managed agent and backed-up full-folder queue, on generated data only."""
 
-import argparse, hashlib, json, subprocess, sys, zipfile
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

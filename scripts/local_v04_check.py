@@ -1,6 +1,7 @@
 """Real HTTP + PostgreSQL integration checks with synthetic accounts, no auth overrides."""
 
-import json, sys
+import json
+import sys
 from datetime import date
 from uuid import uuid4
 import httpx

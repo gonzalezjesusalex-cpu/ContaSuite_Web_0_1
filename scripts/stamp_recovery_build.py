@@ -1,6 +1,8 @@
 """Stamp the explicitly authorized integration build without claiming production approval."""
 
-import hashlib, json, argparse
+import hashlib
+import json
+import argparse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

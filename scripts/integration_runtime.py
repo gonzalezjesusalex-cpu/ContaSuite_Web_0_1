@@ -1,6 +1,11 @@
 """Create only a NEW disposable PostgreSQL cluster. Never loads dotenv or old cluster data."""
 
-import os, sys, json, secrets, socket, subprocess
+import os
+import sys
+import json
+import secrets
+import socket
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -147,7 +152,8 @@ def main():
         )
         (RUN / 'api.pid').write_text(str(api.pid))
         print('Isolated API started on 127.0.0.1:8056')
-        import time, httpx
+        import time
+        import httpx
 
         for _ in range(100):
             if api.poll() is not None:

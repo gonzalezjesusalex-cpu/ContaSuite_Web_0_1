@@ -1,6 +1,12 @@
 """Test code-only update against the prior generated local installer fixture."""
 
-import base64, hashlib, io, json, subprocess, sys, zipfile
+import base64
+import hashlib
+import io
+import json
+import subprocess
+import sys
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

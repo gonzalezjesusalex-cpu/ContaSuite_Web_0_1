@@ -1,6 +1,12 @@
 """Windows DPAPI machine-protected service configuration. Restrict the file ACL as well."""
 
-import argparse, base64, ctypes, json, os, getpass, secrets
+import argparse
+import base64
+import ctypes
+import json
+import os
+import getpass
+import secrets
 from pathlib import Path
 
 

@@ -2,7 +2,9 @@
 
 from html.parser import HTMLParser
 from pathlib import Path
-import json, re, sys
+import json
+import re
+import sys
 
 source = Path(sys.argv[1])
 target = Path(__file__).resolve().parents[1] / 'frontend'

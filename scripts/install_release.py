@@ -1,6 +1,11 @@
 """Versioned installation with bundled runtime; never overwrites an existing installation/data."""
 
-import argparse, json, hashlib, shutil, subprocess, sys
+import argparse
+import json
+import hashlib
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 

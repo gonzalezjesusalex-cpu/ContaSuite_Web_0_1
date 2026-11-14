@@ -1,6 +1,8 @@
 """Exercise actual HTTP with synthetic folders exclusively; diagnostics contain no document metadata."""
 
-import sys, json, hashlib
+import sys
+import json
+import hashlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

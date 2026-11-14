@@ -1,6 +1,11 @@
 """Explicit, inspectable service registration plan; no policy/network changes."""
 
-import argparse, ctypes, json, re, subprocess, sys
+import argparse
+import ctypes
+import json
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 

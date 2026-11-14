@@ -1,6 +1,8 @@
 """Explicit installation/update. No default database or dotenv fallback."""
 
-import argparse, os, sys
+import argparse
+import os
+import sys
 from pathlib import Path
 
 

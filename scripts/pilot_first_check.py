@@ -1,6 +1,8 @@
 """Private pilot checks. Print counts/status only; never echo credentials or fiscal metadata."""
 
-import sys, json, hashlib
+import sys
+import json
+import hashlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -11,7 +13,8 @@ from integration_runtime import BIN, call
 def main():
     mode = sys.argv[1]
     c, env = configuration()
-    import psycopg, httpx
+    import psycopg
+    import httpx
     from psycopg import sql
 
     credentials = dict(

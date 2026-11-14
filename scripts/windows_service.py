@@ -1,6 +1,13 @@
 """Native Windows SCM host. No service is registered merely by importing/running tests."""
 
-import argparse, threading, logging, logging.handlers, sys, os, json, time
+import argparse
+import threading
+import logging
+import logging.handlers
+import sys
+import os
+import json
+import time
 from pathlib import Path
 
 START_PENDING, RUNNING, STOP_PENDING, STOPPED = 2, 4, 3, 1

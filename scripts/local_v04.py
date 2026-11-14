@@ -1,6 +1,15 @@
 """Isolated Windows PostgreSQL lab. Never reads the installation .env or its data."""
 
-import os, sys, json, secrets, subprocess, socket, ctypes, importlib.util, getpass, hashlib
+import os
+import sys
+import json
+import secrets
+import subprocess
+import socket
+import ctypes
+import importlib.util
+import getpass
+import hashlib
 from pathlib import Path
 from ctypes import wintypes
 

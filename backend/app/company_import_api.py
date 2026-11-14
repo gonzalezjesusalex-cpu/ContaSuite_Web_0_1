@@ -1,6 +1,7 @@
 """Bounded synthetic previews and audited decisions; final import deliberately disabled."""
 
-import hashlib, json
+import hashlib
+import json
 from uuid import uuid4
 from datetime import timedelta
 from typing import Literal

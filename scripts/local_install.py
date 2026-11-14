@@ -1,6 +1,12 @@
 """Native guided installer and launcher for an independent local test installation."""
 
-import argparse, json, os, queue, sys, threading, webbrowser
+import argparse
+import json
+import os
+import queue
+import sys
+import threading
+import webbrowser
 from pathlib import Path
 
 

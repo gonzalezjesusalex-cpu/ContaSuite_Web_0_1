@@ -1,6 +1,11 @@
 """Checkpointed analysis only, on existing reconcile staging. No company/document writes."""
 
-import base64, hashlib, json, os, subprocess, sys
+import base64
+import hashlib
+import json
+import os
+import subprocess
+import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from pathlib import Path

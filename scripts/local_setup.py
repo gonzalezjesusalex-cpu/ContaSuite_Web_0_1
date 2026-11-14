@@ -1,6 +1,15 @@
 """Offline isolated local installation. Never attaches to an existing cluster/database."""
 
-import base64, json, os, re, secrets, shutil, socket, subprocess, sys, time
+import base64
+import json
+import os
+import re
+import secrets
+import shutil
+import socket
+import subprocess
+import sys
+import time
 from pathlib import Path
 from uuid import uuid4
 from secure_config import crypt, load

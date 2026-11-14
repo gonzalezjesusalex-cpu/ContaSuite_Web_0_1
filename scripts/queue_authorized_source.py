@@ -1,6 +1,13 @@
 """Explicit operator authorization of ONE real local source, with backup before queueing."""
 
-import argparse, hashlib, json, os, shutil, sys, getpass, subprocess
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import sys
+import getpass
+import subprocess
 from pathlib import Path
 from local_setup import marker, validate_roots, write_secret, start_postgres
 from local_runtime import stop, start, alive

@@ -1,6 +1,12 @@
 """Offline guided local installer from current source, clean runtimes and PostgreSQL binaries."""
 
-import argparse, hashlib, json, subprocess, sys, tempfile, zipfile
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+import tempfile
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]

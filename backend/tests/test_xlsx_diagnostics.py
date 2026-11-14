@@ -1,4 +1,5 @@
-import io, json
+import io
+import json
 from zipfile import ZipFile, ZIP_DEFLATED
 from openpyxl import Workbook
 import pytest

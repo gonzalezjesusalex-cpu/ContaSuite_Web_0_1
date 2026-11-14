@@ -1,6 +1,12 @@
 """Synthetic pilot only: new PostgreSQL database and generated local folders. No real paths."""
 
-import os, sys, json, secrets, hashlib, subprocess, time
+import os
+import sys
+import json
+import secrets
+import hashlib
+import subprocess
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

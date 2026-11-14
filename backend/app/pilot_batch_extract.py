@@ -1,6 +1,8 @@
 """Recycled, memory-limited extractor protocol. Stdout contains structured metadata only."""
 
-import sys, json, base64
+import sys
+import json
+import base64
 from .storage.classify_process import memory_limit
 
 

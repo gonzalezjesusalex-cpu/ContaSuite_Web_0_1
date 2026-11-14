@@ -84,7 +84,9 @@ if __name__ == '__main__':
     from .storage.classify_process import memory_limit
 
     guard = memory_limit()
-    import sys, json, base64
+    import sys
+    import json
+    import base64
 
     payload = json.loads(sys.stdin.buffer.read(36 * 1024 * 1024))
     result = analyze(base64.b64decode(payload['content'], validate=True), payload['name'])

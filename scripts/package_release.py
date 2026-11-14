@@ -1,6 +1,9 @@
 """Extend the already-tested allowlist package with a private runtime and release installer."""
 
-import hashlib, json, zipfile, argparse
+import hashlib
+import json
+import zipfile
+import argparse
 from pathlib import Path
 from package_recovery import ROOT
 

@@ -1,6 +1,7 @@
 """Version-bound CFDI identity; conflicts feed the existing classification review queue."""
 
-import hashlib, json
+import hashlib
+import json
 from sqlalchemy import MetaData, Table, Column, String, Boolean, DateTime, ForeignKey, select, update, text
 from .models import (
     Document,

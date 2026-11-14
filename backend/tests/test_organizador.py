@@ -38,7 +38,7 @@ def test_web_uses_original_paths_and_preserves_bytes(client):
         f'Base/Emitidos/{RFC}/2026-04/Factura.XML': b'not XML, route decides',
         f'Base/Recibidos/{RFC}/2026-04/Factura.PDF': b'exact PDF bytes',
         f'Base/Emitidos/{RFC}/2026-04/subcarpeta/omitido.xml': b'skip nested',
-        f'Base/Emitidos/OTRO010101AA1/2026-04/otra.xml': b'skip RFC',
+        'Base/Emitidos/OTRO010101AA1/2026-04/otra.xml': b'skip RFC',
         f'Base/Emitidos/{RFC}/2025-04/otra.xml': b'skip year',
         f'Base/Reportes/EMITIDOS-{RFC}-202604.xlsm': b'exact spreadsheet bytes',
         'Base/instrucciones.txt': b'skip format',
