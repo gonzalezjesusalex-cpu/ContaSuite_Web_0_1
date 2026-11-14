@@ -8,7 +8,7 @@ Datos tomados de los informes de cada iteración; no se abrió su configuración
 
 | Puerto | Instancia | Base | Datos / configuración | Estado |
 |---:|---|---|---|---|
-| 8000 | Instalación antigua (visita/v0.x) | Base antigua, esquema incompatible con RC1 | `.env` y `data/` de esta carpeta | Congelada. No iniciar ni migrar. Decisión pendiente (plan, punto 28). |
+| 8000 | Instalación antigua (visita/v0.x) | Base antigua, esquema incompatible con RC1 | `.env` y `data/` de esta carpeta | Congelada. **Decisión (14/11/2026, punto 28): archivar intacta, no migrar.** Copia verificada con SHA-256 en `..\archivo\base-8000-20261114\` (fuera del repositorio); los originales siguen aquí hasta autorizar su retiro. |
 | 8062 | Piloto «primera carpeta» | PostgreSQL privado, clúster bajo `.qa/pilot-first` | `.qa/pilot-first` (incluye `access.json`, `private.json`, dumps) | 1 empresa, 25.271 documentos importados; 18 excluidos; conflictos UUID y asociaciones ambiguas en revisión. Segunda carpeta **no** importada. |
 | 8072 | Instalación local de pruebas (instalador RC1) | PostgreSQL privado `contasuite_local_*` | Carpeta de instalación `Pruebas-20261112-174658` (fuera de este repositorio) | Agente conectado. Importación PRISMA **pausada** (new=1197, duplicates=3); no reanudar sin instrucción. |
 | 8060 | Piloto sintético | `contasuite_pilot_synthetic_001` | `.qa/` | Sólo datos generados. |
