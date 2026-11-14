@@ -63,5 +63,5 @@ Aplicación en servidor (punto 2):
    - Con responsable asignado, el texto ya no se edita desde los datos de la empresa. Un contador que es responsable no puede cambiar de rol hasta reasignar sus empresas.
    - Credenciales: administrador y contador responsable tienen todos los permisos salvo `reveal`, que sigue exigiendo permiso explícito. Los permisos explícitos de credenciales de otras cuentas dejan de aplicar, salvo `reveal`.
    - Todo cambio queda en el historial con autor, valor anterior y nuevo.
-6. Historial de responsable en el expediente.
+6. Historial en el expediente: `GET /api/companies/{id}/history` (acción `historial.ver`, es decir, cualquier permiso de la empresa) con autor (o «(inactivo)»), fecha, acción y valores anterior y nuevo; vista «Historial» de la sección Actividad (`CompanyHistory.tsx`), ahora visible para todos los roles, no sólo el administrador.
 7. Frontend: selector, pastilla, filtros por usuario y «Mis empresas», pantalla de usuarios y plantillas, visibilidad por permiso.

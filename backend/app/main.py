@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 
 from .database import engine, session, DATA, ROOT, SessionLocal
 
-from .models import Company, Task, Obligation, Document, Audit, Agent, Job, UserCompanyGrant
+from .models import Company, Task, Obligation, Document, Audit, Agent, Job, UserAccount, UserCompanyGrant
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
@@ -415,6 +415,45 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), princ
     record(db, 'Datos de empresa actualizados', id, principal.subject, changes)
     save(db)
     return company
+
+
+@app.get('/api/companies/{id}/history', dependencies=APP)
+def company_history(
+    id: str,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+    limit: int = Query(200, ge=1, le=500),
+):
+    """The company's change history (Bloque 2): who, when, what, and previous and new values."""
+    principal.require('historial.ver', id)
+    get(db, Company, id)
+    rows = db.scalars(
+        select(Audit).where(Audit.company_id == id).order_by(Audit.created_at.desc(), Audit.id).limit(limit)
+    ).all()
+    ids = {r.actor_id for r in rows if r.actor_id and not r.actor_id.startswith('agent:')}
+    names = {u.id: u for u in db.scalars(select(UserAccount).where(UserAccount.id.in_(sorted(ids))))} if ids else {}
+
+    def actor(ident):
+        if not ident:
+            return 'Sistema o registro anterior'
+        if ident.startswith('agent:'):
+            return 'Agente ' + ident[6:]
+        user = names.get(ident)
+        if user is None:
+            return 'Cuenta eliminada'
+        return user.display_name + ('' if user.enabled else ' (inactivo)')
+
+    return [
+        {
+            'id': r.id,
+            'action': r.action,
+            'created_at': r.created_at,
+            'actor_id': r.actor_id,
+            'actor': actor(r.actor_id),
+            'changes': r.changes or {},
+        }
+        for r in rows
+    ]
 
 
 @app.post('/api/tasks', dependencies=APP, status_code=201)

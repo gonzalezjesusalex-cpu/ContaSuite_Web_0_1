@@ -9,6 +9,7 @@ import CompanyDashboard from './CompanyDashboard';
 import VirtualExplorer from './VirtualExplorer';
 import Credentials from './Credentials';
 import ArchiveActivity from './ArchiveActivity';
+import CompanyHistory from './CompanyHistory';
 import FiscalSummary from './FiscalSummary';
 import FiscalControl from './FiscalControl';
 import type { Company, State } from '../types';
@@ -232,7 +233,7 @@ export default function Dossier({
             : section === 'FIEL/CSD'
               ? ['Credenciales y Certificados', 'e.firma y CSD']
               : section === 'Actividad'
-                ? ['Tareas', ...(state.current_user.admin ? ['Declaraciones', 'Historial'] : [])]
+                ? ['Tareas', 'Historial', ...(state.current_user.admin ? ['Declaraciones'] : [])]
                 : []
         ).map((v) => (
           <button className="btn" aria-pressed={tab === v} key={v} onClick={() => view(v)}>
@@ -295,27 +296,7 @@ export default function Dossier({
           </div>
         </>
       ) : tab === 'Historial' ? (
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Bitácora del expediente</h2>
-              <p>Registro de las operaciones de esta versión.</p>
-            </div>
-          </div>
-          <div className="audit-list">
-            {state.audit
-              .filter((a) => a.company_id === c.id)
-              .map((a) => (
-                <div key={a.id}>
-                  <span className="timeline-dot" />
-                  <div>
-                    <strong>{a.action}</strong>
-                    <small>{new Date(a.created_at).toLocaleString('es-MX')}</small>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
+        <CompanyHistory companyId={c.id} />
       ) : (
         <>
           <div className="kpi-grid four">
