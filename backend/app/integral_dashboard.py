@@ -3,7 +3,7 @@
 from collections import Counter
 from datetime import date
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, inspect, or_, and_, exists as sql_exists
+from sqlalchemy import select, or_, and_, exists as sql_exists
 from fastapi import HTTPException
 from .models import (
     Company,
@@ -22,10 +22,11 @@ from .storage.catalog import DocumentCatalog
 from .company_reconcile import normalized_name
 from .storage.classifier import valid_rfc
 from .integral_models import activity, verification, classified, quality, opinions, cfdi_reviews, relations
+from .schema_cache import has_table
 
 
 def exists(db, name):
-    return inspect(db.connection()).has_table(name)
+    return has_table(db, name)
 
 
 def dashboard(db, p, year, month, company=None, regime=None, responsible=None, include_archived=False):
@@ -81,23 +82,20 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
                 ),
             ),
         )
-    # Summary requires identifiers only, never document payload/metadata for every row.
-    docs = list(
-        db.execute(
-            select(Document.id, Document.company_id)
-            .where(DocumentCatalog()._scope(p.storage_actor()), wanted)
-            .limit(50001)
-        )
-    )
-    if len(docs) > 50000:
-        raise HTTPException(413, 'Dashboard limitado a 50000 documentos por consulta; acota los filtros por empresa.')
+    # Summary requires identifiers only, never document payload/metadata for every row. Related rows are
+    # selected with this scoped subquery instead of IN lists of every identifier, and narrowed to the final
+    # document set in Python, so the result is the same without per-identifier bind parameters.
+    scope = DocumentCatalog()._scope(p.storage_actor())
+    in_scope = select(Document.id).where(scope, wanted)
+    docs = list(db.execute(select(Document.id, Document.company_id).where(scope, wanted)))
     links = {d.id: set([d.company_id]) if d.company_id else set() for d in docs}
     for did, cid in db.execute(
         select(DocumentCompanyLink.document_id, DocumentCompanyLink.company_id).where(
-            DocumentCompanyLink.document_id.in_(links)
+            DocumentCompanyLink.document_id.in_(in_scope)
         )
     ):
-        links[did].add(cid)
+        if did in links:
+            links[did].add(cid)
     docs = [
         d
         for d in docs
@@ -105,38 +103,46 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
     ]
     docids = {d.id for d in docs}
     linked_ids = set().union(*(links[d.id] & ids for d in docs)) if docs else set()
-    for record in entries:
-        record['virtual_evidence'] = []
+    # Current-version evidence for every obligation of the period in one query (was one query per record).
+    evidence = {}
+    if entries:
         for relation in db.execute(
-            select(relations).where(
+            select(relations.c.target_id, relations.c.company_id, relations.c.document_id, relations.c.version_id)
+            .join(DocumentVersion, DocumentVersion.id == relations.c.version_id)
+            .join(Document, Document.id == relations.c.document_id)
+            .where(
                 relations.c.target_type == 'obligation',
-                relations.c.target_id == record['id'],
-                relations.c.company_id == record['company_id'],
-                relations.c.document_id.in_(docids),
+                relations.c.target_id.in_({r['id'] for r in entries}),
+                relations.c.document_id.in_(in_scope),
+                DocumentVersion.number == Document.storage_revision,
             )
         ).mappings():
-            v = db.get(DocumentVersion, relation['version_id'])
-            doc = db.get(Document, relation['document_id'])
-            if v and doc and v.number == doc.storage_revision:
-                record['virtual_evidence'].append(
-                    {'document_id': doc.id, 'version_id': v.id, 'verified_compliance': False}
+            if relation['document_id'] in docids:
+                evidence.setdefault((relation['target_id'], relation['company_id']), []).append(
+                    {
+                        'document_id': relation['document_id'],
+                        'version_id': relation['version_id'],
+                        'verified_compliance': False,
+                    }
                 )
+    for record in entries:
+        record['virtual_evidence'] = list(evidence.get((record['id'], record['company_id']), []))
     ambiguous_ids = {
         r.document_id
         for r in db.scalars(
             select(DocumentClassificationReview).where(
-                DocumentClassificationReview.document_id.in_(docids), DocumentClassificationReview.status == 'pending'
+                DocumentClassificationReview.document_id.in_(in_scope), DocumentClassificationReview.status == 'pending'
             )
         )
-        if len(r.proposed_links) > 1 or r.evidence.get('ambiguities')
+        if r.document_id in docids and (len(r.proposed_links) > 1 or r.evidence.get('ambiguities'))
     }
-    confirmations = set(
+    confirmations = docids & set(
         db.scalars(
             select(classified.c.document_id)
             .join(DocumentVersion, DocumentVersion.id == classified.c.version_id)
             .join(Document, Document.id == classified.c.document_id)
             .where(
-                classified.c.document_id.in_(docids),
+                classified.c.document_id.in_(in_scope),
                 DocumentVersion.document_id == Document.id,
                 DocumentVersion.number == Document.storage_revision,
             )
@@ -194,10 +200,9 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
     if cert_available:
         from .credential_alerts import candidates, alert_key
 
+        entry_ids = {r['id'] for r in entries}
         for row in candidates(db, p):
-            if row['company_id'] in ids and (
-                row['source'] != 'obligation' or row['reference'] in {r['id'] for r in entries}
-            ):
+            if row['company_id'] in ids and (row['source'] != 'obligation' or row['reference'] in entry_ids):
                 alerts.append(
                     {
                         **row,
@@ -268,13 +273,16 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
     last_scan = None
     access_errors = None
     if p.admin:
-        sourceids = set(
-            db.scalars(
-                select(DocumentLocation.source_id)
+        sourceids = {
+            source_id
+            for source_id, document_id in db.execute(
+                select(DocumentLocation.source_id, DocumentVersion.document_id)
                 .join(DocumentVersion, DocumentVersion.id == DocumentLocation.version_id)
-                .where(DocumentVersion.document_id.in_(docids))
+                .where(DocumentVersion.document_id.in_(in_scope))
+                .distinct()
             )
-        )
+            if document_id in docids
+        }
         sources = [
             dict(id=s.id, state=s.check_state, enabled=s.enabled, checked_at=s.checked_at)
             for s in db.scalars(

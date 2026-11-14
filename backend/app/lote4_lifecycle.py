@@ -18,7 +18,6 @@ from sqlalchemy import (
     ForeignKey,
     select,
     update,
-    inspect,
     text,
 )
 from sqlalchemy.exc import IntegrityError
@@ -28,6 +27,7 @@ from .credential_models import certificates, alerts
 from .credential_api import allowed, ready as vault_ready
 from .database import session
 from .security import auth, Principal, utc
+from .schema_cache import tables_ready
 
 metadata = MetaData()
 current = Table(
@@ -94,11 +94,7 @@ dates = Table(
 
 
 def available(db):
-    i = inspect(db.connection())
-    return all(
-        i.has_table(t.name) and {c.name for c in t.columns} <= {c['name'] for c in i.get_columns(t.name)}
-        for t in metadata.tables.values()
-    )
+    return tables_ready(db, metadata, check_columns=True)
 
 
 def lock(db):

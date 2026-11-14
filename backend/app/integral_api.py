@@ -3,9 +3,10 @@ from uuid import uuid4
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from sqlalchemy import select, update, inspect
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from .database import session
+from .schema_cache import tables_ready
 from .security import auth, Principal
 from .models import (
     Company,
@@ -37,7 +38,7 @@ router = APIRouter(prefix='/api/integral', tags=['Dashboard integral v0.3'])
 
 
 def ready(db):
-    if not all(inspect(db.connection()).has_table(t.name) for t in metadata.sorted_tables):
+    if not tables_ready(db, metadata):
         raise HTTPException(503, 'Dashboard integral pendiente de migración autorizada.')
 
 

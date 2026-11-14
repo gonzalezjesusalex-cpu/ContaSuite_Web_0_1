@@ -3,8 +3,9 @@
 from collections import Counter
 from datetime import date
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, inspect
+from sqlalchemy import select
 from .models import Obligation, Document, DocumentVersion, DocumentCompanyLink, now
+from .schema_cache import has_table
 
 
 def cutoff():
@@ -124,7 +125,7 @@ def read_period(
     users = {u['id']: u['display_name'] for u in data['users']}
     day = cutoff()
     checks = {}
-    if inspect(db.connection()).has_table('integral_compliance_verification'):
+    if has_table(db, 'integral_compliance_verification'):
         from .integral_models import verification
 
         checks = {

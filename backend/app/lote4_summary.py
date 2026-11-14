@@ -1,10 +1,11 @@
 from datetime import timedelta
 from fastapi import HTTPException
-from sqlalchemy import select, inspect
+from sqlalchemy import select
 from .credential_models import certificates, alerts
 from .credential_api import allowed, temporal
 from .lote4_lifecycle import available, current
 from .fiscal_read import cutoff
+from .schema_cache import has_table
 
 
 def summary(db, p, company_ids, entries):
@@ -45,7 +46,7 @@ def summary(db, p, company_ids, entries):
         due = date.fromisoformat(r['due_date'])
         soon += day <= due <= day + timedelta(days=15)
         overdue += due < day
-    evidence_ready = inspect(db.connection()).has_table('fiscal_verification_decisions')
+    evidence_ready = has_table(db, 'fiscal_verification_decisions')
     evidence_pending = None
     if evidence_ready:
         from .evidence_history import review_condition

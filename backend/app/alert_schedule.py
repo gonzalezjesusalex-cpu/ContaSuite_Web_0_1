@@ -2,10 +2,11 @@
 
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
-from sqlalchemy import MetaData, Table, Column, Integer, DateTime, select, update, inspect
+from sqlalchemy import MetaData, Table, Column, Integer, DateTime, select, update
 from .security import Principal, utc
 from .models import now
 from .lote4_lifecycle import available, evaluate, lock
+from .schema_cache import has_table
 
 TIMEZONE = 'America/Mexico_City'
 metadata = MetaData()
@@ -21,7 +22,7 @@ schedule = Table(
 def tick(db, clock=now, provider=None, interval=900):
     if interval < 60:
         raise ValueError('Interval must be at least 60 seconds')
-    if not available(db) or not inspect(db.connection()).has_table(schedule.name):
+    if not available(db) or not has_table(db, schedule.name):
         return {'state': 'unavailable'}
     stamp = utc(clock())
     day = stamp.astimezone(ZoneInfo(TIMEZONE)).date()

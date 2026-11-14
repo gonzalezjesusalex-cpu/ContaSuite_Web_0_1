@@ -22,12 +22,12 @@ from sqlalchemy import (
     func,
     select,
     update,
-    inspect,
 )
 from sqlalchemy.exc import IntegrityError
 from .database import session
 from .models import Company, UserAccount, Document, now
 from .security import auth, Principal
+from .schema_cache import tables_ready
 
 metadata = MetaData()
 catalog = Table(
@@ -133,7 +133,7 @@ router = APIRouter(prefix='/api/fiscal-control', tags=['Control de obligaciones'
 
 
 def ready(db):
-    if not all(inspect(db.connection()).has_table(t.name) for t in metadata.sorted_tables):
+    if not tables_ready(db, metadata):
         raise HTTPException(503, 'Control de obligaciones pendiente de migración autorizada. No se modificó la base.')
 
 
@@ -221,18 +221,23 @@ def _matrix_data(year, month, principal, db):
     ids = [c.id for c in companies]
     definitions = [dict(r) for r in db.execute(select(catalog)).mappings()]
     keys = [period_key(year, month, f) for f in ['monthly', 'quarterly', 'annual']]
+    rows = list(
+        db.execute(select(records).where(records.c.company_id.in_(ids), records.c.period_id.in_(keys))).mappings()
+    )
+    # Evidence of every record of the period in one query (was one query per record).
+    by_record = {}
+    if rows:
+        for e in db.execute(
+            select(evidence.c.record_id, evidence.c.document_id, evidence.c.role).where(
+                evidence.c.record_id.in_([row['id'] for row in rows])
+            )
+        ).mappings():
+            by_record.setdefault(e['record_id'], []).append({'document_id': e['document_id'], 'role': e['role']})
     entries = []
-    for row in db.execute(
-        select(records).where(records.c.company_id.in_(ids), records.c.period_id.in_(keys))
-    ).mappings():
+    for row in rows:
         item = serial(row)
         item['effective_status'] = effective(row)
-        item['evidence'] = [
-            dict(e)
-            for e in db.execute(
-                select(evidence.c.document_id, evidence.c.role).where(evidence.c.record_id == row['id'])
-            ).mappings()
-        ]
+        item['evidence'] = by_record.get(row['id'], [])
         entries.append(item)
     rules = [dict(r) for r in db.execute(select(applicability).where(applicability.c.company_id.in_(ids))).mappings()]
     assigned = {r['responsible_id'] for r in entries + rules if r.get('responsible_id')}

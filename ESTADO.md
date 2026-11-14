@@ -32,7 +32,7 @@ Conexión/descarga SAT automática, OCR, validación fiscal externa, revelación
 
 - Backend: 216 aprobadas, 1 omitida (privilegio de enlaces simbólicos en Windows) — 13/11/2026, suite aislada sin `.env` real.
 - Frontend: compilación TypeScript/Vite correcta en RC1 (12/11/2026); advertencia de chunk principal >500 KB. En este equipo falta Node.js para repetirla.
-- Rendimiento RC1 del dashboard con 25.271 documentos: ~2,5 s y 92 consultas (plan, punto 5).
+- Rendimiento RC1 del dashboard con 25.271 documentos: ~2,5 s y 92 consultas en PostgreSQL. Tras el punto 5 (13/11/2026, SQLite sintético, mismos 25.271 documentos): 40 consultas (antes 84 en SQLite), ~390 ms (antes ~486 ms), sin tope de 50.000 documentos. Pendiente medir en PostgreSQL.
 
 ## Linters (línea base 13/11/2026, sin corregir)
 

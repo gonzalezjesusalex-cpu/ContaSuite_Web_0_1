@@ -4,7 +4,7 @@ from uuid import uuid4
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
-from sqlalchemy import select, update, inspect
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
@@ -13,13 +13,14 @@ from .models import Company, Document, DocumentCompanyLink, now
 from .security import auth, Principal, utc
 from .credential_models import metadata, services, grants, credentials, versions, certificates, audit, settings
 from .credential_crypto import VaultCipher, VaultLocked
+from .schema_cache import tables_ready
 
 PERMISSIONS = {'metadata', 'create', 'modify', 'reveal', 'certificates', 'history', 'alerts', 'permissions'}
 router = APIRouter(prefix='/api/credentials', tags=['Credenciales y certificados'])
 
 
 def ready(db):
-    if not all(inspect(db.connection()).has_table(t.name) for t in metadata.sorted_tables):
+    if not tables_ready(db, metadata):
         raise HTTPException(503, 'Módulo pendiente de migración autorizada.')
 
 

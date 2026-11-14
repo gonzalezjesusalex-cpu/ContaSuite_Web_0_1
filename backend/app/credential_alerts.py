@@ -6,12 +6,13 @@ from zoneinfo import ZoneInfo
 from datetime import datetime, timezone, date
 from fastapi import Depends, Response, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import select, update, inspect
+from sqlalchemy import select, update
 from .credential_api import router, ready, no_cache, allowed, event, temporal
 from .credential_models import certificates, alerts, settings
 from .database import session
 from .models import Company, now
 from .security import auth, Principal
+from .schema_cache import has_table
 
 
 def alert_key(source, reference, kind):
@@ -52,7 +53,7 @@ def candidates(db, p, stamp=None):
                 )
             )
     # Fiscal tables remain untouched, and may not yet exist in this installation.
-    if inspect(db.connection()).has_table('fiscal_records'):
+    if has_table(db, 'fiscal_records'):
         from .fiscal_control import records, evidence, effective
 
         fiscal_ids = list(db.scalars(select(Company.id))) if p.admin else list(p.company_ids)
@@ -71,7 +72,7 @@ def candidates(db, p, stamp=None):
             if state == 'unreviewed':
                 types.append(('unreviewed', 'medium'))
             condition = None
-            if state == 'fulfilled' and inspect(db.connection()).has_table('fiscal_verification_decisions'):
+            if state == 'fulfilled' and has_table(db, 'fiscal_verification_decisions'):
                 from .evidence_history import review_condition
 
                 verified, condition = review_condition(db, row)

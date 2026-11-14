@@ -6,12 +6,13 @@ from zoneinfo import ZoneInfo
 from typing import Literal
 from urllib.parse import urlencode
 from fastapi import Depends, Query
-from sqlalchemy import select, inspect
+from sqlalchemy import select
 from .database import session
 from .security import auth, Principal, utc
 from .models import Company
 from .company_lifecycle import archive_metadata
 from .fiscal_read import cutoff
+from .schema_cache import has_table
 
 
 def window(anchor, view):
@@ -37,7 +38,7 @@ def events(db, p, anchor, view='month', company_id=None, kind=None, state=None, 
     start, end = window(anchor, view)
     rows = []
     sources = {'obligations': False, 'certificates': False}
-    if inspect(db.connection()).has_table('fiscal_records'):
+    if has_table(db, 'fiscal_records'):
         from .fiscal_control import records, catalog, periods, ready, effective
 
         ready(db)
@@ -71,7 +72,7 @@ def events(db, p, anchor, view='month', company_id=None, kind=None, state=None, 
                     + urlencode({'tab': 'Obligaciones', 'period': (period_start or r['due_date']).strftime('%Y-%m')}),
                 )
             )
-    if inspect(db.connection()).has_table('vault_certificates'):
+    if has_table(db, 'vault_certificates'):
         from .credential_models import certificates
         from .credential_api import ready, allowed, temporal
 

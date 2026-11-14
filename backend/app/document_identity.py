@@ -1,7 +1,7 @@
 """Version-bound CFDI identity; conflicts feed the existing classification review queue."""
 
 import hashlib, json
-from sqlalchemy import MetaData, Table, Column, String, Boolean, DateTime, ForeignKey, select, update, inspect, text
+from sqlalchemy import MetaData, Table, Column, String, Boolean, DateTime, ForeignKey, select, update, text
 from .models import (
     Document,
     DocumentVersion,
@@ -10,6 +10,7 @@ from .models import (
     StorageEvent,
     now,
 )
+from .schema_cache import has_table
 
 metadata = MetaData()
 identities = Table(
@@ -27,7 +28,7 @@ identities = Table(
 
 
 def available(db):
-    return inspect(db.connection()).has_table(identities.name)
+    return has_table(db, identities.name)
 
 
 def lock(db):

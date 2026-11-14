@@ -2,11 +2,12 @@
 
 import hashlib
 from uuid import uuid4
-from sqlalchemy import MetaData, Table, Column, String, Integer, DateTime, ForeignKey, select, inspect, update
+from sqlalchemy import MetaData, Table, Column, String, Integer, DateTime, ForeignKey, select, update
 from fastapi import HTTPException
 from .models import Company, Document, DocumentVersion, now
 from .fiscal_control import records
 from .integral_models import verification
+from .schema_cache import has_table
 
 metadata = MetaData()
 decisions = Table(
@@ -26,7 +27,7 @@ decisions = Table(
 
 
 def ready(db):
-    if not inspect(db.connection()).has_table(decisions.name):
+    if not has_table(db, decisions.name):
         raise HTTPException(503, 'Historial de verificación pendiente de actualización explícita del esquema.')
 
 

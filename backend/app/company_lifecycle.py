@@ -16,13 +16,13 @@ from sqlalchemy import (
     JSON,
     select,
     update,
-    inspect,
     text,
 )
 from sqlalchemy.exc import IntegrityError
 from .database import session
 from .models import Company, Audit, now
 from .security import auth, Principal
+from .schema_cache import tables_ready
 
 metadata = MetaData()
 states = Table(
@@ -48,12 +48,7 @@ router = APIRouter(prefix='/api/company-lifecycle', tags=['Empresas'])
 
 
 def available(db):
-    inspector = inspect(db.connection())
-    return all(
-        inspector.has_table(t.name)
-        and {c.name for c in t.columns} <= {c['name'] for c in inspector.get_columns(t.name)}
-        for t in metadata.tables.values()
-    )
+    return tables_ready(db, metadata, check_columns=True)
 
 
 def archive_metadata(db, company_ids):

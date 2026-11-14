@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, inspect, update, delete, or_
+from sqlalchemy import select, update, delete, or_
 from sqlalchemy.exc import IntegrityError
 from .database import session
 from .security import auth, Principal, utc
@@ -14,12 +14,13 @@ from .models import Company, Document, DocumentLocation, DocumentVersion, Docume
 from .company_import_models import metadata, sessions, rows, decisions, aliases, permissions, history
 from .company_reconcile import reconcile, document_proposals
 from .company_xlsx import read_xlsx, InvalidWorkbook
+from .schema_cache import tables_ready
 
 router = APIRouter(prefix='/api/company-imports', tags=['Importar y conciliar'])
 
 
 def ready(db):
-    if not all(inspect(db.connection()).has_table(t.name) for t in metadata.sorted_tables):
+    if not tables_ready(db, metadata):
         raise HTTPException(503, 'Importador pendiente de migración autorizada; no se modificaron datos.')
 
 
