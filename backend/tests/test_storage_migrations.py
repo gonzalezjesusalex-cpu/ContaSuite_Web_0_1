@@ -62,6 +62,25 @@ def test_upgrade_preserves_legacy_ids_bytes_and_unknown_availability(tmp_path):
         engine.dispose()
 
 
+CSF_COLUMNS = {
+    'idcif',
+    'curp',
+    'tax_postal_code',
+    'tax_street_type',
+    'tax_street',
+    'tax_exterior_number',
+    'tax_interior_number',
+    'tax_neighborhood',
+    'tax_locality',
+    'tax_municipality',
+    'tax_state',
+    'tax_between_streets',
+    'operations_start',
+    'padron_status',
+    'csf_issued_on',
+}
+
+
 def test_fresh_database_and_frozen_migration_schema_match_models(tmp_path):
     engine = local_engine(tmp_path)
     try:
@@ -86,7 +105,9 @@ def test_fresh_database_and_frozen_migration_schema_match_models(tmp_path):
             'security_events',
         ):
             # Columns added after the frozen storage chain, by later revisions of the single Alembic history.
-            later = {'user_accounts': {'role'}, 'companies': {'accountant_id', 'accountant_legacy'}}.get(name, set())
+            later = {'user_accounts': {'role'}, 'companies': {'accountant_id', 'accountant_legacy'} | CSF_COLUMNS}.get(
+                name, set()
+            )
             assert {c.name for c in Base.metadata.tables[name].columns} - later == {
                 c['name'] for c in inspector.get_columns(name)
             }, name

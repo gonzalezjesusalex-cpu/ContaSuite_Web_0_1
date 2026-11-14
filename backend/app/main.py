@@ -58,6 +58,42 @@ def agent_auth(request: Request, credentials: HTTPAuthorizationCredentials | Non
     request.state.agent_authenticated = True
 
 
+def regime_labels(db, company_id):
+    from .models import CompanyRegime
+
+    rows = db.scalars(
+        select(CompanyRegime).where(CompanyRegime.company_id == company_id).order_by(CompanyRegime.position)
+    )
+    return [r.label for r in rows]
+
+
+def store_regimes(db, company_id, regimes):
+    """Replace the company's current regimes (Bloque 1); the first one is the main regime."""
+    from sqlalchemy import delete as sql_delete
+
+    from .models import CompanyRegime
+
+    db.execute(sql_delete(CompanyRegime).where(CompanyRegime.company_id == company_id))
+    db.flush()
+    for position, r in enumerate(regimes):
+        db.add(CompanyRegime(company_id=company_id, position=position, **r.model_dump()))
+
+
+def regimes_by_company(db, ids):
+    from .models import CompanyRegime
+
+    out = {}
+    if ids:
+        rows = db.scalars(
+            select(CompanyRegime).where(CompanyRegime.company_id.in_(ids)).order_by(CompanyRegime.position)
+        )
+        for r in rows:
+            out.setdefault(r.company_id, []).append(
+                {'code': r.code, 'label': r.label, 'start_date': r.start_date, 'end_date': r.end_date}
+            )
+    return out
+
+
 def responsibles(db, companies):
     ids = sorted({c.accountant_id for c in companies if c.accountant_id})
     if not ids:
@@ -324,6 +360,8 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
 
     normalized = [normalize_rfc(c.rfc) for c in companies]
 
+    regimes = regimes_by_company(db, [c.id for c in companies])
+
     def company_public(c):
         return {
             **{
@@ -333,6 +371,7 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
             'archived': archive_rows.get(c.id, {}).get('archived', False) if archive_available else None,
             'archive_revision': archive_rows.get(c.id, {}).get('revision', 0),
             'duplicate_rfc': normalized.count(normalize_rfc(c.rfc)) > 1,
+            'regimes': regimes.get(c.id, []),
         }
 
     # Counts only: the document list is served paginated by the Document Center, never by this polled endpoint.
@@ -389,7 +428,7 @@ def create_company(data: CompanyIn, db: Session = Depends(session), principal: P
 
     ensure_unique_rfc(db, data.rfc)
 
-    company = Company(**data.model_dump())
+    company = Company(**data.model_dump(exclude={'regimes'}))
     db.add(company)
 
     # Commit first validates RFC uniqueness; record creation in same transaction.
@@ -398,6 +437,7 @@ def create_company(data: CompanyIn, db: Session = Depends(session), principal: P
     if principal.role == 'contador':
         # The registering accountant can operate it at once; it does not become its responsible.
         db.add(UserCompanyGrant(user_id=principal.subject, company_id=company.id, access='write'))
+    store_regimes(db, company.id, data.regimes or [])
     record(db, 'Empresa registrada', company.id, principal.subject)
     save(db)
 
@@ -417,10 +457,16 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), princ
 
     ensure_unique_rfc(db, data.rfc, id)
 
-    values = data.model_dump()
+    values = data.model_dump(exclude={'regimes'})
     changes = diff({k: getattr(company, k) for k in values}, values)
     for key, value in values.items():
         setattr(company, key, value)
+    if data.regimes is not None:
+        before = regime_labels(db, id)
+        store_regimes(db, id, data.regimes)
+        after = [r.label for r in data.regimes]
+        if before != after:
+            changes['regimes'] = {'before': before, 'after': after}
 
     record(db, 'Datos de empresa actualizados', id, principal.subject, changes)
     save(db)

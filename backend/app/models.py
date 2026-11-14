@@ -42,12 +42,40 @@ class Company(Base):
     # free text until an administrator confirms its retirement.
     accountant_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     accountant_legacy: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    # cs_0012, Bloque 1: data of the Constancia de Situación Fiscal (all optional; the form asks for them).
+    idcif: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    curp: Mapped[str | None] = mapped_column(String(18), nullable=True)
+    tax_postal_code: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    tax_street_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    tax_street: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    tax_exterior_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    tax_interior_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    tax_neighborhood: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    tax_locality: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    tax_municipality: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    tax_state: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    tax_between_streets: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    operations_start: Mapped[__import__('datetime').date | None] = mapped_column(Date, nullable=True)
+    padron_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    csf_issued_on: Mapped[__import__('datetime').date | None] = mapped_column(Date, nullable=True)
     email: Mapped[str] = mapped_column(String(180), default='')
     phone: Mapped[str] = mapped_column(String(40), default='')
     location: Mapped[str] = mapped_column(String(150), default='')
     folder: Mapped[str] = mapped_column(String(1000), default='')
     notes: Mapped[str] = mapped_column(Text, default='')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CompanyRegime(Base):
+    """Every current tax regime of a company, the main one first (cs_0012, Bloque 1)."""
+
+    __tablename__ = 'company_regimes'
+    company_id: Mapped[str] = mapped_column(ForeignKey('companies.id', ondelete='CASCADE'), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    label: Mapped[str] = mapped_column(String(250))
+    start_date: Mapped[__import__('datetime').date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[__import__('datetime').date | None] = mapped_column(Date, nullable=True)
 
 
 class Task(Base):
