@@ -43,13 +43,13 @@ Comandos: `.venv\Scripts\python -m ruff check .` y `npm --prefix frontend run li
 
 Las correcciones que cambian comportamiento (dependencias de hooks, excepciones) se tratan una a una con su prueba.
 
-## Dependencias (auditoría 14/11/2026, sin corregir)
+## Dependencias (auditoría 14/11/2026)
 
 Locks: `backend/requirements.lock.txt` (producción, perfil PostgreSQL) y `backend/requirements-dev.lock.txt` (añade pytest, ruff y sus dependencias). Comandos: `pip-audit -r backend/requirements.lock.txt --no-deps --disable-pip` (pip-audit en un entorno aparte) y `npm --prefix frontend audit`.
 
-- **Producción Python: 19 avisos en 4 paquetes.** `starlette` 0.49.3 (5; corregidos en 1.0.1–1.3.1, entre ellos `StaticFiles` en Windows, validación de `Host` y de ruta, límites de `request.form()`), `python-multipart` 0.0.20 (6; DoS y path traversal con opciones no predeterminadas; 0.0.22–0.0.31), `cryptography` 46.0.3 (7; OpenSSL incluido y validación de cadenas; 46.0.5–50.0.0), `python-dotenv` 1.2.1 (1; 1.2.2). `starlette` 1.x exige actualizar `fastapi`: requiere su propio punto con pruebas completas.
-- **Desarrollo Python:** `pytest` 9.0.0 (1; 9.0.3).
-- **npm producción: 0.** Desarrollo: 7 moderadas en `typescript-eslint` → `minimatch` (DoS, sólo herramienta de lint).
+- **Python: 0 vulnerabilidades conocidas** en producción y desarrollo tras actualizar `fastapi` 0.121.1 → 0.162.7, `starlette` 0.49.3 → 1.10.0 (ahora fijado explícitamente), `python-multipart` 0.0.20 → 0.0.33, `cryptography` 46.0.3 → 50.0.2, `python-dotenv` 1.2.1 → 1.2.4 y `pytest` 9.0.0 → 9.2.0. Antes: 19 avisos en producción (entre ellos `StaticFiles` de Starlette en Windows) y 1 en pytest. `fastapi` añade `opentelemetry-api` (sólo API; sin SDK ni exportador no envía nada).
+- **npm producción: 0.** Desarrollo: 7 moderadas en `typescript-eslint` → `minimatch` (DoS, sólo herramienta de lint), sin corregir.
+- Pendiente menor: `starlette.testclient` avisa que `httpx` está obsoleto para pruebas y recomienda `httpx2`; sólo afecta a la suite.
 
 ## Pendientes
 
