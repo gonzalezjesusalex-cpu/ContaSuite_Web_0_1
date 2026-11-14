@@ -42,8 +42,15 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     });
   };
   useEffect(() => {
-    ref.current?.showModal();
-    return () => ref.current?.close();
+    const dialog = ref.current;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      // React has already removed the <dialog>, so the browser cannot return focus by itself:
+      // give it back to the control that opened the dialog (keyboard users keep their place).
+      if (opener?.isConnected && !document.querySelector('dialog[open]')) opener.focus();
+    };
   }, []);
   return (
     <dialog
