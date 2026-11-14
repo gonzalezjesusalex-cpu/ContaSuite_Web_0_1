@@ -150,6 +150,49 @@ class Job(Base):
     payload: Mapped[dict] = mapped_column(JSON)
     result: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # cs_0013, Bloque 4: who asked for it, from which linked agent and computer.
+    requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    link_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    machine: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class AgentLink(Base):
+    """A local agent paired to a ContaSuite session (Bloque 4). Valid only while that session is."""
+
+    __tablename__ = 'agent_links'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    agent_id: Mapped[str] = mapped_column(String(80), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('user_accounts.id'), index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey('user_sessions.id'), index=True)
+    machine: Mapped[str] = mapped_column(String(120), default='')
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_reason: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    restart_requested: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class AgentPairCode(Base):
+    """One-time, short-lived pairing code issued to a signed-in session; only its hash is stored."""
+
+    __tablename__ = 'agent_pair_codes'
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey('user_accounts.id'), index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey('user_sessions.id'), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentRoot(Base):
+    """Folders the agents may read, defined only by an administrator (Bloque 4)."""
+
+    __tablename__ = 'agent_roots'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    path: Mapped[str] = mapped_column(String(1000), unique=True)
+    created_by: Mapped[str] = mapped_column(String(36))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class Setting(Base):
