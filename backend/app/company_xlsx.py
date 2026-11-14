@@ -249,7 +249,7 @@ def _read_xlsx(payload, source):
         }
     except InvalidWorkbook:
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001 - any parser failure becomes InvalidWorkbook (422) for the user
         raise InvalidWorkbook() from None
     finally:
         if book:

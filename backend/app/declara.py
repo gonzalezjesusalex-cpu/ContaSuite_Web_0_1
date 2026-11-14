@@ -2,6 +2,7 @@
 
 import csv
 import json
+import logging
 import shutil
 import stat
 import zipfile
@@ -21,6 +22,7 @@ from .models import Audit, Company, DeclaraRun
 from .organizador import safe_path
 from . import declara_engine as motor
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/api/declara', tags=['Declara'])
 MAX_UPLOAD = 100 * 1024 * 1024
 MAX_EXPANDED = 500 * 1024 * 1024
@@ -178,7 +180,8 @@ def analyze(ident):
             run.message = 'Análisis terminado. Revisa los nombres y el control documental.'
             db.add(Audit(company_id=run.company_id, action='Declara: análisis terminado'))
             db.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
+        logger.exception('Declara: falló el análisis %s', ident)
         progress(ident, 'error', 'No se pudo analizar: ' + str(exc))
 
 
@@ -414,7 +417,8 @@ def generate(ident):
             run.summary = {**run.summary, 'renamed': renamed, 'output': len(eligible)}
             db.add(Audit(company_id=run.company_id, action='Declara: copias renombradas generadas'))
             db.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
+        logger.exception('Declara: falló la generación %s', ident)
         progress(ident, 'error', 'No se pudo generar: ' + str(exc) + ' Repite la carga para intentarlo de nuevo.')
 
 

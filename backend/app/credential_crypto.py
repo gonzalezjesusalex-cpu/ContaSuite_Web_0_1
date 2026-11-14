@@ -26,7 +26,7 @@ class VaultCipher:
                 {k: base64.b64decode(v, validate=True) for k, v in raw.items()},
                 os.environ.get('CONTA_VAULT_ACTIVE_KEY', ''),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - vault errors must not reveal key material; reported as VaultLocked
             raise VaultLocked() from None
 
     def seal(self, secret, company_id, record_id):
@@ -42,7 +42,7 @@ class VaultCipher:
                 key_version=self.active,
                 algorithm='AES-256-GCM',
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - vault errors must not reveal key material; reported as VaultLocked
             raise VaultLocked() from None
 
     def open(self, envelope, company_id, record_id, *, authorize_recent):
@@ -63,5 +63,5 @@ class VaultCipher:
                 )
                 .decode()
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - vault errors must not reveal key material; reported as VaultLocked
             raise VaultLocked() from None

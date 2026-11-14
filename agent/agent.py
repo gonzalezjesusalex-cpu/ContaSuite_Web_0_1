@@ -106,7 +106,8 @@ def run(config, stop_event=None, request_fn=request):
                         raise ValueError('Operación no admitida')
                     result = safe_inventory(job['payload']['folder'], roots)
                     status = 'completed'
-                except Exception:
+                except Exception:  # noqa: BLE001 - any failure ends the job as failed; cause kept in the local log
+                    logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])
                     result = {'error': 'No se pudo analizar: revisa permisos, disponibilidad y carpetas autorizadas.'}
                     status = 'failed'
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})

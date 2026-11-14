@@ -103,7 +103,7 @@ def classify(stream, name, companies):
         else:
             evidence['reason'] = 'unsupported_classification'
             return {'evidence': evidence, 'links': [], 'automatic': False, 'type': kind, 'period': None}
-    except Exception:
+    except Exception:  # noqa: BLE001 - unreadable content is recorded as evidence (unreadable_content) for review
         evidence.update(reason='unreadable_content', complete=False)
     evidence['rfcs'] = roles[:100]
     if len(roles) > 100:

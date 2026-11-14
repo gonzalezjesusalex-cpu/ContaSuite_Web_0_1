@@ -17,7 +17,7 @@ def main():
             result = analyze(base64.b64decode(value['content'], validate=True), value['name'])
             result['identities'] = result.get('identities', [])[:100]
             print(json.dumps(result), flush=True)
-        except Exception:
+        except Exception:  # noqa: BLE001 - subprocess protocol: failure is reported to the parent as type unknown
             print(
                 json.dumps(
                     {

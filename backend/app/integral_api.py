@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from uuid import uuid4
 from typing import Literal
@@ -33,6 +34,8 @@ from .integral_models import (
 )
 from .integral_dashboard import dashboard, exists
 from .virtual_classifier import propose
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix='/api/integral', tags=['Dashboard integral v0.3'])
 
@@ -164,13 +167,15 @@ def explorer(
             locations = db.scalars(select(DocumentLocation).where(DocumentLocation.version_id == v.id)).all()
             # Root/UNC locations and private key references are never exposed.
             from .storage.paths import safe_key
+            from .storage.providers import StorageError
 
             paths = []
             for loc in locations:
                 try:
                     paths.append(safe_key(loc.relative_key))
-                except Exception:
-                    pass
+                except StorageError:
+                    # Unsafe stored keys stay hidden from the response; record it (without the path).
+                    logger.warning('Ubicación %s con ruta no segura omitida de la estructura original', loc.id)
             item['relative_paths'] = paths
             item['modification_ns'] = [loc.mtime_ns for loc in locations]
         result.append(item)

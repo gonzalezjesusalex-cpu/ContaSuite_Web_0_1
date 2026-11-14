@@ -83,7 +83,7 @@ def serve(root):
                 extra_workers=[('windows-agent', lambda event: run_agent(root, event))],
             )
             return result
-        except BaseException:
+        except BaseException:  # noqa: BLE001 - supervisor: reports failure in the status file and stops
             report(1, 1)
             return 1
         finally:
@@ -91,7 +91,7 @@ def serve(root):
             if started or (root / 'database/postmaster.pid').is_file():
                 try:
                     stop_postgres(root)
-                except Exception:
+                except Exception:  # noqa: BLE001 - supervisor: reports failure in the status file and stops
                     report(1, 1)
 
 

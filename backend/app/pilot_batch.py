@@ -141,7 +141,7 @@ class Extractor:
             result = self.pool.submit(exchange).result(timeout=10)
             self.used += 1
             return result
-        except Exception:
+        except Exception:  # noqa: BLE001 - extractor failure is recorded as type unknown and the worker is restarted
             self.stop()
             return {
                 'type': 'unknown',

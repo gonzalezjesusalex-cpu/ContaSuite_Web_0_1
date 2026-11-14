@@ -2,6 +2,7 @@
 
 import io
 import json
+import logging
 import shutil
 import stat
 import zipfile
@@ -97,6 +98,27 @@ def load_analysis(ident):
     )
 
 
+logger = logging.getLogger(__name__)
+
+
+def unreadable_pdfs(result):
+    """PDFs the original engine would silently leave out of the generated files.
+
+    recopila_engine.generate_* skips any matched or leftover PDF it cannot read (`except Exception: pass`).
+    The engine stays unchanged (AGENTS.md); the adapter reads them the same way beforehand so the user is
+    told which documents would be missing.
+    """
+    unreadable = []
+    for doc in dict.fromkeys([d for p in result.policies for d in p.matched_pdfs] + list(result.leftovers)):
+        try:
+            for _ in motor.PdfReader(doc).pages:
+                pass
+        except Exception:  # noqa: BLE001 - same breadth as the engine's skip; reported, not hidden
+            logger.warning('Recopila: PDF ilegible, el motor lo omitiría: %s', Path(doc).name, exc_info=True)
+            unreadable.append(Path(doc).name)
+    return unreadable
+
+
 def analyze(ident):
     try:
         root = folder(ident)
@@ -123,6 +145,13 @@ def analyze(ident):
             warnings.append('Hay XML que no se pudieron interpretar como CFDI con UUID.')
         if any(not p.month for p in result.policies):
             warnings.append('Hay pólizas sin un mes identificable; se conservan en el recopilador general.')
+        unreadable = unreadable_pdfs(result)
+        if unreadable:
+            listed = ', '.join(unreadable[:10]) + (' y otros' if len(unreadable) > 10 else '')
+            warnings.append(
+                f'{len(unreadable)} PDF no se pueden leer y no se incluirán en los documentos generados: {listed}. '
+                'Reemplázalos por una copia válida y vuelve a cargar antes de generar.'
+            )
         (root / 'analysis.json').write_text(json.dumps(asdict(result), ensure_ascii=False), encoding='utf-8')
         with SessionLocal() as db:
             run = get_run(db, ident)
@@ -132,7 +161,8 @@ def analyze(ident):
             run.warnings = warnings
             db.add(Audit(company_id=run.company_id, action='Recopila: análisis terminado'))
             db.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
+        logger.exception('Recopila: falló el análisis %s', ident)
         progress(ident, 'error', 'No se pudo analizar: ' + str(exc))
 
 
@@ -166,7 +196,8 @@ def generate(ident, by_month):
             run.by_month = by_month
             db.add(Audit(company_id=run.company_id, action='Recopila: documentos generados'))
             db.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
+        logger.exception('Recopila: falló la generación %s', ident)
         shutil.rmtree(temporary, ignore_errors=True)
         progress(ident, 'error', 'No se pudo generar: ' + str(exc))
 

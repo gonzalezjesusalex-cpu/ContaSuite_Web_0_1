@@ -75,7 +75,7 @@ def execute(lifecycle, data_dir, port, log_dir, test_seconds=None, extra_workers
                 logger.info('Background worker starting: %s', mode)
                 worker(lifecycle.stop_event, ['--mode', mode])
                 logger.info('Background worker stopped: %s', mode)
-            except BaseException:
+            except BaseException:  # noqa: BLE001 - SCM supervisor: logs the failure, stops the service and exits non-zero
                 failures.append(mode)
                 lifecycle.stop_event.set()
                 logger.error('Background worker failed: %s', mode)
@@ -90,7 +90,7 @@ def execute(lifecycle, data_dir, port, log_dir, test_seconds=None, extra_workers
                 def extra(name=name, callback=callback):
                     try:
                         callback(lifecycle.stop_event)
-                    except BaseException:
+                    except BaseException:  # noqa: BLE001 - SCM supervisor: logs the failure, stops the service and exits non-zero
                         failures.append(name)
                         lifecycle.stop_event.set()
                         logger.error('Managed component failed: %s', name)
@@ -133,7 +133,7 @@ def execute(lifecycle, data_dir, port, log_dir, test_seconds=None, extra_workers
         lifecycle.finish()
         logger.info('Service stopped cleanly')
         return 0
-    except BaseException as exc:
+    except BaseException as exc:  # noqa: BLE001 - SCM supervisor: logs the failure, stops the service and exits non-zero
         logger.error('Service failed (%s); inspect isolated application log', type(exc).__name__)
         lifecycle.finish(1)
         return 1

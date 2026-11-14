@@ -1,6 +1,7 @@
 """Archivos subidos y copias verificadas; el motor de escritorio permanece intacto."""
 
 import json
+import logging
 import re
 import shutil
 import stat
@@ -17,6 +18,7 @@ from .database import DATA, SessionLocal, session
 from .models import Audit, Company, OrganizadorRun
 from . import organizador_engine as motor
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/api/organizador', tags=['Organizador CFDI'])
 MAX_UPLOAD = 100 * 1024 * 1024
 MAX_EXPANDED = 500 * 1024 * 1024
@@ -170,7 +172,8 @@ def analyze(ident):
             run.warnings = warnings
             db.add(Audit(company_id=run.company_id, action='Organizador CFDI: análisis terminado'))
             db.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
+        logger.exception('Organizador CFDI: falló el análisis %s', ident)
         progress(ident, 'error', 'No se pudo analizar: ' + str(exc))
 
 
@@ -203,7 +206,8 @@ def generate(ident):
             )
             db.add(Audit(company_id=run.company_id, action='Organizador CFDI: copias verificadas generadas'))
             db.commit()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
+        logger.exception('Organizador CFDI: falló la generación %s', ident)
         progress(
             ident,
             'error',

@@ -108,7 +108,7 @@ def parse_public_certificate(payload):
             valid_from=cert.not_valid_before_utc,
             valid_until=cert.not_valid_after_utc,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001 - any parse failure means "not an accepted public certificate" (422)
         raise HTTPException(422, 'No es un certificado público X.509 admitido.') from None
 
 

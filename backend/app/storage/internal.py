@@ -36,7 +36,7 @@ def validate_payload(stream, name, *, allow_public_cer=False):
                 cert = x509.load_der_x509_certificate(data)
                 if cert.public_bytes(Encoding.DER) != data:
                     raise ValueError
-        except Exception:
+        except Exception:  # noqa: BLE001 - any parse failure is reported as a StorageError to the uploader
             raise StorageError('invalid_public_certificate') from None
         media_type = 'application/pkix-cert'
     elif Path(name).suffix.lower() == '.pdf':
@@ -48,7 +48,7 @@ def validate_payload(stream, name, *, allow_public_cer=False):
             stream.seek(0)
             # No entities, DTD or external resources. Parsing/classification is not inferred from names.
             ElementTree.parse(stream, forbid_dtd=True, forbid_entities=True, forbid_external=True)
-        except Exception:
+        except Exception:  # noqa: BLE001 - any parse failure is reported as a StorageError to the uploader
             raise StorageError('invalid_format') from None
         media_type = 'application/xml'
     stream.seek(0)

@@ -115,6 +115,47 @@ def test_recopila_auth_and_upload_validation(client):
     assert upload(client, b'broken.zip').status_code == 202
 
 
+def test_recopila_warns_before_generating_when_a_matched_pdf_is_unreadable(client, caplog):
+    # The original engine silently skips PDFs it cannot read (recopila_engine.generate_*: except/pass),
+    # which would leave the compiled file incomplete. The web adapter must tell the user beforehand.
+    stream = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(source())) as original, zipfile.ZipFile(stream, 'w') as z:
+        for item in original.infolist():
+            data = original.read(item)
+            if item.filename == f'CFDI/{UUID}.pdf':
+                data = b'%PDF-1.4\nsynthetic damaged file without objects'
+            z.writestr(item, data)
+    caplog.set_level('WARNING', logger='app.recopila')
+    r = upload(client, stream.getvalue())
+    base = '/api/recopila/runs/' + r.json()['id']
+    run = client.get(base, headers=A).json()['run']
+    assert run['status'] == 'analyzed'
+    warning = next(w for w in run['warnings'] if 'no se pueden leer' in w)
+    assert warning.startswith('1 PDF') and f'{UUID}.pdf' in warning
+    assert any(f'{UUID}.pdf' in m for m in caplog.messages)
+    assert client.post(base + '/generate', headers=A, json={'by_month': False}).status_code == 202
+    names = {f['name'] for f in client.get(base, headers=A).json()['outputs']}
+    assert 'RECOPILADOR.pdf' in names
+
+
+def test_recopila_failed_analysis_is_logged_with_traceback(client, caplog):
+    # Point 18: background failures are shown on the run and also leave a traceback in the server log.
+    bad = io.BytesIO()
+    with zipfile.ZipFile(bad, 'w') as z:
+        z.writestr('../evil.pdf', pdf('test'))
+    caplog.set_level('ERROR', logger='app.recopila')
+    ident = upload(client, bad.getvalue()).json()['id']
+    assert client.get('/api/recopila/runs/' + ident, headers=A).json()['run']['status'] == 'error'
+    record = next(r for r in caplog.records if ident in r.getMessage())
+    assert record.exc_info is not None
+
+
+def test_recopila_readable_input_has_no_unreadable_warning(client):
+    r = upload(client, source())
+    run = client.get('/api/recopila/runs/' + r.json()['id'], headers=A).json()['run']
+    assert not any('no se pueden leer' in w for w in run['warnings'])
+
+
 def test_recopila_empty_input_and_multiple_documents(client):
     r = client.post(
         '/api/recopila/runs',

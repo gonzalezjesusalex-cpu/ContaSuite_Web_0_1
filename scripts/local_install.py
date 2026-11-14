@@ -45,7 +45,7 @@ def main():
         def run():
             try:
                 events.put(('done', on_done, action()))
-            except BaseException as exc:
+            except BaseException as exc:  # noqa: BLE001 - installer UI: shows the failure; installation and logs are kept
                 events.put(
                     (
                         'error',
