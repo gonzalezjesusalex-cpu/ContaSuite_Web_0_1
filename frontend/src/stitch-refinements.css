@@ -59,6 +59,20 @@ summary:focus-visible {
   font-size: 13px;
   line-height: 18px;
 }
+/* Internal views of an Empresas section: same tab style, one step smaller. */
+.tabs.subtabs {
+  min-height: 40px;
+  margin-top: -8px;
+}
+.tabs.subtabs button {
+  padding: 10px 5px;
+  font-size: 12px;
+  line-height: 16px;
+}
+.section-actions {
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
 .stitch-live-module input,
 .stitch-live-module select,
 .stitch-live-module textarea {

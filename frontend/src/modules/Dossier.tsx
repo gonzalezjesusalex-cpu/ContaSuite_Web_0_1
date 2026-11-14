@@ -137,11 +137,11 @@ export default function Dossier({
         </label>
         <Link
           className="btn"
-          to={'/empresas?' + new URLSearchParams({ tab: 'Dashboard general', period, company_id: c.id })}
+          to={'/empresas?' + new URLSearchParams({ tab: 'Panel', vista: 'General', period, company_id: c.id })}
         >
           Dashboard de empresa
         </Link>
-        <Link className="btn" to={'/empresas?' + new URLSearchParams({ tab: 'Control de obligaciones', period })}>
+        <Link className="btn" to={'/empresas?' + new URLSearchParams({ tab: 'Obligaciones', period })}>
           Control de obligaciones
         </Link>
         <label>

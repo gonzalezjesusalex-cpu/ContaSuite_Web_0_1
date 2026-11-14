@@ -1,20 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Eye, Search, Download, ArrowRight, CalendarDays, FolderOpen, Building2 } from 'lucide-react';
-import { api, csv, dateLabel, today } from '../api';
-import { Badge, Empty, Heading, Kpi } from '../components/ui';
-import { Records } from './Records';
+import { Plus, Eye, Search, Download, CalendarDays, FolderOpen } from 'lucide-react';
+import { api, csv, today } from '../api';
+import { Badge, Empty, Heading } from '../components/ui';
 import Documents from './Documents';
-import CompanyDashboard from './CompanyDashboard';
 import IntegralDashboard from './IntegralDashboard';
 import CompanyImporter from './CompanyImporter';
 import Credentials, { AlertCenter } from './Credentials';
 import FiscalControl from './FiscalControl';
 import { useFiscalRead, fiscalStatus, exportFiscal, type Summary } from './fiscalRead';
 import { confirmDiscard } from '../navigationGuard';
+import { companiesSection, companiesSections, companiesUrl, companiesViews } from '../companyNavigation';
 import type { State, Company } from '../types';
 export const statusOf = (_c: Company, _state: State, _period?: string, summary?: Summary) => fiscalStatus(summary);
 export const toneOf = (s: string) => (s === 'Crítico' ? 'red' : s === 'Sin pendientes' ? 'green' : 'amber');
+// The tasks redirect is resolved by the route before this page renders.
+const target = (tab: string | null, vista: string | null) => {
+  const t = companiesSection(tab, vista);
+  return 'section' in t ? t : { section: 'Panel', view: 'General' };
+};
 export default function Companies({
   state,
   refresh,
@@ -25,16 +29,12 @@ export default function Companies({
   notify: (m: string) => void;
 }) {
   const [params, setParams] = useSearchParams();
-  const [tab, setTab] = useState(
-    params.get('tab') === 'documentos'
-      ? 'Documentos'
-      : params.get('tab') === 'expedientes'
-        ? 'Expedientes Digitales'
-        : 'Dashboard general',
-  );
+  const [tab, setTab] = useState(() => target(params.get('tab'), params.get('vista')).section);
+  const [vista, setVista] = useState(() => target(params.get('tab'), params.get('vista')).view);
   useEffect(() => {
-    if (params.get('tab') === 'expedientes') setTab('Expedientes Digitales');
-    else if (params.get('tab') === 'documentos') setTab('Documentos');
+    const t = target(params.get('tab'), params.get('vista'));
+    setTab(t.section);
+    setVista(t.view);
   }, [params]);
   const [period, setPeriod] = useState(
     /^20\d{2}-(0[1-9]|1[0-2])$/.test(params.get('period') || '') ? params.get('period')! : today().slice(0, 7),
@@ -43,26 +43,6 @@ export default function Companies({
   const [accountant, setAccountant] = useState(params.get('accountant') || '');
   const [status, setStatus] = useState(params.get('status') || '');
   const [page, setPage] = useState(1);
-  const tabs = [
-    'Dashboard general',
-    'Opiniones de cumplimiento',
-    'Seguimiento CFDI',
-    'Calidad de datos',
-    'Directorio',
-    'Importar y conciliar',
-    'Credenciales y Certificados',
-    'Centro de Alertas',
-    'Control de obligaciones',
-    'Obligaciones Fiscales',
-    'Tareas Operativas',
-    'Expedientes Digitales',
-    'Documentos',
-    'Reportes',
-  ];
-  useEffect(() => {
-    const target = params.get('tab');
-    if (target && tabs.includes(target)) setTab(target);
-  }, [params]);
   const { data: fiscal, error: fiscalError } = useFiscalRead(
     period,
     undefined,
@@ -97,29 +77,17 @@ export default function Companies({
         const q = new URLSearchParams(previous);
         for (const [key, value] of Object.entries({ tab, period, query, accountant, status, archive, sort }))
           q.set(key, value);
+        if (vista) q.set('vista', vista);
+        else q.delete('vista');
         return q;
       },
       { replace: true },
     );
-  }, [tab, period, query, accountant, status, archive, sort]);
+  }, [tab, vista, period, query, accountant, status, archive, sort]);
   const all = directory;
   const list = all.filter((c) => !status || statusOf(c, state, period, fiscal?.company_summaries[c.id]) === status);
   const pages = Math.max(1, Math.ceil(list.length / 10));
   const current = Math.min(page, pages);
-  const counts = ['Sin pendientes', 'Requiere revisión', 'Crítico'].map(
-    (s) => all.filter((c) => statusOf(c, state, period, fiscal?.company_summaries[c.id]) === s).length,
-  );
-  const pending = (fiscal?.cells || []).filter((o) =>
-    ['pending', 'in_progress', 'overdue'].includes(o.effective_status),
-  );
-  const upcoming = [
-    ...state.tasks.filter((t) => t.status !== 'Completada'),
-    ...pending
-      .filter((o) => o.due_verified && o.due_date)
-      .map((o) => ({ id: o.cell_key, company_id: o.company_id, title: o.concept, due_date: o.due_date! })),
-  ]
-    .sort((a, b) => a.due_date.localeCompare(b.due_date))
-    .slice(0, 4);
   const exportCompanies = () =>
     csv('Empresas_ContaSuite.csv', [
       ['Razón social', 'RFC', 'Tipo', 'Régimen', 'Contador', 'Estado interno'],
@@ -163,7 +131,7 @@ export default function Companies({
                 />
               </span>
             </label>
-            <Link className="btn" to="/empresas?tab=expedientes" onClick={() => setTab('Expedientes Digitales')}>
+            <Link className="btn" to={companiesUrl('Documentos', 'Expedientes por empresa')}>
               <FolderOpen size={16} />
               Expedientes
             </Link>
@@ -176,14 +144,16 @@ export default function Companies({
           </>
         }
       />
-      <div className="tabs card">
-        {tabs.map((t) => (
+      <div className="tabs card" role="group" aria-label="Secciones de Empresas">
+        {companiesSections.map((t) => (
           <button
             className={t === tab ? 'active' : ''}
+            aria-pressed={t === tab}
             key={t}
             onClick={() => {
               if (!confirmDiscard()) return;
               setTab(t);
+              setVista(companiesViews[t]?.[0] || '');
               setParams({ tab: t, period });
             }}
           >
@@ -192,23 +162,43 @@ export default function Companies({
           </button>
         ))}
       </div>
-      {['Dashboard general', 'Opiniones de cumplimiento', 'Seguimiento CFDI', 'Calidad de datos'].includes(tab) ? (
-        <IntegralDashboard state={state} period={period} view={tab} />
-      ) : tab === 'Importar y conciliar' ? (
+      {companiesViews[tab] && (
+        <div className="tabs card subtabs" role="group" aria-label={'Vista de ' + tab}>
+          {companiesViews[tab].map((v) => (
+            <button
+              className={v === vista ? 'active' : ''}
+              aria-pressed={v === vista}
+              key={v}
+              onClick={() => {
+                if (confirmDiscard()) setVista(v);
+              }}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === 'Panel' ? (
+        <IntegralDashboard state={state} period={period} view={vista === 'General' ? 'Dashboard general' : vista} />
+      ) : tab === 'Importar' ? (
         <CompanyImporter state={state} />
-      ) : tab === 'Credenciales y Certificados' ? (
-        <Credentials state={state} />
-      ) : tab === 'Centro de Alertas' ? (
-        <AlertCenter state={state} />
-      ) : tab === 'Control de obligaciones' ? (
-        <FiscalControl state={state} period={period} notify={notify} />
-      ) : tab === 'Documentos' ? (
-        <Documents notify={notify} refresh={refresh} />
-      ) : tab === 'Obligaciones Fiscales' ? (
-        <FiscalControl state={state} period={period} notify={notify} />
-      ) : tab === 'Tareas Operativas' ? (
-        <Records state={state} kind="tasks" refresh={refresh} notify={notify} />
-      ) : tab === 'Expedientes Digitales' ? (
+      ) : tab === 'Credenciales' ? (
+        vista === 'Centro de alertas' ? (
+          <AlertCenter state={state} />
+        ) : (
+          <Credentials state={state} />
+        )
+      ) : tab === 'Obligaciones' ? (
+        <>
+          <div className="actions section-actions">
+            <button className="btn" disabled={!fiscal} onClick={() => fiscal && exportFiscal(fiscal, period)}>
+              <Download size={16} />
+              Obligaciones del periodo CSV
+            </button>
+          </div>
+          <FiscalControl state={state} period={period} notify={notify} />
+        </>
+      ) : tab === 'Documentos' && vista === 'Expedientes por empresa' ? (
         <div className="card">
           <div className="card-title">
             <div>
@@ -233,115 +223,10 @@ export default function Companies({
             <Empty title="Sin expedientes" />
           )}
         </div>
-      ) : tab === 'Reportes' ? (
-        <div className="card">
-          <div className="card-title">
-            <div>
-              <h2>Reportes del despacho</h2>
-              <p>Exportaciones de los registros capturados en ContaSuite.</p>
-            </div>
-          </div>
-          <div className="report-actions">
-            <button className="btn" onClick={exportCompanies}>
-              <Download size={16} />
-              Directorio de empresas CSV
-            </button>
-            <button className="btn" disabled={!fiscal} onClick={() => fiscal && exportFiscal(fiscal, period)}>
-              <Download size={16} />
-              Obligaciones del periodo CSV
-            </button>
-          </div>
-          <div className="info-box">La generación y presentación de DIOT se integrará como motor independiente.</div>
-        </div>
+      ) : tab === 'Documentos' ? (
+        <Documents notify={notify} refresh={refresh} />
       ) : (
         <>
-          {tab === 'Resumen Ejecutivo' && (
-            <>
-              <CompanyDashboard
-                notify={notify}
-                canWrite={(cid) => state.current_user.admin || state.current_user.write_company_ids.includes(cid)}
-              />
-              <div className="kpi-grid six">
-                <Kpi label="Empresas registradas" value={all.length} detail="Padrón del despacho" />
-                <Kpi label="Sin pendientes" value={counts[0]} detail="En los registros capturados" tone="green" />
-                <Kpi
-                  label="Requieren atención"
-                  value={counts[1]}
-                  detail="Tareas u obligaciones abiertas"
-                  tone="amber"
-                />
-                <Kpi label="Alertas críticas" value={counts[2]} detail="Registros con fecha vencida" tone="red" />
-                <Kpi
-                  label="Obligaciones pendientes"
-                  value={pending.length}
-                  detail="En el periodo seleccionado"
-                  tone="blue"
-                />
-                <Kpi label="Documentos adjuntos" value={state.document_total} detail="Expedientes digitales" />
-              </div>
-              <div className="overview-grid">
-                <section className="card compliance">
-                  <div className="card-title">
-                    <div>
-                      <h2>Distribución de Cumplimiento Fiscal</h2>
-                      <p>Seguimiento interno; no constituye certificación oficial del SAT.</p>
-                    </div>
-                    <Badge>Consolidado</Badge>
-                  </div>
-                  <div className="stacked-bar">
-                    {counts.map((v, i) => (
-                      <div
-                        key={i}
-                        style={{ width: (all.length ? (v / all.length) * 100 : 0) + '%' }}
-                        className={['green', 'amber', 'red'][i]}
-                      />
-                    ))}
-                  </div>
-                  <div className="compliance-cells">
-                    {['Sin pendientes', 'Requiere revisión', 'Crítico'].map((t, i) => (
-                      <div key={t}>
-                        <span className={'dot ' + ['green', 'amber', 'red'][i]} />
-                        <strong>{counts[i]}</strong>
-                        <p>{t}</p>
-                        <small>{all.length ? Math.round((counts[i] / all.length) * 100) : 0}% del padrón</small>
-                      </div>
-                    ))}
-                    <div>
-                      <strong>{all.length}</strong>
-                      <p>Sin verificar ante SAT</p>
-                      <small>Integración pendiente</small>
-                    </div>
-                  </div>
-                  <div className="compliance-foot">
-                    <Building2 size={15} />
-                    La información se actualiza con cada registro del despacho.
-                  </div>
-                </section>
-                <section className="card upcoming">
-                  <div className="card-title">
-                    <h2>Próximos vencimientos</h2>
-                    <Badge tone="amber">{upcoming.length} registros</Badge>
-                  </div>
-                  {upcoming.length ? (
-                    upcoming.map((t) => (
-                      <Link to={'/empresas/' + t.company_id} key={t.id}>
-                        <div>
-                          <strong>{all.find((c) => c.id === t.company_id)?.name}</strong>
-                          <small>{t.title}</small>
-                        </div>
-                        <Badge tone={t.due_date < today() ? 'red' : 'amber'}>{dateLabel(t.due_date)}</Badge>
-                      </Link>
-                    ))
-                  ) : (
-                    <p className="muted padded">Sin vencimientos registrados.</p>
-                  )}
-                  <button className="text-button" onClick={() => setTab('Tareas Operativas')}>
-                    Ver todas las tareas <ArrowRight size={14} />
-                  </button>
-                </section>
-              </div>
-            </>
-          )}
           <section className="card directory">
             {directoryLoading && <p role="status">Cargando directorio…</p>}
             {directoryError && (
@@ -534,41 +419,6 @@ export default function Companies({
               </div>
             </div>
           </section>
-          {tab === 'Resumen Ejecutivo' && all.length > 0 && (
-            <section className="card workloads">
-              <div className="card-title">
-                <div>
-                  <h2>Carga de Trabajo & Asignación Contable</h2>
-                  <p>Distribución de la cartera entre los responsables del despacho.</p>
-                </div>
-              </div>
-              <div className="workload-grid">
-                {[...new Set(state.companies.map((c) => c.accountant))].map((a) => (
-                  <div key={a}>
-                    <div className="company-cell">
-                      <div className="company-avatar">
-                        {(a || 'SA')
-                          .split(' ')
-                          .slice(-2)
-                          .map((w) => w[0])
-                          .join('')}
-                      </div>
-                      <strong>{a || 'Sin asignar'}</strong>
-                    </div>
-                    <div className="workload-stats">
-                      <span>
-                        <b>{all.filter((c) => c.accountant === a).length}</b>Empresas
-                      </span>
-                      <span>
-                        <b>{state.tasks.filter((t) => t.responsible === a && t.status !== 'Completada').length}</b>
-                        Tareas pendientes
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
         </>
       )}
     </>

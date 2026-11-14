@@ -23,6 +23,7 @@ import {
 import { UnsavedNavigation } from './navigationGuard';
 import { updateArchiveWarnings } from './archiveWarnings';
 import { api } from './api';
+import { companiesSection } from './companyNavigation';
 import { Badge, Logo, Heading, Field, Empty } from './components/ui';
 import Login from './modules/Login';
 import type { State, CurrentUser } from './types';
@@ -96,6 +97,8 @@ function CompaniesRoute(props: Shared) {
     params.set('tab', 'calendario');
     return <Navigate to={'/tareas?' + params.toString()} replace />;
   }
+  const target = companiesSection(params.get('tab'), params.get('vista'));
+  if ('redirect' in target) return <Navigate to={target.redirect} replace />;
   return <Companies {...props} />;
 }
 function CompanyRoute({ editing = false, ...props }: Shared & { editing?: boolean }) {
