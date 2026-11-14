@@ -484,6 +484,9 @@ def edit_user(ident: str, payload: AccountEdit, principal: ManagerDep):
             )
             if user.role == 'admin' and user.enabled and not others:
                 raise HTTPException(409, 'Debe permanecer al menos un administrador activo.')
+        if user.role == 'contador' and payload.role != 'contador':
+            if db.scalar(select(Company.id).where(Company.accountant_id == ident).limit(1)):
+                raise HTTPException(409, 'Reasigna primero las empresas de las que es responsable.')
         resolved = checked_grants(db, principal, payload.role, payload.grants)
         values = dict(
             display_name=payload.display_name,

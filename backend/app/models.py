@@ -37,6 +37,11 @@ class Company(Base):
     trade_name: Mapped[str] = mapped_column(String(180), default='')
     regime: Mapped[str] = mapped_column(String(100), default='601 - General de Ley Personas Morales')
     accountant: Mapped[str] = mapped_column(String(150), default='Sin asignar')
+    # cs_0011: the responsible accountant by user id (no FK: added to existing tables; checked in
+    # app/responsible.py). `accountant` above becomes the shown name; `accountant_legacy` keeps the original
+    # free text until an administrator confirms its retirement.
+    accountant_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    accountant_legacy: Mapped[str | None] = mapped_column(String(150), nullable=True)
     email: Mapped[str] = mapped_column(String(180), default='')
     phone: Mapped[str] = mapped_column(String(40), default='')
     location: Mapped[str] = mapped_column(String(150), default='')

@@ -399,6 +399,9 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), princ
     principal.require('empresa.editar', id)
     company = get(db, Company, id)
     responsible_unchanged(principal, data, company.accountant)
+    from .responsible import text_unchanged
+
+    text_unchanged(company, data)
 
     from .company_lifecycle import ensure_unique_rfc
 
@@ -781,6 +784,11 @@ app.include_router(storage_router)
 from .accounts import router as accounts_router
 
 app.include_router(accounts_router)
+
+
+from .responsible import router as responsible_router
+
+app.include_router(responsible_router)
 
 
 from .fiscal_control import router as fiscal_control_router

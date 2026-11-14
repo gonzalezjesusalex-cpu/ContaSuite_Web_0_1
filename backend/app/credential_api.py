@@ -28,18 +28,27 @@ def no_cache(response):
     response.headers['Pragma'] = 'no-cache'
 
 
+def by_role(p, company, permission):
+    # Bloque 2 (decisions 2-4): administrators and the company's responsible accountant hold every
+    # credential permission except reveal, which always needs an explicit grant in the table below.
+    return permission != 'reveal' and (p.admin or (p.role == 'contador' and company.accountant_id == p.subject))
+
+
 def allowed(p, db, cid, permission):
     p.require_company(cid)
-    if not db.get(Company, cid):
+    company = db.get(Company, cid)
+    if not company:
         raise HTTPException(404, 'Empresa no encontrada.')
-    # Existing admins can manage metadata, but reveal always needs an explicit grant.
-    if p.admin and permission != 'reveal':
+    if by_role(p, company, permission):
         return
-    if not db.execute(
-        select(grants.c.user_id).where(
-            grants.c.user_id == p.subject, grants.c.company_id == cid, grants.c.permission == permission
-        )
-    ).first():
+    if (
+        permission != 'reveal'
+        or not db.execute(
+            select(grants.c.user_id).where(
+                grants.c.user_id == p.subject, grants.c.company_id == cid, grants.c.permission == permission
+            )
+        ).first()
+    ):
         raise HTTPException(403, 'Sin permiso para esta operación.')
 
 
@@ -129,8 +138,9 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
     perms = [
         a
         for a in PERMISSIONS
-        if (p.admin and a != 'reveal')
-        or db.execute(
+        if by_role(p, db.get(Company, cid), a)
+        or a == 'reveal'
+        and db.execute(
             select(grants.c.permission).where(
                 grants.c.user_id == p.subject, grants.c.company_id == cid, grants.c.permission == a
             )

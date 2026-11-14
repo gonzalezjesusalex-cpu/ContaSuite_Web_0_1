@@ -55,6 +55,13 @@ Aplicación en servidor (punto 2):
    - Los auxiliares nuevos o editados guardan siempre acciones explícitas (lectura = ninguna; escritura sin elegir = el alcance anterior a los roles). Cambiar a otro rol borra sus acciones.
    - Sigue vigente: no se quita el último administrador; un usuario deshabilitado pierde sus sesiones. Ocultarlo al asignar responsable va con el punto 5.
 4. Migración `0010`: `audit_events.actor_id` y `changes` (`{campo: {before, after}}`). Registran autor las altas y ediciones de empresa, tareas, obligaciones y documentos, el archivado, las solicitudes de análisis (el agente como `agent:<id>`) y lo que generan Recopila, CFDI, Declara y Recibos (autor de la ejecución). La ruta de carpeta sólo deja constancia de que cambió. Las filas anteriores quedan sin autor. Credenciales, control fiscal y almacenamiento ya tenían su propio historial con actor.
-5. Responsable por `id` de usuario: `Company.accountant_id`, respaldo del texto, grant `write`, decisión sobre el acceso del anterior, conciliación en revisión humana.
+5. Responsable por `id` de usuario (migración `0011`, `backend/app/responsible.py`, rutas `/api/responsible/...`, sólo administrador):
+   - `companies.accountant_id` (sin llave foránea: se valida en la aplicación) y `accountant_legacy`, copia del texto libre anterior. `accountant` pasa a ser el nombre mostrado del responsable.
+   - Sólo un contador activo puede ser responsable; `candidates` no lista deshabilitados. Asignar crea o amplía su permiso de escritura y lo avisa.
+   - Cambiar o retirar exige `previous_access` (`keep`, `read`, `remove`) para el responsable anterior; nada se quita por omisión. Un cambio concurrente da 409.
+   - Conciliación: `reconciliation` propone coincidencias por nombre exacto (`match`, `ambiguous`, `none`), `reconciliation/apply` aplica sólo las confirmadas y `reconciliation/retire` retira el texto anterior cuando el administrador lo confirma.
+   - Con responsable asignado, el texto ya no se edita desde los datos de la empresa. Un contador que es responsable no puede cambiar de rol hasta reasignar sus empresas.
+   - Credenciales: administrador y contador responsable tienen todos los permisos salvo `reveal`, que sigue exigiendo permiso explícito. Los permisos explícitos de credenciales de otras cuentas dejan de aplicar, salvo `reveal`.
+   - Todo cambio queda en el historial con autor, valor anterior y nuevo.
 6. Historial de responsable en el expediente.
 7. Frontend: selector, pastilla, filtros por usuario y «Mis empresas», pantalla de usuarios y plantillas, visibilidad por permiso.
