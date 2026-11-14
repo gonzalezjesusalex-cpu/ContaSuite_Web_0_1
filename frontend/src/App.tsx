@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, Component, type ReactNode } from 'react';
 import { NavLink, Link, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import {
   Home,
@@ -24,20 +24,51 @@ import { UnsavedNavigation } from './navigationGuard';
 import { updateArchiveWarnings } from './archiveWarnings';
 import { api } from './api';
 import { Badge, Logo, Heading, Field, Empty } from './components/ui';
-import Companies from './modules/Companies';
-import CompanyForm from './modules/CompanyForm';
-import Dossier from './modules/Dossier';
-import TasksAndDeadlines from './modules/TasksAndDeadlines';
-import DesignPreview from './modules/DesignPreview';
-import Receipts from './modules/Receipts';
-import Recopila from './modules/Recopila';
-import Organizador from './modules/Organizador';
-import Declara from './modules/Declara';
 import Login from './modules/Login';
-import AccountSecurity from './modules/AccountSecurity';
-import StorageConnector from './modules/StorageConnector';
 import type { State, CurrentUser } from './types';
 import { OriginalIcon, moduleIconNames } from './components/OriginalIcon';
+// Route modules load on demand so the initial bundle only carries the shell, login and home.
+const Companies = lazy(() => import('./modules/Companies'));
+const CompanyForm = lazy(() => import('./modules/CompanyForm'));
+const Dossier = lazy(() => import('./modules/Dossier'));
+const TasksAndDeadlines = lazy(() => import('./modules/TasksAndDeadlines'));
+const DesignPreview = lazy(() => import('./modules/DesignPreview'));
+const Receipts = lazy(() => import('./modules/Receipts'));
+const Recopila = lazy(() => import('./modules/Recopila'));
+const Organizador = lazy(() => import('./modules/Organizador'));
+const Declara = lazy(() => import('./modules/Declara'));
+const AccountSecurity = lazy(() => import('./modules/AccountSecurity'));
+const StorageConnector = lazy(() => import('./modules/StorageConnector'));
+function ModuleLoading() {
+  return (
+    <div className="empty" role="status">
+      <RefreshCw size={28} />
+      <h2>Cargando módulo…</h2>
+    </div>
+  );
+}
+// A chunk can fail to load (network drop, or an update replaced the hashed files): offer a reload
+// instead of leaving a blank workspace. Resets when the route changes.
+class ModuleBoundary extends Component<{ children: ReactNode; route: string }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidUpdate(previous: { route: string }) {
+    if (this.state.failed && previous.route !== this.props.route) this.setState({ failed: false });
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <Empty title="No se pudo cargar el módulo">
+        <p>Revisa la conexión con el servidor o recarga la página para obtener la versión actual.</p>
+        <button className="btn" onClick={() => window.location.reload()}>
+          Recargar
+        </button>
+      </Empty>
+    );
+  }
+}
 const nav = [
   {
     group: 'General',
@@ -354,155 +385,159 @@ export default function App() {
           </div>
         )}
         {shared ? (
-          <Routes>
-            <Route path="/" element={<Welcome name={name} />} />
-            <Route path="/empresas" element={<CompaniesRoute {...shared} />} />
-            <Route
-              path="/empresas/nueva"
-              element={
-                identity?.admin ? (
-                  <CompanyForm userId={identity?.id} onSaved={refresh} notify={notify} />
-                ) : (
-                  <Navigate to="/empresas" replace />
-                )
-              }
-            />
-            <Route
-              path="/empresas/:id/editar"
-              element={identity?.admin ? <CompanyRoute {...shared} editing /> : <Navigate to="/empresas" replace />}
-            />
-            <Route path="/empresas/:id" element={<CompanyRoute {...shared} />} />
-            <Route path="/tareas" element={<TasksAndDeadlines {...shared} />} />
-            <Route
-              path="/recopilador-cfdi"
-              element={identity?.admin ? <Recopila {...shared} /> : <Navigate to="/empresas" replace />}
-            />
-            <Route
-              path="/recibos"
-              element={identity?.admin ? <Receipts {...shared} /> : <Navigate to="/empresas" replace />}
-            />
-            <Route
-              path="/organizador-cfdi"
-              element={identity?.admin ? <Organizador {...shared} /> : <Navigate to="/empresas" replace />}
-            />
-            <Route
-              path="/declara"
-              element={identity?.admin ? <Declara {...shared} /> : <Navigate to="/empresas" replace />}
-            />
-            {nav[1].items
-              .filter((i) => !['/recibos', '/recopilador-cfdi', '/organizador-cfdi', '/declara'].includes(i.path))
-              .map((i) => (
+          <ModuleBoundary route={location.pathname}>
+            <Suspense fallback={<ModuleLoading />}>
+              <Routes>
+                <Route path="/" element={<Welcome name={name} />} />
+                <Route path="/empresas" element={<CompaniesRoute {...shared} />} />
                 <Route
-                  key={i.path}
-                  path={i.path}
-                  element={<DesignPreview module={i.path.slice(1)} title={i.title} />}
+                  path="/empresas/nueva"
+                  element={
+                    identity?.admin ? (
+                      <CompanyForm userId={identity?.id} onSaved={refresh} notify={notify} />
+                    ) : (
+                      <Navigate to="/empresas" replace />
+                    )
+                  }
                 />
-              ))}
-            <Route
-              path="/configuracion"
-              element={
-                <>
-                  <Heading
-                    title="Configuración del sistema"
-                    description="Preferencias del espacio de trabajo y estado real de las integraciones."
-                  />
-                  <div className="settings-grid">
-                    <section className="card padded">
-                      <h2>Preferencias del despacho</h2>
-                      <Field label="Nombre mostrado en el inicio">
-                        <input
-                          value={name}
-                          onChange={(e) => {
-                            setName(e.target.value);
-                            localStorage.setItem('contasuite-name:' + identity?.id, e.target.value);
-                          }}
-                          placeholder="C.P. Jesús Alejandro"
-                        />
-                      </Field>
-                      <h3>Apariencia</h3>
-                      <div className="theme-options">
-                        {[
-                          ['light', 'Claro', Sun],
-                          ['dark', 'Oscuro', Moon],
-                          ['contrast', 'Alto contraste', Monitor],
-                        ].map(([v, t, I]) => {
-                          const Icon = I as typeof Sun;
-                          return (
-                            <button
-                              key={String(v)}
-                              className={'btn ' + (theme === v ? 'selected' : '')}
-                              onClick={() => setTheme(String(v))}
-                            >
-                              <Icon size={18} />
-                              {String(t)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <small className="muted">Estas preferencias se guardan en este navegador.</small>
-                    </section>
-                    <section className="card padded">
-                      <h2>Estado de servicios</h2>
-                      <dl>
-                        <div>
-                          <dt>Base de datos</dt>
-                          <dd>{state?.database}</dd>
-                        </div>
-                        <div>
-                          <dt>API FastAPI</dt>
-                          <dd>
-                            <Badge tone="green">Conectada</Badge>
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>Consulta SAT</dt>
-                          <dd>
-                            <Badge>Pendiente de integrar</Badge>
-                          </dd>
-                        </div>
-                        <div>
-                          <dt>OCR</dt>
-                          <dd>
-                            <Badge>Pendiente de integrar</Badge>
-                          </dd>
-                        </div>
-                      </dl>
-                      <h3>Agentes locales</h3>
-                      {state?.agents.length ? (
-                        state.agents.map((a) => (
-                          <div className="agent-line" key={a.id}>
-                            <strong>{a.id}</strong>
-                            <Badge tone={a.online ? 'green' : 'neutral'}>
-                              {a.online ? 'Conectado' : 'Desconectado'}
-                            </Badge>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="muted">
-                          El agente Windows se inicia junto con ContaSuite. Autoriza sus carpetas con
-                          CONFIGURAR_CARPETAS en la instalación local.
-                        </p>
-                      )}
-                    </section>
-                  </div>
-                  {identity?.admin && !identity.bootstrap && <StorageConnector notify={notify} />}
-                  {identity && !identity.bootstrap && (
-                    <AccountSecurity
-                      identity={identity}
-                      companies={state?.companies || []}
-                      notify={notify}
-                      onEnded={ended}
+                <Route
+                  path="/empresas/:id/editar"
+                  element={identity?.admin ? <CompanyRoute {...shared} editing /> : <Navigate to="/empresas" replace />}
+                />
+                <Route path="/empresas/:id" element={<CompanyRoute {...shared} />} />
+                <Route path="/tareas" element={<TasksAndDeadlines {...shared} />} />
+                <Route
+                  path="/recopilador-cfdi"
+                  element={identity?.admin ? <Recopila {...shared} /> : <Navigate to="/empresas" replace />}
+                />
+                <Route
+                  path="/recibos"
+                  element={identity?.admin ? <Receipts {...shared} /> : <Navigate to="/empresas" replace />}
+                />
+                <Route
+                  path="/organizador-cfdi"
+                  element={identity?.admin ? <Organizador {...shared} /> : <Navigate to="/empresas" replace />}
+                />
+                <Route
+                  path="/declara"
+                  element={identity?.admin ? <Declara {...shared} /> : <Navigate to="/empresas" replace />}
+                />
+                {nav[1].items
+                  .filter((i) => !['/recibos', '/recopilador-cfdi', '/organizador-cfdi', '/declara'].includes(i.path))
+                  .map((i) => (
+                    <Route
+                      key={i.path}
+                      path={i.path}
+                      element={<DesignPreview module={i.path.slice(1)} title={i.title} />}
                     />
-                  )}
-                  <details className="card settings-reference">
-                    <summary>Ver propuesta visual original de Stitch</summary>
-                    <DesignPreview module="configuracion" title="Configuración" />
-                  </details>
-                </>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+                  ))}
+                <Route
+                  path="/configuracion"
+                  element={
+                    <>
+                      <Heading
+                        title="Configuración del sistema"
+                        description="Preferencias del espacio de trabajo y estado real de las integraciones."
+                      />
+                      <div className="settings-grid">
+                        <section className="card padded">
+                          <h2>Preferencias del despacho</h2>
+                          <Field label="Nombre mostrado en el inicio">
+                            <input
+                              value={name}
+                              onChange={(e) => {
+                                setName(e.target.value);
+                                localStorage.setItem('contasuite-name:' + identity?.id, e.target.value);
+                              }}
+                              placeholder="C.P. Jesús Alejandro"
+                            />
+                          </Field>
+                          <h3>Apariencia</h3>
+                          <div className="theme-options">
+                            {[
+                              ['light', 'Claro', Sun],
+                              ['dark', 'Oscuro', Moon],
+                              ['contrast', 'Alto contraste', Monitor],
+                            ].map(([v, t, I]) => {
+                              const Icon = I as typeof Sun;
+                              return (
+                                <button
+                                  key={String(v)}
+                                  className={'btn ' + (theme === v ? 'selected' : '')}
+                                  onClick={() => setTheme(String(v))}
+                                >
+                                  <Icon size={18} />
+                                  {String(t)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <small className="muted">Estas preferencias se guardan en este navegador.</small>
+                        </section>
+                        <section className="card padded">
+                          <h2>Estado de servicios</h2>
+                          <dl>
+                            <div>
+                              <dt>Base de datos</dt>
+                              <dd>{state?.database}</dd>
+                            </div>
+                            <div>
+                              <dt>API FastAPI</dt>
+                              <dd>
+                                <Badge tone="green">Conectada</Badge>
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>Consulta SAT</dt>
+                              <dd>
+                                <Badge>Pendiente de integrar</Badge>
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>OCR</dt>
+                              <dd>
+                                <Badge>Pendiente de integrar</Badge>
+                              </dd>
+                            </div>
+                          </dl>
+                          <h3>Agentes locales</h3>
+                          {state?.agents.length ? (
+                            state.agents.map((a) => (
+                              <div className="agent-line" key={a.id}>
+                                <strong>{a.id}</strong>
+                                <Badge tone={a.online ? 'green' : 'neutral'}>
+                                  {a.online ? 'Conectado' : 'Desconectado'}
+                                </Badge>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="muted">
+                              El agente Windows se inicia junto con ContaSuite. Autoriza sus carpetas con
+                              CONFIGURAR_CARPETAS en la instalación local.
+                            </p>
+                          )}
+                        </section>
+                      </div>
+                      {identity?.admin && !identity.bootstrap && <StorageConnector notify={notify} />}
+                      {identity && !identity.bootstrap && (
+                        <AccountSecurity
+                          identity={identity}
+                          companies={state?.companies || []}
+                          notify={notify}
+                          onEnded={ended}
+                        />
+                      )}
+                      <details className="card settings-reference">
+                        <summary>Ver propuesta visual original de Stitch</summary>
+                        <DesignPreview module="configuracion" title="Configuración" />
+                      </details>
+                    </>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ModuleBoundary>
         ) : (
           <div className="empty">
             <RefreshCw size={28} />
