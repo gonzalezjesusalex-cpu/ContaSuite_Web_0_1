@@ -262,7 +262,7 @@ def generate(data: Batch, db: Session = Depends(session), principal: Principal =
             )
             db.add(row)
             rows.append(row)
-            db.add(Audit(company_id=item.company_id, action='Recibo emitido: ' + folio))
+            db.add(Audit(company_id=item.company_id, actor_id=principal.subject, action='Recibo emitido: ' + folio))
         db.commit()
         return rows
     except Exception:

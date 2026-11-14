@@ -161,7 +161,7 @@ def analyze(ident):
             run.message = 'Análisis terminado. Revisa las coincidencias antes de generar.'
             run.summary = result.summary
             run.warnings = warnings
-            db.add(Audit(company_id=run.company_id, action='Recopila: análisis terminado'))
+            db.add(Audit(company_id=run.company_id, actor_id=run.created_by, action='Recopila: análisis terminado'))
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Recopila: falló el análisis %s', ident)
@@ -196,7 +196,7 @@ def generate(ident, by_month):
             run.status = 'generated'
             run.message = 'Archivos generados.'
             run.by_month = by_month
-            db.add(Audit(company_id=run.company_id, action='Recopila: documentos generados'))
+            db.add(Audit(company_id=run.company_id, actor_id=run.created_by, action='Recopila: documentos generados'))
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Recopila: falló la generación %s', ident)

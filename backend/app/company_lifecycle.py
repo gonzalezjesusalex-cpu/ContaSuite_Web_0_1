@@ -173,7 +173,15 @@ def set_archive(company_id: str, payload: ArchiveIn, principal: Principal = Depe
                 },
             )
         )
-        db.add(Audit(company_id=company_id, action=f'Empresa {action} por {principal.subject}', created_at=stamp))
+        db.add(
+            Audit(
+                company_id=company_id,
+                action='Empresa archivada' if payload.archived else 'Empresa reactivada',
+                created_at=stamp,
+                actor_id=principal.subject,
+                changes={'archived': {'before': bool(old['archived']) if old else False, 'after': payload.archived}},
+            )
+        )
         db.commit()
     except IntegrityError:
         db.rollback()

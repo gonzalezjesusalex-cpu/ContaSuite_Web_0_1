@@ -181,7 +181,7 @@ def analyze(ident):
             run.warnings = warnings
             run.status = 'analyzed'
             run.message = 'Análisis terminado. Revisa los nombres y el control documental.'
-            db.add(Audit(company_id=run.company_id, action='Declara: análisis terminado'))
+            db.add(Audit(company_id=run.company_id, actor_id=run.created_by, action='Declara: análisis terminado'))
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Declara: falló el análisis %s', ident)
@@ -345,7 +345,9 @@ def resolve(ident: str, data: ResolveIn, db: Session = Depends(session), princip
         refresh_run(run, infos)
         run.status = 'analyzed'
         run.revision += 1
-        db.add(Audit(company_id=run.company_id, action='Declara: resolución manual del plan'))
+        db.add(
+            Audit(company_id=run.company_id, actor_id=principal.subject, action='Declara: resolución manual del plan')
+        )
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -423,7 +425,11 @@ def generate(ident):
             run.status = 'generated'
             run.message = 'Copias renombradas y verificadas. Los originales se conservan.'
             run.summary = {**run.summary, 'renamed': renamed, 'output': len(eligible)}
-            db.add(Audit(company_id=run.company_id, action='Declara: copias renombradas generadas'))
+            db.add(
+                Audit(
+                    company_id=run.company_id, actor_id=run.created_by, action='Declara: copias renombradas generadas'
+                )
+            )
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Declara: falló la generación %s', ident)

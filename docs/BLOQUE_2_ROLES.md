@@ -54,7 +54,7 @@ Aplicación en servidor (punto 2):
    - Nombre, estado y contraseña de un auxiliar que también trabaja en empresas ajenas sólo los cambia el administrador.
    - Los auxiliares nuevos o editados guardan siempre acciones explícitas (lectura = ninguna; escritura sin elegir = el alcance anterior a los roles). Cambiar a otro rol borra sus acciones.
    - Sigue vigente: no se quita el último administrador; un usuario deshabilitado pierde sus sesiones. Ocultarlo al asignar responsable va con el punto 5.
-4. Migración `0010`: `Audit` con actor, valor anterior y nuevo en todos los cambios de empresa.
+4. Migración `0010`: `audit_events.actor_id` y `changes` (`{campo: {before, after}}`). Registran autor las altas y ediciones de empresa, tareas, obligaciones y documentos, el archivado, las solicitudes de análisis (el agente como `agent:<id>`) y lo que generan Recopila, CFDI, Declara y Recibos (autor de la ejecución). La ruta de carpeta sólo deja constancia de que cambió. Las filas anteriores quedan sin autor. Credenciales, control fiscal y almacenamiento ya tenían su propio historial con actor.
 5. Responsable por `id` de usuario: `Company.accountant_id`, respaldo del texto, grant `write`, decisión sobre el acceso del anterior, conciliación en revisión humana.
 6. Historial de responsable en el expediente.
 7. Frontend: selector, pastilla, filtros por usuario y «Mis empresas», pantalla de usuarios y plantillas, visibilidad por permiso.

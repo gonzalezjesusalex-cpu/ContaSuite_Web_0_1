@@ -173,7 +173,9 @@ def analyze(ident):
             run.message = 'Análisis terminado. Revisa las rutas antes de organizar.'
             run.summary = summary
             run.warnings = warnings
-            db.add(Audit(company_id=run.company_id, action='Organizador CFDI: análisis terminado'))
+            db.add(
+                Audit(company_id=run.company_id, actor_id=run.created_by, action='Organizador CFDI: análisis terminado')
+            )
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Organizador CFDI: falló el análisis %s', ident)
@@ -207,7 +209,13 @@ def generate(ident):
                 if not result.errors
                 else 'Organización terminada con errores. Revisa la auditoría.'
             )
-            db.add(Audit(company_id=run.company_id, action='Organizador CFDI: copias verificadas generadas'))
+            db.add(
+                Audit(
+                    company_id=run.company_id,
+                    actor_id=run.created_by,
+                    action='Organizador CFDI: copias verificadas generadas',
+                )
+            )
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Organizador CFDI: falló la generación %s', ident)

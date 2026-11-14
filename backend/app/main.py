@@ -58,8 +58,22 @@ def agent_auth(request: Request, credentials: HTTPAuthorizationCredentials | Non
     request.state.agent_authenticated = True
 
 
-def record(db, action, company_id=None):
-    db.add(Audit(action=action, company_id=company_id))
+def record(db, action, company_id=None, actor=None, changes=None):
+    db.add(Audit(action=action, company_id=company_id, actor_id=actor, changes=changes or None))
+
+
+def diff(before, after, hidden=('folder',)):
+    """{field: {'before', 'after'}} for changed values; hidden fields only record that they changed."""
+    out = {}
+    for key, value in after.items():
+        old = before.get(key)
+        if old != value:
+            out[key] = {'changed': True} if key in hidden else {'before': jsonable(old), 'after': jsonable(value)}
+    return out
+
+
+def jsonable(value):
+    return value.isoformat() if hasattr(value, 'isoformat') else value
 
 
 def get(db, model, id):
@@ -374,7 +388,7 @@ def create_company(data: CompanyIn, db: Session = Depends(session), principal: P
     if principal.role == 'contador':
         # The registering accountant can operate it at once; it does not become its responsible.
         db.add(UserCompanyGrant(user_id=principal.subject, company_id=company.id, access='write'))
-    record(db, 'Empresa registrada', company.id)
+    record(db, 'Empresa registrada', company.id, principal.subject)
     save(db)
 
     return company
@@ -390,10 +404,12 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), princ
 
     ensure_unique_rfc(db, data.rfc, id)
 
-    for key, value in data.model_dump().items():
+    values = data.model_dump()
+    changes = diff({k: getattr(company, k) for k in values}, values)
+    for key, value in values.items():
         setattr(company, key, value)
 
-    record(db, 'Datos de empresa actualizados', id)
+    record(db, 'Datos de empresa actualizados', id, principal.subject, changes)
     save(db)
     return company
 
@@ -406,7 +422,7 @@ def create_task(data: TaskIn, db: Session = Depends(session), principal: Princip
 
     task = Task(**data.model_dump())
     db.add(task)
-    record(db, 'Tarea creada: ' + data.title, data.company_id)
+    record(db, 'Tarea creada: ' + data.title, data.company_id, principal.subject)
     save(db)
     return task
 
@@ -420,10 +436,12 @@ def edit_task(id: str, data: TaskIn, db: Session = Depends(session), principal: 
 
     principal.require('tareas.editar', task.company_id)
 
-    for k, v in data.model_dump().items():
+    values = data.model_dump()
+    changes = diff({k: getattr(task, k) for k in values}, values)
+    for k, v in values.items():
         setattr(task, k, v)
 
-    record(db, 'Tarea actualizada: ' + data.title, data.company_id)
+    record(db, 'Tarea actualizada: ' + data.title, data.company_id, principal.subject, changes)
     save(db)
     return task
 
@@ -436,7 +454,7 @@ def create_obligation(data: ObligationIn, db: Session = Depends(session), princi
     o = Obligation(**data.model_dump())
     db.add(o)
 
-    record(db, 'Obligación registrada: ' + data.title, data.company_id)
+    record(db, 'Obligación registrada: ' + data.title, data.company_id, principal.subject)
     save(db)
     return o
 
@@ -450,10 +468,12 @@ def edit_obligation(id: str, data: ObligationIn, db: Session = Depends(session),
 
     principal.require('obligaciones.editar', o.company_id)
 
-    for k, v in data.model_dump().items():
+    values = data.model_dump()
+    changes = diff({k: getattr(o, k) for k in values}, values)
+    for k, v in values.items():
         setattr(o, k, v)
 
-    record(db, 'Obligación actualizada: ' + data.title, data.company_id)
+    record(db, 'Obligación actualizada: ' + data.title, data.company_id, principal.subject, changes)
     save(db)
     return o
 
@@ -521,7 +541,7 @@ async def upload_document(
         )
 
         db.add(doc)
-        record(db, 'Documento adjuntado: ' + name, id)
+        record(db, 'Documento adjuntado: ' + name, id, principal.subject)
         save(db)
 
         return (
@@ -569,14 +589,14 @@ def delete_document(id: str, db: Session = Depends(session), principal: Principa
 
     path = DATA / 'documents' / doc.storage_name
 
-    record(db, 'Documento eliminado: ' + doc.name, doc.company_id)
+    record(db, 'Documento eliminado: ' + doc.name, doc.company_id, principal.subject)
     db.delete(doc)
     save(db)
     path.unlink(missing_ok=True)
 
 
 @app.post('/api/jobs', dependencies=ADMIN, status_code=201)
-def create_job(data: JobIn, db: Session = Depends(session)):
+def create_job(data: JobIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
     company = get(db, Company, data.company_id)
     agent = get(db, Agent, data.agent_id)
 
@@ -596,7 +616,7 @@ def create_job(data: JobIn, db: Session = Depends(session)):
     )
 
     db.add(job)
-    record(db, 'Análisis de carpeta solicitado', company.id)
+    record(db, 'Análisis de carpeta solicitado', company.id, principal.subject)
     save(db)
     return job
 
@@ -655,7 +675,12 @@ def result(id: str, data: JobResult, db: Session = Depends(session)):
     job.status = data.status
     job.result = data.result
 
-    record(db, 'Análisis local ' + ('completado' if data.status == 'completed' else 'fallido'), job.company_id)
+    record(
+        db,
+        'Análisis local ' + ('completado' if data.status == 'completed' else 'fallido'),
+        job.company_id,
+        'agent:' + job.agent_id,
+    )
 
     save(db)
     return {'ok': True}

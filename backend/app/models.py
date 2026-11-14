@@ -94,6 +94,10 @@ class Audit(Base):
     company_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(250))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # cs_0010: who made the change (user id; NULL for system work or rows before roles) and, for edits,
+    # {field: {'before': old, 'after': new}}.
+    actor_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    changes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class Agent(Base):

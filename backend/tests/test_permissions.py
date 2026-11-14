@@ -7,7 +7,16 @@ from sqlalchemy import delete, select
 from test_api import client, company  # noqa: F401  Isolated environment before app imports.
 from test_accounts import PASSWORD, XML, login, setup, upload
 from app.database import SessionLocal
-from app.models import Company, DeclaraRun, OrganizadorRun, RecopilaRun, Receipt, UserCompanyAction, UserCompanyGrant
+from app.models import (
+    Audit,
+    Company,
+    DeclaraRun,
+    OrganizadorRun,
+    RecopilaRun,
+    Receipt,
+    UserCompanyAction,
+    UserCompanyGrant,
+)
 from app.permissions import ACTIONS, LEGACY_WRITE_ACTIONS, READ_ACTIONS, WRITE_ACTIONS, company_actions
 from app.security import Principal
 
@@ -252,3 +261,26 @@ def test_receipts_are_scoped_and_settings_stay_with_administration(office):
     assert c.get('/api/receipts/' + foreign + '/pdf').status_code == 404
     assert c.post('/api/receipts/export', json={'ids': [rid, foreign]}).status_code == 404
     assert c.get('/api/receipts/' + rid + '/pdf').status_code == 200
+
+
+def test_company_changes_record_author_and_values(office):
+    c, a, *_ = office
+    login(c, 'conta')
+    conta_id = c.get('/api/auth/me').json()['id']
+    edited = c.put('/api/companies/' + a, json=edit_body(c, a, name='A renombrada', folder='C:/ruta/secreta'))
+    assert edited.status_code == 200, edited.text
+    task = c.post('/api/tasks', json={'company_id': a, 'title': 'Primera', 'due_date': DUE}).json()
+    moved = {'company_id': a, 'title': 'Primera', 'due_date': '2026-12-01'}
+    assert c.put('/api/tasks/' + task['id'], json=moved).status_code == 200
+    assert c.put('/api/company-lifecycle/' + a, json={'archived': True, 'revision': 0}).status_code == 200
+    with SessionLocal() as db:
+        rows = {r.action: r for r in db.scalars(select(Audit).where(Audit.company_id == a))}
+    company_edit = rows['Datos de empresa actualizados']
+    assert company_edit.actor_id == conta_id
+    assert company_edit.changes['name'] == {'before': 'Empresa A', 'after': 'A renombrada'}
+    # Folder paths are not copied into the history, only the fact that they changed.
+    assert company_edit.changes['folder'] == {'changed': True} and 'rfc' not in company_edit.changes
+    assert rows['Tarea creada: Primera'].actor_id == conta_id
+    assert rows['Tarea actualizada: Primera'].changes == {'due_date': {'before': DUE, 'after': '2026-12-01'}}
+    assert rows['Empresa archivada'].changes == {'archived': {'before': False, 'after': True}}
+    assert rows['Empresa archivada'].actor_id == conta_id
