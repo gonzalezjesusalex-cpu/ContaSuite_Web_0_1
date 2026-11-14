@@ -59,3 +59,102 @@
     width: auto;
   }
 }
+
+/* Bloque 5: month/week grid with selectable days and a side agenda (below it on narrow screens). */
+.calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: 16px;
+  align-items: start;
+}
+button.calendar-day {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--panel, transparent);
+  cursor: pointer;
+}
+.calendar-day time {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.calendar-day.today time {
+  color: var(--primary, #004ac6);
+}
+.calendar-day.selected {
+  border-color: var(--primary, #004ac6);
+  box-shadow: 0 0 0 1px var(--primary, #004ac6);
+}
+.calendar-day .calendar-event {
+  display: block;
+  margin: 0;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.calendar-day small {
+  font-size: 0.7rem;
+  color: var(--muted, #555);
+}
+.calendar-agenda {
+  border: 1px solid var(--border, #ccd3df);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.calendar-agenda-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.calendar-agenda h3 {
+  font-size: 0.9rem;
+  margin: 0;
+  text-transform: capitalize;
+}
+.calendar-agenda ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.calendar-agenda li {
+  border-left: 3px solid #305990;
+  padding-left: 0.5rem;
+  display: grid;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+.calendar-agenda li.calendar-urgent {
+  border-left-color: #bd3a40;
+}
+.calendar-agenda time,
+.calendar-agenda small {
+  font-size: 0.72rem;
+  color: var(--muted, #555);
+}
+.calendar-manage-toggle {
+  margin-bottom: 16px;
+}
+.calendar-manage-toggle > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.calendar-manage-toggle[open] > summary {
+  margin-bottom: 12px;
+}
+@media (max-width: 1100px) {
+  .calendar-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
