@@ -1,0 +1,9 @@
+# Development lock: production lock plus the test and lint tools of requirements-dev.txt.
+-r requirements.lock.txt
+Pygments==2.21.0
+colorama==0.4.6
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.7.0
+pytest==9.0.0
+ruff==0.14.4

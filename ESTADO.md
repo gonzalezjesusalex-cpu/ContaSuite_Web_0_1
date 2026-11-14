@@ -30,8 +30,8 @@ Conexión/descarga SAT automática, OCR, validación fiscal externa, revelación
 
 ## Validación más reciente
 
-- Backend: 216 aprobadas, 1 omitida (privilegio de enlaces simbólicos en Windows) — 13/11/2026, suite aislada sin `.env` real.
-- Frontend: compilación TypeScript/Vite correcta en RC1 (12/11/2026); advertencia de chunk principal >500 KB. En este equipo falta Node.js para repetirla.
+- Backend: 251 aprobadas, 1 omitida (privilegio de enlaces simbólicos en Windows) — 14/11/2026, comando único `cd backend && python -m pytest -q` sin `.env` real (incluye las suites aisladas de los lotes y el agente real).
+- Frontend: compilación correcta, chunk principal 349 kB tras la carga diferida (antes 595 kB); 14 pruebas `node --test` y E2E Playwright de humo aprobadas — 14/11/2026.
 - Rendimiento RC1 del dashboard con 25.271 documentos: ~2,5 s y 92 consultas en PostgreSQL. Tras el punto 5 (13/11/2026, SQLite sintético, mismos 25.271 documentos): 40 consultas (antes 84 en SQLite), ~390 ms (antes ~486 ms), sin tope de 50.000 documentos. Pendiente medir en PostgreSQL.
 
 ## Linters (línea base 13/11/2026, sin corregir)
@@ -42,6 +42,14 @@ Comandos: `.venv\Scripts\python -m ruff check .` y `npm --prefix frontend run li
 - **ESLint: 3 errores, 6 advertencias.** `Recopila.tsx`: importación `InputHTMLAttributes` y parámetro `i` sin uso, un `any`. `react-hooks/exhaustive-deps`: `ui.tsx:32` (ref en limpieza de efecto), `Companies.tsx:65` (`tabs`) y `:104` (`setParams`), `Credentials.tsx:467` (`load`), `IntegralDashboard.tsx:144` (`setContext`), `Receipts.tsx:167` (`item`). `rules-of-hooks`: sin infracciones.
 
 Las correcciones que cambian comportamiento (dependencias de hooks, excepciones) se tratan una a una con su prueba.
+
+## Dependencias (auditoría 14/11/2026, sin corregir)
+
+Locks: `backend/requirements.lock.txt` (producción, perfil PostgreSQL) y `backend/requirements-dev.lock.txt` (añade pytest, ruff y sus dependencias). Comandos: `pip-audit -r backend/requirements.lock.txt --no-deps --disable-pip` (pip-audit en un entorno aparte) y `npm --prefix frontend audit`.
+
+- **Producción Python: 19 avisos en 4 paquetes.** `starlette` 0.49.3 (5; corregidos en 1.0.1–1.3.1, entre ellos `StaticFiles` en Windows, validación de `Host` y de ruta, límites de `request.form()`), `python-multipart` 0.0.20 (6; DoS y path traversal con opciones no predeterminadas; 0.0.22–0.0.31), `cryptography` 46.0.3 (7; OpenSSL incluido y validación de cadenas; 46.0.5–50.0.0), `python-dotenv` 1.2.1 (1; 1.2.2). `starlette` 1.x exige actualizar `fastapi`: requiere su propio punto con pruebas completas.
+- **Desarrollo Python:** `pytest` 9.0.0 (1; 9.0.3).
+- **npm producción: 0.** Desarrollo: 7 moderadas en `typescript-eslint` → `minimatch` (DoS, sólo herramienta de lint).
 
 ## Pendientes
 

@@ -30,7 +30,7 @@ def main():
                 names['app/' + p.relative_to(ROOT).as_posix()] = p
     for name in [
         'backend/alembic.ini',
-        'backend/requirements-recovery.lock.txt',
+        'backend/requirements.lock.txt',
         'scripts/schema_admin.py',
         'scripts/service_runtime.py',
         'scripts/windows_service.py',

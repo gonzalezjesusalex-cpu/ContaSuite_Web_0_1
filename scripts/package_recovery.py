@@ -29,7 +29,7 @@ def package():
     for name in [
         'backend/requirements-base.txt',
         'backend/requirements.txt',
-        'backend/requirements-recovery.lock.txt',
+        'backend/requirements.lock.txt',
         'backend/alembic.ini',
         'scripts/schema_admin.py',
         'scripts/service_runtime.py',
