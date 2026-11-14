@@ -58,6 +58,14 @@ def agent_auth(request: Request, credentials: HTTPAuthorizationCredentials | Non
     request.state.agent_authenticated = True
 
 
+def responsibles(db, companies):
+    ids = sorted({c.accountant_id for c in companies if c.accountant_id})
+    if not ids:
+        return []
+    users = db.scalars(select(UserAccount).where(UserAccount.id.in_(ids)).order_by(UserAccount.display_name))
+    return [{'id': u.id, 'display_name': u.display_name, 'enabled': u.enabled} for u in users]
+
+
 def record(db, action, company_id=None, actor=None, changes=None):
     db.add(Audit(action=action, company_id=company_id, actor_id=actor, changes=changes or None))
 
@@ -338,6 +346,8 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
 
     return {
         'companies': [company_public(c) for c in companies],
+        # Responsible users of the visible companies, so the client can show "(inactivo)".
+        'responsibles': responsibles(db, companies),
         'current_user': principal.public(),
         'archive_available': archive_available,
         'tasks': db.scalars(

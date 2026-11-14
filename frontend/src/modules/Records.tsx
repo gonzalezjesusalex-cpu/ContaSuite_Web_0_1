@@ -1,9 +1,12 @@
 import { confirmDiscard } from '../dirtyForms';
+import { can, type Action } from '../permissions';
 import { useState, type FormEvent } from 'react';
 import { Plus, Pencil, CheckCircle2, Download, Search } from 'lucide-react';
 import { api, csv, dateLabel, today } from '../api';
 import { Badge, Empty, Field, Kpi, Modal } from '../components/ui';
 import type { State, Task, Obligation } from '../types';
+const writeAction = (task: boolean): Action => (task ? 'tareas.editar' : 'obligaciones.editar');
+
 export function Records({
   state,
   kind,
@@ -79,10 +82,8 @@ export function Records({
             className="btn primary"
             disabled={
               companyId
-                ? !state.current_user.admin && !state.current_user.write_company_ids.includes(companyId)
-                : !state.companies.some(
-                    (c) => state.current_user.admin || state.current_user.write_company_ids.includes(c.id),
-                  )
+                ? !can(state.current_user, writeAction(isTask), companyId)
+                : !state.companies.some((c) => can(state.current_user, writeAction(isTask), c.id))
             }
             onClick={() => setEdit(true)}
           >
@@ -174,9 +175,7 @@ export function Records({
                       <div className="row-actions">
                         <button
                           className="icon-button"
-                          disabled={
-                            !state.current_user.admin && !state.current_user.write_company_ids.includes(r.company_id)
-                          }
+                          disabled={!can(state.current_user, writeAction(isTask), r.company_id)}
                           aria-label={'Editar ' + r.title}
                           onClick={() => setEdit(r)}
                         >
@@ -185,9 +184,7 @@ export function Records({
                         {!done(r) && (
                           <button
                             className="icon-button green-text"
-                            disabled={
-                              !state.current_user.admin && !state.current_user.write_company_ids.includes(r.company_id)
-                            }
+                            disabled={!can(state.current_user, writeAction(isTask), r.company_id)}
                             aria-label={'Completar ' + r.title}
                             onClick={() => update(r)}
                           >
@@ -260,11 +257,7 @@ function RecordForm({
       : task
         ? {
             company_id:
-              companyId ||
-              state.companies.find(
-                (c) => state.current_user.admin || state.current_user.write_company_ids.includes(c.id),
-              )?.id ||
-              '',
+              companyId || state.companies.find((c) => can(state.current_user, writeAction(task), c.id))?.id || '',
             title: '',
             category: 'Operativa',
             responsible: '',
@@ -275,11 +268,7 @@ function RecordForm({
           }
         : {
             company_id:
-              companyId ||
-              state.companies.find(
-                (c) => state.current_user.admin || state.current_user.write_company_ids.includes(c.id),
-              )?.id ||
-              '',
+              companyId || state.companies.find((c) => can(state.current_user, writeAction(task), c.id))?.id || '',
             title: '',
             period: initialPeriod || today().slice(0, 7),
             due_date: today(),
@@ -308,7 +297,7 @@ function RecordForm({
           <Field label="Empresa *" wide>
             <select required value={form.company_id} onChange={(e) => set('company_id', e.target.value)}>
               {state.companies
-                .filter((c) => state.current_user.admin || state.current_user.write_company_ids.includes(c.id))
+                .filter((c) => can(state.current_user, writeAction(task), c.id))
                 .map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} · {c.rfc}

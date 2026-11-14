@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { canRegisterCompanies, responsibleName } from '../permissions';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Eye, Search, Download, CalendarDays, FolderOpen } from 'lucide-react';
 import { api, csv, today } from '../api';
@@ -40,7 +41,8 @@ export default function Companies({
     /^20\d{2}-(0[1-9]|1[0-2])$/.test(params.get('period') || '') ? params.get('period')! : today().slice(0, 7),
   );
   const [query, setQuery] = useState(params.get('query') || '');
-  const [accountant, setAccountant] = useState(params.get('accountant') || '');
+  // Responsible by user (Bloque 2): '' all, 'mine', 'none' (no linked user) or a user id.
+  const [responsible, setResponsible] = useState(params.get('responsible') || '');
   const [status, setStatus] = useState(params.get('status') || '');
   const [page, setPage] = useState(1);
   const { data: fiscal, error: fiscalError } = useFiscalRead(
@@ -57,7 +59,7 @@ export default function Companies({
     const abort = new AbortController();
     setDirectoryLoading(true);
     setDirectoryError('');
-    const q = new URLSearchParams({ query, accountant, archive, sort });
+    const q = new URLSearchParams({ query, responsible, archive, sort });
     api<{ companies: Company[] }>('/company-lifecycle?' + q, 'GET', undefined, abort.signal)
       .then((d) => setDirectory(d.companies))
       .catch((e) => {
@@ -70,12 +72,12 @@ export default function Companies({
         if (!abort.signal.aborted) setDirectoryLoading(false);
       });
     return () => abort.abort();
-  }, [query, accountant, archive, sort, state.companies]);
+  }, [query, responsible, archive, sort, state.companies]);
   useEffect(() => {
     setParams(
       (previous) => {
         const q = new URLSearchParams(previous);
-        for (const [key, value] of Object.entries({ tab, period, query, accountant, status, archive, sort }))
+        for (const [key, value] of Object.entries({ tab, period, query, responsible, status, archive, sort }))
           q.set(key, value);
         if (vista) q.set('vista', vista);
         else q.delete('vista');
@@ -86,7 +88,7 @@ export default function Companies({
     // setParams changes identity on every URL change (React Router 7); as a dependency this URL sync
     // would re-run after its own write. It only has to follow the page state below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, vista, period, query, accountant, status, archive, sort]);
+  }, [tab, vista, period, query, responsible, status, archive, sort]);
   const all = directory;
   const list = all.filter((c) => !status || statusOf(c, state, period, fiscal?.company_summaries[c.id]) === status);
   const pages = Math.max(1, Math.ceil(list.length / 10));
@@ -99,7 +101,7 @@ export default function Companies({
         c.rfc,
         c.person_type,
         c.regime,
-        c.accountant,
+        responsibleName(c, state.responsibles),
         statusOf(c, state, period, fiscal?.company_summaries[c.id]),
       ]),
     ]);
@@ -129,7 +131,7 @@ export default function Companies({
               <FolderOpen size={16} />
               Expedientes
             </Link>
-            {state.current_user.admin && (
+            {canRegisterCompanies(state.current_user) && (
               <Link className="btn primary" to="/empresas/nueva">
                 <Plus size={17} />
                 Registrar empresa
@@ -270,17 +272,19 @@ export default function Companies({
                 />
               </div>
               <select
-                aria-label="Contador"
-                value={accountant}
+                aria-label="Contador responsable"
+                value={responsible}
                 onChange={(e) => {
-                  setAccountant(e.target.value);
+                  setResponsible(e.target.value);
                   setPage(1);
                 }}
               >
-                <option value="">Todos los contadores</option>
-                {[...new Set(state.companies.map((c) => c.accountant))].map((c) => (
-                  <option key={c} value={c}>
-                    {c || 'Sin asignar'}
+                <option value="">Todos los responsables</option>
+                {state.current_user.role === 'contador' && <option value="mine">Mis empresas</option>}
+                <option value="none">Sin responsable</option>
+                {(state.responsibles || []).map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.display_name + (r.enabled ? '' : ' (inactivo)')}
                   </option>
                 ))}
               </select>
@@ -326,7 +330,7 @@ export default function Companies({
                               '/empresas/' +
                               c.id +
                               '?' +
-                              new URLSearchParams({ period, query, accountant, status, archive, sort })
+                              new URLSearchParams({ period, query, responsible, status, archive, sort })
                             }
                             className="company-cell"
                           >
@@ -347,7 +351,7 @@ export default function Companies({
                           {c.archived && <Badge tone="amber">Archivada</Badge>}
                         </td>
                         <td>{c.regime}</td>
-                        <td>{c.accountant || 'Sin asignar'}</td>
+                        <td>{responsibleName(c, state.responsibles)}</td>
                         <td title="Solo documentos asociados directamente; no mide integridad documental">
                           {state.document_counts[c.id] ?? 0}
                         </td>
@@ -367,7 +371,7 @@ export default function Companies({
                               '/empresas/' +
                               c.id +
                               '?' +
-                              new URLSearchParams({ period, query, accountant, status, archive, sort })
+                              new URLSearchParams({ period, query, responsible, status, archive, sort })
                             }
                           >
                             <Eye size={17} />
@@ -382,7 +386,7 @@ export default function Companies({
               <Empty title={all.length ? 'No se encontraron empresas' : 'Comienza con tu primera empresa'}>
                 {all.length ? (
                   'Ajusta los filtros de búsqueda.'
-                ) : state.current_user.admin ? (
+                ) : canRegisterCompanies(state.current_user) ? (
                   <>
                     <span>Registra tu primer contribuyente o importa tu cartera desde Empresas › Importar.</span>
                     <div className="actions centered">

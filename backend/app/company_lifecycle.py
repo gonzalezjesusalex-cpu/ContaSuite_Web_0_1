@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import (
     MetaData,
@@ -95,6 +95,8 @@ def directory(
     archive: Literal['active', 'archived', 'all'] = 'active',
     sort: Literal['name', 'rfc', 'accountant'] = 'name',
     accountant: str = '',
+    # Responsible by user: '' all, 'none' without a linked user, 'mine' the caller's, or a user id.
+    responsible: str = Query('', max_length=36),
 ):
     if not available(db):
         raise HTTPException(
@@ -113,6 +115,9 @@ def directory(
         if archive != 'all' and archived != (archive == 'archived'):
             continue
         if accountant and c.accountant != accountant:
+            continue
+        wanted = principal.subject if responsible == 'mine' else responsible
+        if responsible == 'none' and c.accountant_id or responsible not in {'', 'none'} and c.accountant_id != wanted:
             continue
         if query.casefold().strip() not in (c.name + ' ' + c.rfc + ' ' + c.trade_name).casefold() and normalize_rfc(
             query

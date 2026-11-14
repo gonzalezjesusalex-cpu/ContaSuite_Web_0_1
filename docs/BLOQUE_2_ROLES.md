@@ -64,4 +64,8 @@ Aplicación en servidor (punto 2):
    - Credenciales: administrador y contador responsable tienen todos los permisos salvo `reveal`, que sigue exigiendo permiso explícito. Los permisos explícitos de credenciales de otras cuentas dejan de aplicar, salvo `reveal`.
    - Todo cambio queda en el historial con autor, valor anterior y nuevo.
 6. Historial en el expediente: `GET /api/companies/{id}/history` (acción `historial.ver`, es decir, cualquier permiso de la empresa) con autor (o «(inactivo)»), fecha, acción y valores anterior y nuevo; vista «Historial» de la sección Actividad (`CompanyHistory.tsx`), ahora visible para todos los roles, no sólo el administrador.
-7. Frontend: selector, pastilla, filtros por usuario y «Mis empresas», pantalla de usuarios y plantillas, visibilidad por permiso.
+7. Frontend:
+   - `frontend/src/permissions.ts` (`can`, `canAnywhere`): menús, rutas y botones según las acciones que devuelve el servidor (`current_user.actions`), no según `admin`. Siguen siendo de administrador: Analizar carpeta (hasta el Bloque 4), importadores, conector de almacenamiento, revisión global y auditoría.
+   - Responsable: selector con búsqueda de contadores activos («Ana Pérez · ana», «Sin asignar») en el formulario de empresa y en el diálogo del expediente (sólo administrador), con la pregunta sobre el acceso del anterior; pastilla «Responsable» con «(inactivo)»; `/api/state` incluye `responsibles`.
+   - Directorio: filtro por responsable (`responsible`: todos, «Mis empresas» para contadores, «Sin responsable» por vínculo vacío, o un usuario). El tablero integral filtra por el nombre del responsable asignado y marca «sin responsable» por vínculo vacío.
+   - Configuración › Cuentas: roles, plantillas y acciones personalizadas por empresa para auxiliares; el contador ve «Auxiliares de mis empresas». Conciliación de contadores para el administrador.

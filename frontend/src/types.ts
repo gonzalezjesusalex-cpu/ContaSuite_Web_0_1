@@ -6,6 +6,13 @@ export interface CurrentUser {
   bootstrap: boolean;
   company_ids: string[];
   write_company_ids: string[];
+  /** Actions per visible company, decided by the server (catalog in backend/app/permissions.py). */
+  actions?: Record<string, string[]>;
+}
+export interface Responsible {
+  id: string;
+  display_name: string;
+  enabled: boolean;
 }
 export interface Company {
   archived?: boolean | null;
@@ -19,6 +26,10 @@ export interface Company {
   trade_name: string;
   regime: string;
   accountant: string;
+  /** Responsible accountant by user id (Bloque 2); null when unassigned. */
+  accountant_id?: string | null;
+  /** Original free text kept until an administrator retires it. */
+  accountant_legacy?: string | null;
   email: string;
   phone: string;
   location: string;
@@ -71,6 +82,7 @@ export interface State {
   archive_available?: boolean;
   current_user: CurrentUser;
   companies: Company[];
+  responsibles?: Responsible[];
   tasks: Task[];
   obligations: Obligation[];
   /** Visible documents per company (only companies the user may see). */

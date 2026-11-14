@@ -5,14 +5,15 @@ import { ArrowLeft, Check, Save, FolderOpen, ShieldCheck } from 'lucide-react';
 import { clearDirtyForms } from '../navigationGuard';
 import { api } from '../api';
 import { Field, Heading, Badge } from '../components/ui';
-import type { Company } from '../types';
+import type { Company, Responsible } from '../types';
+import { PreviousAccessField, ResponsibleSelect, saveResponsible, type PreviousAccess } from './ResponsibleSelect';
 const blank = {
   name: '',
   rfc: '',
   person_type: 'Moral' as const,
   trade_name: '',
   regime: '601 - General de Ley Personas Morales',
-  accountant: '',
+  accountant: 'Sin asignar',
   email: '',
   phone: '',
   location: '',
@@ -24,9 +25,14 @@ export default function CompanyForm({
   onSaved,
   notify,
   userId,
+  admin = false,
+  responsible,
 }: {
   company?: Company;
   userId?: string;
+  /** Only an administrator assigns the responsible accountant (Bloque 2). */
+  admin?: boolean;
+  responsible?: Responsible | null;
   onSaved: () => Promise<void>;
   notify: (message: string) => void;
 }) {
@@ -40,6 +46,9 @@ export default function CompanyForm({
       : blank,
   );
   const [step, setStep] = useState(0);
+  const [responsibleId, setResponsibleId] = useState(company?.accountant_id || '');
+  const [previousAccess, setPreviousAccess] = useState<PreviousAccess | ''>('');
+  const responsibleChanged = admin && responsibleId !== (company?.accountant_id || '');
   const [busy, setBusy] = useState(false);
   const set = (key: keyof typeof form, value: string) => setForm((v) => ({ ...v, [key]: value }));
   const draftKey = 'contasuite-company-draft:' + userId + ':' + (company?.id || 'new');
@@ -69,6 +78,11 @@ export default function CompanyForm({
     setBusy(true);
     try {
       const c = await api<Company>('/companies' + (company ? '/' + company.id : ''), company ? 'PUT' : 'POST', form);
+      if (responsibleChanged) {
+        // The responsible is assigned by user through its own endpoint, never as free text.
+        const notices = await saveResponsible(company || { ...c, accountant_id: null }, responsibleId, previousAccess);
+        notices.forEach(notify);
+      }
       await onSaved();
       if (!company) localStorage.removeItem(draftKey);
       notify(company ? 'Empresa actualizada' : 'Empresa registrada');
@@ -170,12 +184,25 @@ export default function CompanyForm({
                   <input value={form.trade_name} onChange={(e) => set('trade_name', e.target.value)} />
                 </Field>
                 <Field label="Contador responsable">
-                  <input
-                    value={form.accountant}
-                    placeholder="C.P. Nombre del responsable"
-                    onChange={(e) => set('accountant', e.target.value)}
-                  />
+                  {admin ? (
+                    <ResponsibleSelect
+                      value={responsibleId}
+                      current={responsible}
+                      onChange={setResponsibleId}
+                      disabled={busy}
+                    />
+                  ) : (
+                    <input
+                      readOnly
+                      value={company?.accountant_id ? company.accountant : 'Sin asignar'}
+                      aria-describedby="responsible-help"
+                    />
+                  )}
+                  {!admin && <small id="responsible-help">Lo asigna la administración.</small>}
                 </Field>
+                {responsibleChanged && company?.accountant_id && (
+                  <PreviousAccessField value={previousAccess} onChange={setPreviousAccess} disabled={busy} />
+                )}
                 <Field label="Correo electrónico">
                   <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
                 </Field>
@@ -275,7 +302,7 @@ export default function CompanyForm({
           {[
             [form.name.length > 1, 'Nombre del contribuyente'],
             [form.rfc.length === (form.person_type === 'Moral' ? 12 : 13), 'Estructura RFC capturada'],
-            [!!form.accountant, 'Contador asignado'],
+            [!!(admin ? responsibleId : company?.accountant_id), 'Contador asignado'],
             [!!form.folder, 'Ruta del expediente'],
           ].map(([ok, text]) => (
             <div className="check-line" key={String(text)}>

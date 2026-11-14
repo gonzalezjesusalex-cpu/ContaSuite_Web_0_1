@@ -1,4 +1,5 @@
 import { calendarPayload } from '../calendarForm';
+import { can } from '../permissions';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { confirmDiscard } from '../dirtyForms';
@@ -56,8 +57,8 @@ export default function CalendarManagement({ state }: { state: State }) {
         <Editor
           key={company}
           company={state.companies.find((c) => c.id === company)!}
-          canWrite={state.current_user.admin || state.current_user.write_company_ids.includes(company)}
-          admin={state.current_user.admin}
+          canWrite={can(state.current_user, 'calendario.gestionar', company)}
+          admin={can(state.current_user, 'calendario.gestionar', company)}
         />
       )}
     </section>

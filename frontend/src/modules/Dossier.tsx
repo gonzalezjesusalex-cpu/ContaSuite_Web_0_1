@@ -10,6 +10,8 @@ import VirtualExplorer from './VirtualExplorer';
 import Credentials from './Credentials';
 import ArchiveActivity from './ArchiveActivity';
 import CompanyHistory from './CompanyHistory';
+import { ResponsibleDialog } from './ResponsibleSelect';
+import { can, responsibleName } from '../permissions';
 import FiscalSummary from './FiscalSummary';
 import FiscalControl from './FiscalControl';
 import type { Company, State } from '../types';
@@ -62,6 +64,9 @@ export default function Dossier({
   const documentCount = state.document_counts[c.id] ?? 0;
   const tasks = state.tasks.filter((t) => t.company_id === c.id);
   const [busy, setBusy] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const me = state.current_user;
+  const responsible = state.responsibles?.find((r) => r.id === c.accountant_id) || null;
   const [agentId, setAgentId] = useState('');
   const jobs = state.jobs.filter((j) => j.company_id === c.id);
   async function archiveCompany() {
@@ -167,16 +172,21 @@ export default function Dossier({
           title={c.name}
           description={`RFC: ${c.rfc} · Persona ${c.person_type} · ${c.regime}`}
           actions={
-            state.current_user.admin ? (
-              <>
+            // Each action by the role's permission in this company (Bloque 2), not by `admin`.
+            <>
+              {can(me, 'recopila.usar', c.id) && (
                 <Link className="btn" to={'/recopilador-cfdi?empresa=' + c.id}>
                   <FolderSearch size={16} />
                   Recopila
                 </Link>
+              )}
+              {can(me, 'recibos.usar', c.id) && (
                 <Link className="btn" to={'/recibos?empresa=' + c.id}>
                   <FileText size={16} />
                   Emitir recibo
                 </Link>
+              )}
+              {can(me, 'empresa.archivar', c.id) && (
                 <button
                   className="btn"
                   disabled={busy || !state.archive_available}
@@ -184,25 +194,55 @@ export default function Dossier({
                 >
                   {c.archived ? 'Restaurar empresa' : 'Archivar empresa'}
                 </button>
+              )}
+              {can(me, 'empresa.editar', c.id) && (
                 <Link className="btn" to={'/empresas/' + c.id + '/editar?' + params}>
                   <Pencil size={16} />
                   Editar
                 </Link>
+              )}
+              {/* Folder analysis still runs through the administrator's agent until Bloque 4. */}
+              {me.admin && (
                 <button className="btn primary" disabled={busy || !c.folder} onClick={scan}>
                   <FolderSearch size={17} />
                   Analizar carpeta
                 </button>
-              </>
-            ) : undefined
+              )}
+            </>
           }
         />
       </div>
       <div className="dossier-meta">
         {c.is_demo && <Badge tone="blue">EMPRESA DEMO</Badge>}
         <Badge>Control fiscal por periodo</Badge>
-        <span>Responsable: {c.accountant || 'Sin asignar'}</span>
+        <span className="responsible-pill">
+          <span className="company-avatar small" aria-hidden="true">
+            {responsibleName(c, state.responsibles).slice(0, 1).toUpperCase()}
+          </span>
+          Responsable: {responsibleName(c, state.responsibles)}
+          {me.admin && (
+            <button type="button" className="link-button" onClick={() => setAssigning(true)}>
+              Cambiar
+            </button>
+          )}
+        </span>
+        {!c.accountant_id && c.accountant_legacy && (
+          <small className="muted">Texto anterior: {c.accountant_legacy}</small>
+        )}
         <Badge>Sin consulta SAT</Badge>
       </div>
+      {assigning && (
+        <ResponsibleDialog
+          company={c}
+          current={responsible}
+          onClose={() => setAssigning(false)}
+          onSaved={(notices) => {
+            setAssigning(false);
+            notices.forEach(notify);
+            void refresh();
+          }}
+        />
+      )}
       <div className="tabs card">
         {tabs.map((t) => (
           <button
@@ -233,7 +273,7 @@ export default function Dossier({
             : section === 'FIEL/CSD'
               ? ['Credenciales y Certificados', 'e.firma y CSD']
               : section === 'Actividad'
-                ? ['Tareas', 'Historial', ...(state.current_user.admin ? ['Declaraciones'] : [])]
+                ? ['Tareas', 'Historial', ...(can(me, 'declara.usar', c.id) ? ['Declaraciones'] : [])]
                 : []
         ).map((v) => (
           <button className="btn" aria-pressed={tab === v} key={v} onClick={() => view(v)}>
@@ -245,7 +285,7 @@ export default function Dossier({
         <VirtualExplorer companyId={c.id} admin={state.current_user.admin} notify={notify} refresh={refresh} />
       ) : tab === 'Credenciales y Certificados' ? (
         <Credentials state={state} companyId={c.id} />
-      ) : tab === 'Declaraciones' && state.current_user.admin ? (
+      ) : tab === 'Declaraciones' && can(me, 'declara.usar', c.id) ? (
         <section className="card padded">
           <h2>Declaraciones y acuses</h2>
           <p className="muted">
@@ -268,11 +308,7 @@ export default function Dossier({
         documentPanel
       ) : tab === 'e.firma y CSD' ? (
         <>
-          <CompanyDashboard
-            companyId={c.id}
-            notify={notify}
-            canWrite={(cid) => state.current_user.admin || state.current_user.write_company_ids.includes(cid)}
-          />
+          <CompanyDashboard companyId={c.id} notify={notify} canWrite={(cid) => can(me, 'documentos.subir', cid)} />
           <div className="card">
             <div className="card-title">
               <div>

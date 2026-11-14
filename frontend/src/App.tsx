@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense, Component, type ReactNode } from 'react';
+import { can, canAnywhere, canRegisterCompanies, type Action } from './permissions';
 import { NavLink, Link, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import {
   Home,
@@ -108,10 +109,14 @@ function CompanyRoute({ editing = false, ...props }: Shared & { editing?: boolea
     <Empty title="Empresa no encontrada">
       <Link to="/empresas">Volver al directorio</Link>
     </Empty>
+  ) : editing && !can(props.state.current_user, 'empresa.editar', company.id) ? (
+    <Navigate to={'/empresas/' + company.id} replace />
   ) : editing ? (
     <CompanyForm
       key={company.id}
       userId={props.state.current_user.id}
+      admin={props.state.current_user.admin}
+      responsible={props.state.responsibles?.find((r) => r.id === company.accountant_id)}
       company={company}
       onSaved={props.refresh}
       notify={props.notify}
@@ -136,6 +141,14 @@ function Welcome({ name }: { name: string }) {
     </div>
   );
 }
+// Automation modules open with their action in at least one company (Bloque 2).
+const MODULE_ACTIONS: Record<string, Action> = {
+  '/recopilador-cfdi': 'recopila.usar',
+  '/organizador-cfdi': 'cfdi.usar',
+  '/declara': 'declara.usar',
+  '/recibos': 'recibos.usar',
+};
+
 export default function App() {
   const [token, setToken] = useState('');
   const [identity, setIdentity] = useState<CurrentUser | null>(null);
@@ -272,7 +285,7 @@ export default function App() {
             <div key={g.group}>
               <div className="nav-group">{g.group}</div>
               {g.items
-                .filter((i) => identity?.admin || !nav[1].items.some((m) => m.path === i.path))
+                .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
                 .map((i) => (
                   <NavLink key={i.path} to={i.path} end={i.path === '/'}>
                     {moduleIconNames[i.path.slice(1)] ? (
@@ -395,8 +408,8 @@ export default function App() {
                 <Route
                   path="/empresas/nueva"
                   element={
-                    identity?.admin ? (
-                      <CompanyForm userId={identity?.id} onSaved={refresh} notify={notify} />
+                    canRegisterCompanies(identity) ? (
+                      <CompanyForm userId={identity?.id} admin={!!identity?.admin} onSaved={refresh} notify={notify} />
                     ) : (
                       <Navigate to="/empresas" replace />
                     )
@@ -404,25 +417,55 @@ export default function App() {
                 />
                 <Route
                   path="/empresas/:id/editar"
-                  element={identity?.admin ? <CompanyRoute {...shared} editing /> : <Navigate to="/empresas" replace />}
+                  element={
+                    canRegisterCompanies(identity) || canAnywhere(identity, 'empresa.editar') ? (
+                      <CompanyRoute {...shared} editing />
+                    ) : (
+                      <Navigate to="/empresas" replace />
+                    )
+                  }
                 />
                 <Route path="/empresas/:id" element={<CompanyRoute {...shared} />} />
                 <Route path="/tareas" element={<TasksAndDeadlines {...shared} />} />
                 <Route
                   path="/recopilador-cfdi"
-                  element={identity?.admin ? <Recopila {...shared} /> : <Navigate to="/empresas" replace />}
+                  element={
+                    canAnywhere(identity, MODULE_ACTIONS['/recopilador-cfdi']) ? (
+                      <Recopila {...shared} />
+                    ) : (
+                      <Navigate to="/empresas" replace />
+                    )
+                  }
                 />
                 <Route
                   path="/recibos"
-                  element={identity?.admin ? <Receipts {...shared} /> : <Navigate to="/empresas" replace />}
+                  element={
+                    canAnywhere(identity, MODULE_ACTIONS['/recibos']) ? (
+                      <Receipts {...shared} />
+                    ) : (
+                      <Navigate to="/empresas" replace />
+                    )
+                  }
                 />
                 <Route
                   path="/organizador-cfdi"
-                  element={identity?.admin ? <Organizador {...shared} /> : <Navigate to="/empresas" replace />}
+                  element={
+                    canAnywhere(identity, MODULE_ACTIONS['/organizador-cfdi']) ? (
+                      <Organizador {...shared} />
+                    ) : (
+                      <Navigate to="/empresas" replace />
+                    )
+                  }
                 />
                 <Route
                   path="/declara"
-                  element={identity?.admin ? <Declara {...shared} /> : <Navigate to="/empresas" replace />}
+                  element={
+                    canAnywhere(identity, MODULE_ACTIONS['/declara']) ? (
+                      <Declara {...shared} />
+                    ) : (
+                      <Navigate to="/empresas" replace />
+                    )
+                  }
                 />
                 <Route
                   path="/configuracion"

@@ -8,7 +8,7 @@ export function dossierSection(tab: string | null) {
 }
 export function dossierUrl(id: string, tab: string | null, period: string, context?: URLSearchParams) {
   const q = new URLSearchParams({ tab: dossierSection(tab), period });
-  for (const key of ['query', 'accountant', 'status', 'archive', 'sort']) {
+  for (const key of ['query', 'responsible', 'status', 'archive', 'sort']) {
     const value = context?.get(key);
     if (value) q.set(key, value);
   }

@@ -3,6 +3,8 @@ import { api, dateLabel } from '../api';
 import { Field, Modal } from '../components/ui';
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
 import type { Company, CurrentUser } from '../types';
+import { can, canManageUsers, ROLE_LABELS, type Action } from '../permissions';
+import ResponsibleReconciliation from './ResponsibleReconciliation';
 
 // `actions`: an auxiliary's explicit actions, sent back unchanged; a changed access drops them and the
 // server applies the default for that access.
@@ -48,8 +50,9 @@ export default function AccountSecurity({
   const [kind, setKind] = useState('security');
   const [page, setPage] = useState(0);
   const [events, setEvents] = useState<{ items: Event[]; total: number } | null>(null);
+  const manager = canManageUsers(identity);
   useEffect(() => {
-    if (!identity.admin) return;
+    if (!manager) return;
     const c = new AbortController();
     api<Account[]>('/auth/users', 'GET', undefined, c.signal)
       .then(setUsers)
@@ -57,7 +60,7 @@ export default function AccountSecurity({
         if (!c.signal.aborted) setError(e.message);
       });
     return () => c.abort();
-  }, [identity.admin, reload]);
+  }, [manager, reload]);
   useEffect(() => {
     if (!identity.admin) return;
     const c = new AbortController();
@@ -119,7 +122,7 @@ export default function AccountSecurity({
       <section className={stitchCard + ' padded'}>
         <h2>Mi cuenta</h2>
         <p className="muted">
-          {identity.display_name} · {identity.admin ? 'Administración' : 'Colaborador'}
+          {identity.display_name} · {ROLE_LABELS[identity.role] || 'Colaborador'}
         </p>
         <form className="account-password" onSubmit={change}>
           <Field label="Contraseña actual">
@@ -163,18 +166,19 @@ export default function AccountSecurity({
         </button>
         <small className="muted">Cambiar la contraseña cierra las sesiones abiertas de esta cuenta.</small>
       </section>
-      {identity.admin && (
+      {manager && (
         <>
           <section className={stitchCard + ' padded'}>
             <div className="documents-header">
-              <h2>Usuarios y permisos</h2>
+              <h2>{identity.admin ? 'Usuarios y permisos' : 'Auxiliares de mis empresas'}</h2>
               <button className={stitchPrimary} onClick={() => setEdit('new')}>
-                Crear usuario
+                {identity.admin ? 'Crear usuario' : 'Crear auxiliar'}
               </button>
             </div>
             <p className="muted">
-              Los colaboradores acceden a las empresas asignadas. La escritura permite cargar documentos y gestionar
-              tareas y obligaciones. Los módulos de automatización y la revisión global requieren administración.
+              {identity.admin
+                ? 'El administrador gestiona contadores y auxiliares. El contador opera sus empresas y crea auxiliares en ellas; el auxiliar consulta y realiza sólo las acciones que se le conceden.'
+                : 'Gestiona los auxiliares de tus empresas. No puedes concederles acciones que tú no tienes; si un auxiliar trabaja también en empresas ajenas, sólo la administración cambia su nombre, estado o contraseña.'}
             </p>
             <div className="table-wrap">
               <table>
@@ -193,7 +197,10 @@ export default function AccountSecurity({
                         {u.display_name}
                         <small>{u.username}</small>
                       </td>
-                      <td>{u.admin ? 'Administrador' : `${u.grants.length} empresas asignadas`}</td>
+                      <td>
+                        {ROLE_LABELS[u.role]}
+                        {u.role !== 'admin' && <small>{u.grants.length} empresas asignadas</small>}
+                      </td>
                       <td>{u.enabled ? 'Activo' : 'Desactivado'}</td>
                       <td>
                         <div className="actions">
@@ -211,6 +218,11 @@ export default function AccountSecurity({
               </table>
             </div>
           </section>
+        </>
+      )}
+      {identity.admin && <ResponsibleReconciliation notify={notify} />}
+      {identity.admin && (
+        <>
           <section className={stitchCard + ' padded'}>
             <div className="documents-header">
               <h2>Auditoría de accesos y operaciones</h2>
@@ -285,6 +297,7 @@ export default function AccountSecurity({
         <Editor
           account={edit === 'new' ? undefined : edit}
           companies={companies}
+          identity={identity}
           onClose={() => setEdit(null)}
           onSaved={() => {
             setEdit(null);
@@ -297,31 +310,132 @@ export default function AccountSecurity({
   );
 }
 
+type Catalog = {
+  read: string[];
+  actions: { id: string; label: string }[];
+  templates: { id: string; label: string; actions: string[] }[];
+};
+type Role = Account['role'];
+
+const sameActions = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+
+/** Per-company access of an auxiliary: a template or a custom choice of actions (catalog from the server). */
+function AuxiliaryGrant({
+  company,
+  grant,
+  catalog,
+  allowed,
+  disabled,
+  onChange,
+}: {
+  company: Company;
+  grant?: Grant;
+  catalog: Catalog;
+  /** Actions the person editing may grant here (an accountant cannot grant what it lacks). */
+  allowed: (action: string) => boolean;
+  disabled: boolean;
+  onChange: (grant: Grant | null) => void;
+}) {
+  const actions = grant?.actions ?? [];
+  const template = !grant ? '' : catalog.templates.find((t) => sameActions(t.actions, actions))?.id || 'custom';
+  const [custom, setCustom] = useState(template === 'custom');
+  const choose = (value: string) => {
+    if (!value) return onChange(null);
+    if (value === 'custom') {
+      setCustom(true);
+      return onChange({ company_id: company.id, access: actions.length ? 'write' : 'read', actions });
+    }
+    setCustom(false);
+    const chosen = catalog.templates.find((t) => t.id === value)!.actions.filter(allowed);
+    onChange({ company_id: company.id, access: chosen.length ? 'write' : 'read', actions: chosen });
+  };
+  const toggle = (action: string, on: boolean) => {
+    const next = on ? [...actions, action] : actions.filter((a) => a !== action);
+    onChange({ company_id: company.id, access: next.length ? 'write' : 'read', actions: next.sort() });
+  };
+  return (
+    <fieldset className="account-grant" disabled={disabled}>
+      <legend>
+        {company.name} · {company.rfc}
+      </legend>
+      <select
+        aria-label={'Permiso para ' + company.name}
+        value={custom && grant ? 'custom' : template}
+        onChange={(e) => choose(e.target.value)}
+      >
+        <option value="">Sin acceso</option>
+        {catalog.templates.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.label}
+          </option>
+        ))}
+        <option value="custom">Personalizado</option>
+      </select>
+      {grant && (custom || template === 'custom') && (
+        <div className="account-actions">
+          {catalog.actions.map((a) => (
+            <label key={a.id} className="check-option">
+              <input
+                type="checkbox"
+                checked={actions.includes(a.id)}
+                disabled={!allowed(a.id)}
+                onChange={(e) => toggle(a.id, e.target.checked)}
+              />
+              {a.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 function Editor({
   account,
   companies,
+  identity,
   onClose,
   onSaved,
 }: {
   account?: Account;
   companies: Company[];
+  identity: CurrentUser;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [username, setUsername] = useState(account?.username || '');
   const [name, setName] = useState(account?.display_name || '');
   const [password, setPassword] = useState('');
-  const [admin, setAdmin] = useState(account?.admin || false);
+  // An accountant only manages auxiliaries (Bloque 2); the server enforces it as well.
+  const [role, setRole] = useState<Role>(account?.role || 'auxiliar');
   const [enabled, setEnabled] = useState(account?.enabled ?? true);
   const [grants, setGrants] = useState<Grant[]>(account?.grants || []);
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  // Until the role editor arrives (Bloque 2), "Colaborador" keeps an existing non-admin role or creates an auxiliar.
-  const role = admin ? 'admin' : account?.role === 'contador' ? 'contador' : 'auxiliar';
+  useEffect(() => {
+    const c = new AbortController();
+    api<Catalog>('/auth/catalog', 'GET', undefined, c.signal)
+      .then(setCatalog)
+      .catch((e) => {
+        if (!c.signal.aborted) setError((e as Error).message);
+      });
+    return () => c.abort();
+  }, []);
+  // An accountant grants only in the companies where it has write access, and only actions it holds there.
+  const manageable = identity.admin ? companies : companies.filter((c) => identity.write_company_ids.includes(c.id));
+  const setGrant = (companyId: string, grant: Grant | null) =>
+    setGrants((old) => [...old.filter((g) => g.company_id !== companyId), ...(grant ? [grant] : [])]);
   async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError('');
+    // Explicit actions only describe auxiliaries; other roles send the plain read/write grant.
+    const payload = grants.map((g) =>
+      role === 'auxiliar'
+        ? { company_id: g.company_id, access: g.access, actions: g.actions ?? null }
+        : { company_id: g.company_id, access: g.access },
+    );
     try {
       if (account)
         await api('/auth/users/' + account.id, 'PUT', {
@@ -329,10 +443,18 @@ function Editor({
           display_name: name,
           role,
           enabled,
-          grants,
+          grants: role === 'admin' ? [] : payload,
           ...(password ? { password } : {}),
         });
-      else await api('/auth/users', 'POST', { username, display_name: name, password, role, enabled, grants });
+      else
+        await api('/auth/users', 'POST', {
+          username,
+          display_name: name,
+          password,
+          role,
+          enabled,
+          grants: role === 'admin' ? [] : payload,
+        });
       setPassword('');
       onSaved();
     } catch (e) {
@@ -343,7 +465,7 @@ function Editor({
   }
   return (
     <Modal
-      title={account ? 'Editar usuario' : 'Crear usuario'}
+      title={account ? 'Editar usuario' : identity.admin ? 'Crear usuario' : 'Crear auxiliar'}
       onClose={() => {
         if (!busy) onClose();
       }}
@@ -376,15 +498,21 @@ function Editor({
               onChange={(e) => setPassword(e.target.value)}
             />
           </Field>
-          <Field label="Perfil">
+          <Field label="Rol">
             <select
-              aria-label="Perfil"
-              disabled={busy}
-              value={admin ? 'admin' : 'member'}
-              onChange={(e) => setAdmin(e.target.value === 'admin')}
+              aria-label="Rol"
+              disabled={busy || !identity.admin}
+              value={role}
+              onChange={(e) => {
+                const next = e.target.value as Role;
+                setRole(next);
+                // Actions belong to auxiliaries; switching role starts from plain grants.
+                setGrants((old) => old.map((g) => ({ company_id: g.company_id, access: g.access })));
+              }}
             >
-              <option value="member">Colaborador</option>
-              <option value="admin">Administrador</option>
+              <option value="auxiliar">{ROLE_LABELS.auxiliar}</option>
+              {identity.admin && <option value="contador">{ROLE_LABELS.contador}</option>}
+              {identity.admin && <option value="admin">{ROLE_LABELS.admin}</option>}
             </select>
           </Field>
           <Field label="Estado">
@@ -399,22 +527,24 @@ function Editor({
             </select>
           </Field>
         </div>
-        {admin ? (
-          <p className="muted">La administración tiene acceso a todas las empresas y a la configuración.</p>
-        ) : (
+        {role === 'admin' ? (
+          <p className="muted">
+            La administración tiene acceso a todas las empresas y a la configuración. No puede ser responsable de una
+            empresa.
+          </p>
+        ) : role === 'contador' ? (
           <div className="account-grants">
-            {companies.map((c) => (
+            <p className="muted">
+              Con escritura, el contador opera todo lo contable y fiscal de la empresa. El contador responsable se
+              asigna desde el expediente.
+            </p>
+            {manageable.map((c) => (
               <Field key={c.id} label={c.name + ' · ' + c.rfc}>
                 <select
                   aria-label={'Permiso para ' + c.name}
                   disabled={busy}
                   value={grants.find((g) => g.company_id === c.id)?.access || ''}
-                  onChange={(e) =>
-                    setGrants((old) => [
-                      ...old.filter((g) => g.company_id !== c.id),
-                      ...(e.target.value ? [{ company_id: c.id, access: e.target.value }] : []),
-                    ])
-                  }
+                  onChange={(e) => setGrant(c.id, e.target.value ? { company_id: c.id, access: e.target.value } : null)}
                 >
                   <option value="">Sin acceso</option>
                   <option value="read">Lectura</option>
@@ -422,6 +552,27 @@ function Editor({
                 </select>
               </Field>
             ))}
+          </div>
+        ) : !catalog ? (
+          <p role="status">Consultando permisos…</p>
+        ) : (
+          <div className="account-grants">
+            <p className="muted">
+              El auxiliar siempre puede consultar las empresas asignadas. Elige una plantilla o personaliza sus
+              acciones.
+            </p>
+            {manageable.map((c) => (
+              <AuxiliaryGrant
+                key={c.id}
+                company={c}
+                grant={grants.find((g) => g.company_id === c.id)}
+                catalog={catalog}
+                allowed={(a) => can(identity, a as Action, c.id)}
+                disabled={busy}
+                onChange={(g) => setGrant(c.id, g)}
+              />
+            ))}
+            {!manageable.length && <p className="muted">No tienes empresas con escritura para asignar.</p>}
           </div>
         )}
         {error && (

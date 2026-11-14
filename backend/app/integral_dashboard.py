@@ -216,7 +216,7 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
         for code, bad in [
             ('invalid_or_missing_rfc', not valid_rfc(c.rfc)),
             ('missing_regime', not c.regime.strip()),
-            ('missing_responsible', not c.accountant.strip() or c.accountant == 'Sin asignar'),
+            ('missing_responsible', not c.accountant_id),  # Bloque 2: by the empty link, not the text
         ]:
             if bad:
                 quality_items.append(dict(company_id=c.id, source='company', reference=c.id, code=code))

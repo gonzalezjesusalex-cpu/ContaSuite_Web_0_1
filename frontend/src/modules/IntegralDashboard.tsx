@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { can } from '../permissions';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { Kpi, Modal, Field } from '../components/ui';
@@ -253,8 +254,14 @@ export default function IntegralDashboard({
           onChange={(e) => setResponsible(e.target.value)}
         >
           <option value="">Todos los responsables</option>
-          {[...new Set(state.companies.map((c) => c.accountant))].map((r) => (
-            <option key={r}>{r}</option>
+          {/* The dashboard filters by the responsible's shown name, kept in step with the assigned user. */}
+          {state.current_user.role === 'contador' && (
+            <option value={state.current_user.display_name}>Mis empresas</option>
+          )}
+          {(state.responsibles || []).map((r) => (
+            <option key={r.id} value={r.display_name}>
+              {r.display_name + (r.enabled ? '' : ' (inactivo)')}
+            </option>
           ))}
         </select>
       </div>
@@ -490,9 +497,7 @@ export default function IntegralDashboard({
             <>
               <button
                 className={stitchPrimary}
-                disabled={
-                  !company || (!state.current_user.admin && !state.current_user.write_company_ids.includes(company))
-                }
+                disabled={!company || !can(state.current_user, 'documentos.subir', company)}
                 onClick={() => setForm(true)}
               >
                 Registrar consulta manual
@@ -510,9 +515,7 @@ export default function IntegralDashboard({
             <>
               <button
                 className={stitchPrimary}
-                disabled={
-                  !company || (!state.current_user.admin && !state.current_user.write_company_ids.includes(company))
-                }
+                disabled={!company || !can(state.current_user, 'documentos.subir', company)}
                 onClick={() => setForm(true)}
               >
                 Registrar revisión manual

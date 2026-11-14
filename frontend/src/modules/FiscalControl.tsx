@@ -1,4 +1,5 @@
 import { confirmDiscard } from '../dirtyForms';
+import { can } from '../permissions';
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
@@ -313,7 +314,7 @@ export default function FiscalControl({
           users={data.users}
           year={year}
           month={month}
-          canWrite={state.current_user.admin || state.current_user.write_company_ids.includes(selected.company.id)}
+          canWrite={can(state.current_user, 'obligaciones.editar', selected.company.id)}
           onClose={() => {
             if (confirmDiscard()) setSelected(null);
           }}
