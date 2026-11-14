@@ -14,6 +14,7 @@ export function Records({
   refresh,
   notify,
   period,
+  createDate,
 }: {
   state: State;
   kind: 'tasks' | 'obligations';
@@ -21,9 +22,11 @@ export function Records({
   refresh: () => Promise<void>;
   notify: (message: string) => void;
   period?: string;
+  /** Opens the new-record form with this due date (a day chosen in the fiscal calendar, Bloque 5). */
+  createDate?: string;
 }) {
   const isTask = kind === 'tasks';
-  const [edit, setEdit] = useState<Task | Obligation | true | null>(null);
+  const [edit, setEdit] = useState<Task | Obligation | true | null>(createDate ? true : null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Todos');
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -216,6 +219,7 @@ export function Records({
           item={edit === true ? undefined : edit}
           companyId={companyId}
           initialPeriod={period}
+          initialDue={edit === true ? createDate : undefined}
           onClose={() => {
             if (confirmDiscard()) setEdit(null);
           }}
@@ -236,6 +240,7 @@ function RecordForm({
   item,
   companyId,
   initialPeriod,
+  initialDue,
   onClose,
   onSaved,
   notify,
@@ -245,6 +250,7 @@ function RecordForm({
   item?: Task | Obligation;
   companyId?: string;
   initialPeriod?: string;
+  initialDue?: string;
   onClose: () => void;
   onSaved: () => Promise<void>;
   notify: (m: string) => void;
@@ -261,7 +267,7 @@ function RecordForm({
             title: '',
             category: 'Operativa',
             responsible: '',
-            due_date: today(),
+            due_date: initialDue || today(),
             priority: 'Media',
             status: 'Pendiente',
             notes: '',
@@ -271,7 +277,7 @@ function RecordForm({
               companyId || state.companies.find((c) => can(state.current_user, writeAction(task), c.id))?.id || '',
             title: '',
             period: initialPeriod || today().slice(0, 7),
-            due_date: today(),
+            due_date: initialDue || today(),
             status: 'Pendiente',
             reference: '',
             notes: '',
