@@ -50,7 +50,7 @@ Locks: `backend/requirements.lock.txt` (producción, perfil PostgreSQL) y `backe
 
 - **Python: 0 vulnerabilidades conocidas** en producción y desarrollo tras actualizar `fastapi` 0.121.1 → 0.162.7, `starlette` 0.49.3 → 1.10.0 (ahora fijado explícitamente), `python-multipart` 0.0.20 → 0.0.33, `cryptography` 46.0.3 → 50.0.2, `python-dotenv` 1.2.1 → 1.2.4 y `pytest` 9.0.0 → 9.2.0. Antes: 19 avisos en producción (entre ellos `StaticFiles` de Starlette en Windows) y 1 en pytest. `fastapi` añade `opentelemetry-api` (sólo API; sin SDK ni exportador no envía nada).
 - **npm producción: 0.** Desarrollo: 7 moderadas en `typescript-eslint` → `minimatch` (DoS, sólo herramienta de lint), sin corregir.
-- Pendiente menor: `starlette.testclient` avisa que `httpx` está obsoleto para pruebas y recomienda `httpx2`; sólo afecta a la suite.
+- Pruebas: `httpx2` 2.16.0 (sucesor de `httpx` para `starlette.testclient`, mismo autor) sólo en desarrollo; elimina el aviso de obsolescencia. `httpx` sigue en producción para el supervisor local.
 
 ## Pendientes
 

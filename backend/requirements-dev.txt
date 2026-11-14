@@ -1,3 +1,5 @@
 -r requirements.txt
 pytest==9.2.0
 ruff==0.14.4
+# Test client transport preferred by starlette.testclient (successor of httpx for tests).
+httpx2==2.16.0
