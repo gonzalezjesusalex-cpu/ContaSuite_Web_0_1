@@ -510,6 +510,58 @@ async def analyze_csf(
     return result
 
 
+@app.post('/api/companies/{id}/csf/attach', dependencies=APP, status_code=201)
+async def attach_csf(
+    id: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    """Attach the constancia to the company file: only its own pages, never the rest of the PDF (Bloque 1).
+
+    The server finds the pages again instead of trusting the client, and refuses a constancia of another RFC.
+    """
+    import io
+
+    from starlette.concurrency import run_in_threadpool
+
+    from .csf_extract import MAX_BYTES, CsfError, analyze, csf_pages_pdf
+    from .storage.providers import StorageError
+    from .storage.router import storage_http_error, storage_service
+
+    principal.require('documentos.subir', id)
+    company = get(db, Company, id)
+    data = await file.read(MAX_BYTES + 1)
+    await file.close()
+    try:
+        result = await run_in_threadpool(analyze, data)
+        if result['fields'].get('rfc') != company.rfc:
+            raise CsfError('La constancia no corresponde al RFC de esta empresa.')
+        only_csf = csf_pages_pdf(data, result['pages'])
+    except CsfError as exc:
+        raise HTTPException(422, str(exc)) from None
+    issued = result['fields'].get('csf_issued_on')
+    name = 'CSF_' + company.rfc + ('_' + issued.isoformat() if issued else '') + '.pdf'
+    try:
+        document = await run_in_threadpool(
+            storage_service().upload,
+            principal.storage_actor(),
+            io.BytesIO(only_csf),
+            name,
+            company_id=id,
+            category='Constancia de Situación Fiscal',
+            document_type='other',
+            period=issued.strftime('%Y-%m') if issued else None,
+        )
+    except StorageError as exc:
+        raise storage_http_error(exc) from None
+    if issued and (company.csf_issued_on is None or issued > company.csf_issued_on):
+        company.csf_issued_on = issued
+    record(db, 'Constancia de Situación Fiscal adjuntada', id, principal.subject, {'pages': len(result['pages'])})
+    save(db)
+    return document
+
+
 @app.get('/api/sat/regimes', dependencies=APP)
 def sat_regimes():
     """SAT regime catalog (c_RegimenFiscal) for the company form (Bloque 1)."""

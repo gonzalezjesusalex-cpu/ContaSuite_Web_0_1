@@ -186,7 +186,7 @@ export default function CompanyForm({
         const notices = await saveResponsible(company || { ...c, accountant_id: null }, responsibleId, previousAccess);
         notices.forEach(notify);
       }
-      if (csfFile && csf) await attachCsf(c.id, csfFile, csf.pages, notify);
+      if (csfFile) await attachCsf(c.id, csfFile, notify);
       await onSaved();
       if (!company) localStorage.removeItem(draftKey);
       notify(company ? 'Empresa actualizada' : 'Empresa registrada');
@@ -574,10 +574,10 @@ export default function CompanyForm({
 }
 
 /** After registering, attach only the pages of the constancia to the company file (Bloque 1). */
-async function attachCsf(companyId: string, file: File, pages: number[], notify: (m: string) => void) {
+async function attachCsf(companyId: string, file: File, notify: (m: string) => void) {
+  // The server locates the pages of the constancia again; the rest of the PDF is never stored.
   const body = new FormData();
   body.append('file', file);
-  body.append('pages', pages.join(','));
   try {
     await api('/companies/' + companyId + '/csf/attach', 'POST', body);
   } catch (e) {
