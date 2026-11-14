@@ -22,6 +22,7 @@ import dotenv
 dotenv.load_dotenv = lambda *args, **kwargs: False
 os.environ.update(
     DATABASE_URL='sqlite:///:memory:',
+    CS_TEST_SQLITE='1',
     DATA_DIR=TEMP,
     PYTHON_DOTENV_DISABLED='1',
     CS_STORAGE_ALLOWED_ROOTS='[]',

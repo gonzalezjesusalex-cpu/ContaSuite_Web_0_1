@@ -4,7 +4,7 @@ Resumen operativo. Los procedimientos detallados del paquete RC1 siguen en `docs
 
 Reglas comunes: nunca restaurar ni instalar encima de una base o carpeta de datos existente; nunca escribir secretos en argumentos, scripts o registros; respaldar y ensayar la restauración antes de cualquier actualización.
 
-`DATABASE_URL` es obligatoria en cualquier modo: sin ella, o con las credenciales de ejemplo (`contasuite:contasuite` o la contraseña `CAMBIAR` de `.env.example`), la API no arranca. No existe conexión por defecto.
+`DATABASE_URL` es obligatoria en cualquier modo: sin ella, o con las credenciales de ejemplo (`contasuite:contasuite` o la contraseña `CAMBIAR` de `.env.example`), la API no arranca. No existe conexión por defecto. Debe ser PostgreSQL: SQLite se rechaza salvo que el proceso declare `CS_TEST_SQLITE=1`, reservado a pruebas (suite, E2E, `INICIAR_PRUEBA.bat`).
 
 ## Instalar
 

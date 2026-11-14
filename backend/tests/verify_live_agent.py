@@ -28,6 +28,7 @@ with tempfile.TemporaryDirectory() as folder:
     env = {
         **os.environ,
         'PYTHON_DOTENV_DISABLED': '1',
+        'CS_TEST_SQLITE': '1',
         'DATABASE_URL': 'sqlite:///' + (temp / 'live.db').as_posix(),
         'DATA_DIR': str(temp / 'data'),
         'SEED_DEMO': 'false',

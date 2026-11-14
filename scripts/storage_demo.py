@@ -37,6 +37,7 @@ def main():
     (root / 'excluded').mkdir()
     os.environ['DATA_DIR'] = str(output / 'data')
     os.environ['DATABASE_URL'] = 'sqlite:///' + str(output / 'demo.db')
+    os.environ['CS_TEST_SQLITE'] = '1'
     os.environ['CS_STORAGE_ALLOWED_ROOTS'] = json.dumps([str(root)])
     os.environ['APP_TOKEN'] = secrets.token_urlsafe(32)
     os.environ['AGENT_TOKEN'] = secrets.token_urlsafe(32)

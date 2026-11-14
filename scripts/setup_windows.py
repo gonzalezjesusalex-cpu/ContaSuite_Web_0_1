@@ -37,8 +37,10 @@ def configure(portable=False):
             if portable
             else f'postgresql+psycopg://contasuite:{db_password}@127.0.0.1:5432/contasuite'
         )
+        # Portable trials use SQLite, which the application only accepts when declared as a test.
+        test_flag = 'CS_TEST_SQLITE=1\n' if portable else ''
         env_path.write_text(
-            f'DATABASE_URL={database}\nPOSTGRES_PASSWORD={db_password}\nAPP_TOKEN={app}\nAGENT_TOKEN={agent}\nSEED_DEMO=false\nCS_STORAGE_ALLOWED_ROOTS=[]\nCS_STORAGE_MAX_FILE_MB=25\n',
+            f'DATABASE_URL={database}\nPOSTGRES_PASSWORD={db_password}\nAPP_TOKEN={app}\nAGENT_TOKEN={agent}\nSEED_DEMO=false\n{test_flag}CS_STORAGE_ALLOWED_ROOTS=[]\nCS_STORAGE_MAX_FILE_MB=25\n',
             encoding='utf-8',
         )
     values = dict(

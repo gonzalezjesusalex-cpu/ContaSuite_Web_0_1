@@ -13,6 +13,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--portable', action='store_true')
 args = parser.parse_args()
 port = launcher_port()
+if args.portable:
+    # INICIAR_PRUEBA.bat: SQLite trial instance, also for .env files created before CS_TEST_SQLITE existed.
+    os.environ['CS_TEST_SQLITE'] = '1'
 configure(args.portable)
 base_url = f'http://127.0.0.1:{port}'
 import sys

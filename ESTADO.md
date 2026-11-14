@@ -59,7 +59,7 @@ Este equipo se usará como servidor definitivo. Sin permisos de administrador en
 - Paquete `..\ENTREGAS\ContaSuite_v1.0_RC1_20261114.zip` (+ `.sha256`): runtime Python 3.12 construido desde el lock de producción, frontend actual; sin datos ni secretos. Ensayado sin administrador: verificación de hashes, instalación en carpetas nuevas, arranque y `/api/health` 200 con cabeceras de seguridad; plan de servicio generado (registro real: WinError 5 sin administrador).
 - `scripts/verify_installation.py`: comprobación de sólo lectura de servicio, recuperación, loopback, firewall, ACL y HTTPS.
 - Respaldos programados (punto 27): pospuestos hasta tener destino externo.
-- **Detectado:** los puntos 18 (`except` silenciosos) y 19 (PostgreSQL obligatorio, SQLite sólo en pruebas) no figuraban en ninguna fase y siguen sin hacer: hoy la API y el instalador aceptan SQLite (la configuración cifrada del servicio sí exige PostgreSQL).
+- Punto 19 hecho (14/11/2026): la aplicación rechaza SQLite salvo `CS_TEST_SQLITE=1` (pruebas, E2E, `INICIAR_PRUEBA.bat`); el paquete se regeneró con esta regla. **Pendiente:** punto 18 (`except` silenciosos), que no figuraba en ninguna fase.
 
 ## Pendientes
 

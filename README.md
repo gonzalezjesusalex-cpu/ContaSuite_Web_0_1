@@ -8,7 +8,7 @@ Versión: `1.0.0-rc.1` (candidata; **no** aprobada para producción). Estado y p
 
 | Carpeta | Contenido |
 |---|---|
-| `backend/` | API FastAPI + SQLAlchemy. PostgreSQL en instalaciones; SQLite sólo en pruebas. Migraciones en `migrations/` (Alembic CS-Storage) y en las cadenas `*_migrations/`. |
+| `backend/` | API FastAPI + SQLAlchemy. PostgreSQL en instalaciones; SQLite sólo en pruebas y sólo si el proceso declara `CS_TEST_SQLITE=1` (la API lo rechaza en otro caso). Migraciones en `migrations/` (Alembic CS-Storage) y en las cadenas `*_migrations/`. |
 | `frontend/` | React 19 + TypeScript + Vite, diseño Stitch (temas claro, oscuro y alto contraste). |
 | `agent/` | Agente local Windows de sólo lectura para inventariar carpetas. |
 | `scripts/` | Administración de esquema, respaldo/restauración, servicio Windows, empaquetado. |

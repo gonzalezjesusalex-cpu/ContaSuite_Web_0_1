@@ -20,6 +20,15 @@ if parsed_url.password == 'CAMBIAR' or (parsed_url.username, parsed_url.password
     raise RuntimeError(
         'DATABASE_URL usa credenciales de ejemplo. Configura una contraseña propia para la base de la instancia.'
     )
+# PostgreSQL is mandatory outside tests (plan, point 19): the advisory locks that prevent duplicate
+# documents and identities have no effect on SQLite. Test suites, the E2E server and the portable trial
+# launcher opt in explicitly with CS_TEST_SQLITE=1.
+SQLITE_TEST_FLAG = 'CS_TEST_SQLITE'
+if parsed_url.get_backend_name() == 'sqlite' and os.getenv(SQLITE_TEST_FLAG, '').strip() != '1':
+    raise RuntimeError(
+        'SQLite sólo se admite en pruebas: no aplica los bloqueos que evitan duplicados. Configura '
+        'DATABASE_URL con PostgreSQL; para un entorno de prueba define ' + SQLITE_TEST_FLAG + '=1.'
+    )
 if (
     parsed_url.get_backend_name() == 'sqlite'
     and parsed_url.database

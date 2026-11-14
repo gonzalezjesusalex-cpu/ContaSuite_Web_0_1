@@ -33,6 +33,7 @@ def main():
     os.environ.update(
         {
             'PYTHON_DOTENV_DISABLED': '1',
+            'CS_TEST_SQLITE': '1',
             'DATABASE_URL': 'sqlite:///' + (work / 'e2e.db').as_posix(),
             'DATA_DIR': str(data),
             'APP_TOKEN': app_token,
