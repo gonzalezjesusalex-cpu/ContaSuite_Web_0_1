@@ -9,7 +9,8 @@
   --canvas: #f8f9ff;
   --panel: #fff;
   --text: #0b1c30;
-  --muted: #64748b;
+  /* #64748b gave 4.3:1 on the tinted surfaces (#eff4ff, #e5eeff); this keeps the slate tone at >= 4.6:1 (WCAG AA). */
+  --muted: #5b6b81;
   --border: #e2e8f0;
   --hover: #eff4ff;
   --primary: #004ac6;
@@ -637,7 +638,7 @@ strong {
 .compliance-cells small {
   display: block;
   font-size: 9px;
-  color: #64748b;
+  color: var(--muted);
   margin-top: 5px;
 }
 .compliance-foot {
@@ -1459,17 +1460,26 @@ dd {
 }
 [data-theme='dark'] .green-text,
 [data-theme='dark'] .kpi.green span,
-[data-theme='dark'] .kpi.green small {
+[data-theme='dark'] .kpi.green small,
+[data-theme='contrast'] .green-text,
+[data-theme='contrast'] .kpi.green span,
+[data-theme='contrast'] .kpi.green small {
   color: #4edea3;
 }
 [data-theme='dark'] .red-text,
 [data-theme='dark'] .kpi.red span,
 [data-theme='dark'] .kpi.red small,
-[data-theme='dark'] .kpi.red strong {
+[data-theme='dark'] .kpi.red strong,
+[data-theme='contrast'] .red-text,
+[data-theme='contrast'] .kpi.red span,
+[data-theme='contrast'] .kpi.red small,
+[data-theme='contrast'] .kpi.red strong {
   color: #ffaaa4;
 }
 [data-theme='dark'] .kpi.amber span,
-[data-theme='dark'] .kpi.amber small {
+[data-theme='dark'] .kpi.amber small,
+[data-theme='contrast'] .kpi.amber span,
+[data-theme='contrast'] .kpi.amber small {
   color: #fcd34d;
 }
 [data-theme='dark'] .login-page {
