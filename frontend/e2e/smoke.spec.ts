@@ -41,7 +41,11 @@ test('primer acceso, sesión, empresas, expediente y documentos', async ({ page 
     await expect(empty.getByRole('link', { name: 'Importar cartera' })).toHaveAttribute('href', /tab=Importar/);
     await expect(page.getByText(/ejemplo DEMO|ejemplo de Stitch/)).toHaveCount(0);
     await empty.getByRole('link', { name: 'Registrar empresa' }).click();
+    // Bloque 1: the form opens on the Constancia card; this flow captures by hand.
+    await expect(page.getByLabel('Constancia de Situación Fiscal en PDF')).toBeAttached();
+    await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
     await page.getByLabel('RFC *').fill(company.rfc);
+    await page.getByLabel('idCIF *').fill('12345678');
     await page.getByLabel('Razón social / Nombre completo *').fill(company.name);
     await page.getByRole('button', { name: 'Siguiente →' }).click();
     await page.getByRole('button', { name: 'Siguiente →' }).click();

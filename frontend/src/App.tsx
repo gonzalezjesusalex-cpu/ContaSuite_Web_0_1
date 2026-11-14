@@ -117,6 +117,7 @@ function CompanyRoute({ editing = false, ...props }: Shared & { editing?: boolea
       userId={props.state.current_user.id}
       admin={props.state.current_user.admin}
       responsible={props.state.responsibles?.find((r) => r.id === company.accountant_id)}
+      ocrAvailable={props.state.integrations.ocr}
       company={company}
       onSaved={props.refresh}
       notify={props.notify}
@@ -409,7 +410,13 @@ export default function App() {
                   path="/empresas/nueva"
                   element={
                     canRegisterCompanies(identity) ? (
-                      <CompanyForm userId={identity?.id} admin={!!identity?.admin} onSaved={refresh} notify={notify} />
+                      <CompanyForm
+                        userId={identity?.id}
+                        admin={!!identity?.admin}
+                        ocrAvailable={!!state?.integrations.ocr}
+                        onSaved={refresh}
+                        notify={notify}
+                      />
                     ) : (
                       <Navigate to="/empresas" replace />
                     )
@@ -532,7 +539,11 @@ export default function App() {
                             <div>
                               <dt>OCR</dt>
                               <dd>
-                                <Badge>Pendiente de integrar</Badge>
+                                {state?.integrations.ocr ? (
+                                  <Badge tone="green">Local: constancias escaneadas</Badge>
+                                ) : (
+                                  <Badge>No instalado</Badge>
+                                )}
                               </dd>
                             </div>
                           </dl>

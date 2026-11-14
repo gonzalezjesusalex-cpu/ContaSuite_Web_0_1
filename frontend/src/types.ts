@@ -30,6 +30,23 @@ export interface Company {
   accountant_id?: string | null;
   /** Original free text kept until an administrator retires it. */
   accountant_legacy?: string | null;
+  // Bloque 1: data of the Constancia de Situación Fiscal (null when unknown).
+  idcif?: string | null;
+  curp?: string | null;
+  tax_postal_code?: string | null;
+  tax_street_type?: string | null;
+  tax_street?: string | null;
+  tax_exterior_number?: string | null;
+  tax_interior_number?: string | null;
+  tax_neighborhood?: string | null;
+  tax_locality?: string | null;
+  tax_municipality?: string | null;
+  tax_state?: string | null;
+  tax_between_streets?: string | null;
+  operations_start?: string | null;
+  padron_status?: string | null;
+  csf_issued_on?: string | null;
+  regimes?: { code: string | null; label: string; start_date: string | null; end_date: string | null }[];
   email: string;
   phone: string;
   location: string;

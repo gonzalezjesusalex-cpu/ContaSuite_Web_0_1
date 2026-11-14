@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
 test('enlace del menú con un formulario de alta modificado', async ({ page }) => {
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
+  await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
   const name = page.getByLabel('Razón social / Nombre completo *');
   await name.fill('Borrador sin guardar');
 
@@ -32,6 +33,7 @@ test('enlace del menú con un formulario de alta modificado', async ({ page }) =
 test('botón Atrás del navegador', async ({ page }) => {
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
+  await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
   const rfc = page.getByLabel('RFC *');
   await rfc.fill('BOR010101AB1');
 
@@ -101,6 +103,7 @@ test('cierre de un diálogo con cambios: Escape, botón Cerrar y clic fuera', as
 test('recargar o cerrar la página con cambios pide confirmación del navegador', async ({ page }) => {
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
+  await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
   await page.getByLabel('Razón social / Nombre completo *').fill('Borrador antes de cerrar');
   const types: string[] = [];
   page.on('dialog', async (dialog) => {
