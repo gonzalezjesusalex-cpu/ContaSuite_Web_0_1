@@ -17,3 +17,7 @@ httpx==0.28.1
 
 reportlab>=4.4,<5
 pypdf>=6.1,<7
+# Local OCR for scanned Constancias de Situación Fiscal (Bloque 1). Models ship inside the wheel; no network
+# use at runtime. Only used when a PDF has no text layer. Verified in the packaged runtime on 14/11/2026.
+rapidocr==3.10.0
+onnxruntime==1.32.0
