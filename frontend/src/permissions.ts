@@ -53,3 +53,12 @@ export function responsibleName(company: Company, responsibles: Responsible[] | 
   if (!user) return company.accountant || 'Sin responsable';
   return user.display_name + (user.enabled ? '' : ' (inactivo)');
 }
+
+/** A Constancia de Situación Fiscal issued more than 3 months ago (Bloque 1); null when its date is unknown. */
+export function csfIsStale(company: Company, today = new Date()): boolean | null {
+  if (!company.csf_issued_on) return null;
+  const issued = new Date(company.csf_issued_on + 'T00:00:00');
+  const limit = new Date(today);
+  limit.setMonth(limit.getMonth() - 3);
+  return issued < limit;
+}

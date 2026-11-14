@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { canRegisterCompanies, responsibleName } from '../permissions';
+import { canRegisterCompanies, csfIsStale, responsibleName } from '../permissions';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, Eye, Search, Download, CalendarDays, FolderOpen } from 'lucide-react';
 import { api, csv, today } from '../api';
@@ -349,6 +349,7 @@ export default function Companies({
                           {c.rfc}
                           {c.duplicate_rfc && <Badge tone="amber">RFC duplicado: revisar</Badge>}
                           {c.archived && <Badge tone="amber">Archivada</Badge>}
+                          {csfIsStale(c) && <Badge tone="amber">Constancia de más de 3 meses</Badge>}
                         </td>
                         <td>{c.regime}</td>
                         <td>{responsibleName(c, state.responsibles)}</td>

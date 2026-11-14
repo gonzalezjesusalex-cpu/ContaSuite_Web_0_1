@@ -11,7 +11,7 @@ import Credentials from './Credentials';
 import ArchiveActivity from './ArchiveActivity';
 import CompanyHistory from './CompanyHistory';
 import { ResponsibleDialog } from './ResponsibleSelect';
-import { can, responsibleName } from '../permissions';
+import { can, csfIsStale, responsibleName } from '../permissions';
 import FiscalSummary from './FiscalSummary';
 import FiscalControl from './FiscalControl';
 import type { Company, State } from '../types';
@@ -235,6 +235,10 @@ export default function Dossier({
           <small className="muted">Texto anterior: {c.accountant_legacy}</small>
         )}
         <Badge>Sin consulta SAT</Badge>
+        {csfIsStale(c) === true && (
+          <Badge tone="amber">Constancia con más de 3 meses ({dateLabel(c.csf_issued_on!)})</Badge>
+        )}
+        {csfIsStale(c) === false && <Badge>Constancia del {dateLabel(c.csf_issued_on!)}</Badge>}
       </div>
       {assigning && (
         <ResponsibleDialog
