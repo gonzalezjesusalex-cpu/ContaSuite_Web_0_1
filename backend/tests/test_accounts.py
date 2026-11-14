@@ -238,8 +238,9 @@ def test_write_permission_is_separate_from_read_and_legacy_upload_is_scoped(clie
     good = upload(client, b['id'])
     assert good.status_code == 201, good.text
     assert upload(client, None).status_code == 403
+    # Visible company without the action: 403 (a company outside the grants stays 404).
     denied = client.post('/api/companies/' + a['id'] + '/documents', files={'file': ('a.xml', XML, 'application/xml')})
-    assert denied.status_code == 404
+    assert denied.status_code == 403
     old = client.post('/api/companies/' + b['id'] + '/documents', files={'file': ('b.xml', XML, 'application/xml')})
     assert old.status_code == 201 and 'storage_name' not in old.json()
     options = client.get('/api/storage/options').json()
@@ -248,7 +249,7 @@ def test_write_permission_is_separate_from_read_and_legacy_upload_is_scoped(clie
         client.post(
             '/api/tasks', json={'company_id': a['id'], 'title': 'Denied task', 'due_date': '2026-11-10'}
         ).status_code
-        == 404
+        == 403
     )
     task = client.post('/api/tasks', json={'company_id': b['id'], 'title': 'Allowed task', 'due_date': '2026-11-10'})
     assert task.status_code == 201, task.text
@@ -257,7 +258,7 @@ def test_write_permission_is_separate_from_read_and_legacy_upload_is_scoped(clie
             '/api/tasks/' + task.json()['id'],
             json={'company_id': a['id'], 'title': 'Move task', 'due_date': '2026-11-10'},
         ).status_code
-        == 404
+        == 403
     )
     with SessionLocal() as db:
         event = db.scalar(

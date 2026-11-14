@@ -112,14 +112,18 @@ def capture_legacy(db, record_id=None):
 
 def record_verification(db, p, ident, revision, document_id):
     ready(db)
-    p.require_admin()
     from .document_identity import lock
 
     lock(db)
     row = db.execute(select(records).where(records.c.id == ident).with_for_update()).mappings().first()
-    if not row or row['status'] != 'fulfilled' or row['revision'] != revision:
+    if not row:
+        if not p.admin:
+            raise HTTPException(404, 'Registro no encontrado.')
         raise HTTPException(409, 'La revisión fiscal cambió.')
-    p.require_company(row['company_id'], write=True)
+    # Checked before the status so that other companies' records reveal nothing.
+    p.require('obligaciones.verificar', row['company_id'])
+    if row['status'] != 'fulfilled' or row['revision'] != revision:
+        raise HTTPException(409, 'La revisión fiscal cambió.')
     from .integral_api import document, version, linked
 
     doc = document(db, p, document_id)

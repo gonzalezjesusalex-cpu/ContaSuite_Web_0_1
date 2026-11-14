@@ -128,8 +128,11 @@ def event(db, p, cid, entity, reference, before, after, reason):
     )
 
 
-def write_access(db, p, cid, permission=None):
-    p.require_company(cid, write=True)
+def write_access(db, p, cid, permission=None, action=None):
+    if action:
+        p.require(action, cid)
+    else:
+        p.require_company(cid, write=True)
     if not db.get(Company, cid):
         raise HTTPException(404, 'Empresa no encontrada.')
     if permission:
@@ -341,8 +344,7 @@ class RuleIn(DateIn):
 def save_rule(db, p, ident, payload):
     ready(db)
     lock(db)
-    p.require_admin()
-    write_access(db, p, payload.company_id)
+    write_access(db, p, payload.company_id, action='calendario.gestionar')
     from .fiscal_control import catalog, periods, applicability
 
     if not db.scalar(select(catalog.c.id).where(catalog.c.id == payload.obligation_id)) or not db.scalar(
@@ -385,7 +387,7 @@ def save_rule(db, p, ident, payload):
 def save_date(db, p, ident, payload):
     ready(db)
     lock(db)
-    write_access(db, p, payload.company_id)
+    write_access(db, p, payload.company_id, action='calendario.gestionar')
     from .fiscal_control import catalog, periods, applicability
 
     if not db.scalar(select(catalog.c.id).where(catalog.c.id == payload.obligation_id)) or not db.scalar(
@@ -429,7 +431,7 @@ def save_date(db, p, ident, payload):
             raise HTTPException(422, 'Regla o aplicabilidad incompatible.')
     old = db.execute(select(dates).where(dates.c.id == ident)).mappings().first()
     if old:
-        write_access(db, p, old['company_id'])
+        write_access(db, p, old['company_id'], action='calendario.gestionar')
         if old['company_id'] != payload.company_id:
             raise HTTPException(422, 'No trasladar eventos entre empresas.')
     if (old['revision'] if old else 0) != payload.revision:

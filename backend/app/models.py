@@ -364,6 +364,15 @@ class UserCompanyGrant(Base):
     access: Mapped[str] = mapped_column(String(10))
 
 
+class UserCompanyAction(Base):
+    """Explicit actions of an auxiliar in one company (catalog in app/permissions.py; migration cs_0008)."""
+
+    __tablename__ = 'user_company_actions'
+    user_id: Mapped[str] = mapped_column(ForeignKey('user_accounts.id'), primary_key=True)
+    company_id: Mapped[str] = mapped_column(ForeignKey('companies.id'), primary_key=True)
+    action: Mapped[str] = mapped_column(String(40), primary_key=True)
+
+
 class UserSession(Base):
     __tablename__ = 'user_sessions'
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

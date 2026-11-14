@@ -107,7 +107,7 @@ class ActiveIn(BaseModel):
 @router.put('/companies/{cid}/activity')
 def company_activity(cid: str, payload: ActiveIn, p: Principal = Depends(auth), db=Depends(session)):
     ready(db)
-    p.require_admin()
+    p.require('empresa.editar', cid)
     if not db.get(Company, cid):
         raise HTTPException(404, 'Empresa no encontrada.')
     values = dict(company_id=cid, active=payload.active, actor_id=p.subject, updated_at=now())
@@ -468,7 +468,7 @@ class OpinionIn(BaseModel):
 @router.post('/companies/{cid}/opinions')
 def add_opinion(cid: str, payload: OpinionIn, p: Principal = Depends(auth), db=Depends(session)):
     ready(db)
-    p.require_company(cid, write=True)
+    p.require('documentos.subir', cid)
     if not db.get(Company, cid):
         raise HTTPException(404, 'Empresa no encontrada.')
     if payload.document_id and cid not in linked(db, document(db, p, payload.document_id)):
@@ -495,7 +495,7 @@ class CfdiIn(BaseModel):
 @router.post('/companies/{cid}/cfdi')
 def add_cfdi(cid: str, payload: CfdiIn, p: Principal = Depends(auth), db=Depends(session)):
     ready(db)
-    p.require_company(cid, write=True)
+    p.require('documentos.subir', cid)
     if not db.get(Company, cid):
         raise HTTPException(404, 'Empresa no encontrada.')
     ident = str(uuid4())
@@ -518,7 +518,7 @@ class VerifyIn(BaseModel):
 @router.post('/obligations/{ident}/verify')
 def verify(ident: str, payload: VerifyIn, p: Principal = Depends(auth), db=Depends(session)):
     ready(db)
-    p.require_admin()
+    # The record's company is only known inside record_verification, which checks obligaciones.verificar.
     if not exists(db, 'fiscal_records'):
         raise HTTPException(409, 'Obligaciones no activadas.')
     from .fiscal_control import records

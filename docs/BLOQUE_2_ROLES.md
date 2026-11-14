@@ -24,6 +24,13 @@ Decisiones aprobadas por el usuario el 14/11/2026 (Apéndice A.1 de [PROMPT_MAES
 
 Plantillas: «Solo consulta», «Captura de documentos», «Apoyo fiscal».
 
+Aplicación en servidor (punto 2):
+
+- Las acciones `.ver` las da cualquier permiso de la empresa (lectura o escritura), como hasta ahora; el auxiliar es de solo lectura más sus acciones puntuales.
+- Contador: todas las acciones en empresas con escritura; sólo las `.ver` en las de lectura.
+- Auxiliar sin acciones registradas en esa empresa (cuentas migradas): conserva lo que permitía su permiso de escritura antes de los roles (subir documentos, tareas, obligaciones y fechas del calendario).
+- Empresa visible sin la acción: 403; empresa fuera de sus permisos: 404.
+
 **Sólo administrador:** configuración, respaldos, rutas autorizadas y revocación de agentes, migraciones, importadores de cartera, catálogo fiscal, revisión global de clasificación, configuración del emisor de Recibos, alta de contadores y cambio de roles, asignación de responsable.
 
 ## Respuestas a las preguntas abiertas
@@ -39,9 +46,9 @@ Plantillas: «Solo consulta», «Captura de documentos», «Apoyo fiscal».
 ## Puntos de implementación (un commit cada uno)
 
 1. Migración `0007`: `UserAccount.role` (con respaldo), cuentas y sesión con rol.
-2. Catálogo de acciones, permisos por usuario y empresa, `can()` en servidor y sustitución de `require_admin` operativos; pruebas negativas de escalada.
+2. Migración `0008` (`user_company_actions`), catálogo en `backend/app/permissions.py`, `Principal.can()/require()` en servidor y sustitución de los controles operativos; pruebas negativas de escalada. Pendientes de conectar: `recopila/cfdi/declara/recibos.usar` (punto 2b, con `created_by`), `carpeta.analizar` (Bloque 4) y `documentos.clasificar` (la decisión de clasificación sigue en la revisión global del administrador).
 3. Gestión de usuarios: contador crea auxiliares con plantillas; último administrador; deshabilitados.
-4. Migración `0008`: `Audit` con actor, valor anterior y nuevo en todos los cambios de empresa.
+4. Migración `0009`: `Audit` con actor, valor anterior y nuevo en todos los cambios de empresa.
 5. Responsable por `id` de usuario: `Company.accountant_id`, respaldo del texto, grant `write`, decisión sobre el acceso del anterior, conciliación en revisión humana.
 6. Historial de responsable en el expediente.
 7. Frontend: selector, pastilla, filtros por usuario y «Mis empresas», pantalla de usuarios y plantillas, visibilidad por permiso.

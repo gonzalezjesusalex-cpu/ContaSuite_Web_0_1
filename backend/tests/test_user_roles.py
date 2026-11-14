@@ -11,7 +11,8 @@ from app.schema_compatibility import check_schema
 from app.security import Principal
 from app.storage.migrate import schema_revision, upgrade_schema
 
-HEAD = 'cs_0007_user_role'
+from test_unified_baseline import HEAD  # noqa: E402  single place for the current head
+
 LEGACY_USERS = """
 CREATE TABLE user_accounts (
     id VARCHAR(36) PRIMARY KEY, username VARCHAR(64) UNIQUE, display_name VARCHAR(100) NOT NULL,

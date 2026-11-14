@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 
 from .database import engine, session, DATA, ROOT, SessionLocal
 
-from .models import Company, Task, Obligation, Document, Audit, Agent, Job
+from .models import Company, Task, Obligation, Document, Audit, Agent, Job, UserCompanyGrant
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
@@ -350,8 +350,17 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
     }
 
 
-@app.post('/api/companies', dependencies=ADMIN, status_code=201)
-def create_company(data: CompanyIn, db: Session = Depends(session)):
+def responsible_unchanged(principal, data, current='Sin asignar'):
+    # Only an administrator assigns or changes the responsible accountant (Bloque 2).
+    if not principal.admin and data.accountant != current:
+        raise HTTPException(403, 'Sólo la administración asigna el contador responsable.')
+
+
+@app.post('/api/companies', dependencies=APP, status_code=201)
+def create_company(data: CompanyIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    if principal.role not in {'admin', 'contador'}:
+        raise HTTPException(403, 'Tu perfil no permite registrar empresas.')
+    responsible_unchanged(principal, data)
     from .company_lifecycle import ensure_unique_rfc
 
     ensure_unique_rfc(db, data.rfc)
@@ -362,15 +371,20 @@ def create_company(data: CompanyIn, db: Session = Depends(session)):
     # Commit first validates RFC uniqueness; record creation in same transaction.
 
     company.id = str(uuid4())
+    if principal.role == 'contador':
+        # The registering accountant can operate it at once; it does not become its responsible.
+        db.add(UserCompanyGrant(user_id=principal.subject, company_id=company.id, access='write'))
     record(db, 'Empresa registrada', company.id)
     save(db)
 
     return company
 
 
-@app.put('/api/companies/{id}', dependencies=ADMIN)
-def edit_company(id: str, data: CompanyIn, db: Session = Depends(session)):
+@app.put('/api/companies/{id}', dependencies=APP)
+def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    principal.require('empresa.editar', id)
     company = get(db, Company, id)
+    responsible_unchanged(principal, data, company.accountant)
 
     from .company_lifecycle import ensure_unique_rfc
 
@@ -386,7 +400,7 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session)):
 
 @app.post('/api/tasks', dependencies=APP, status_code=201)
 def create_task(data: TaskIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
-    principal.require_company(data.company_id, write=True)
+    principal.require('tareas.editar', data.company_id)
 
     get(db, Company, data.company_id)
 
@@ -399,12 +413,12 @@ def create_task(data: TaskIn, db: Session = Depends(session), principal: Princip
 
 @app.put('/api/tasks/{id}', dependencies=APP)
 def edit_task(id: str, data: TaskIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
-    principal.require_company(data.company_id, write=True)
+    principal.require('tareas.editar', data.company_id)
 
     task = get(db, Task, id)
     get(db, Company, data.company_id)
 
-    principal.require_company(task.company_id, write=True)
+    principal.require('tareas.editar', task.company_id)
 
     for k, v in data.model_dump().items():
         setattr(task, k, v)
@@ -416,7 +430,7 @@ def edit_task(id: str, data: TaskIn, db: Session = Depends(session), principal: 
 
 @app.post('/api/obligations', dependencies=APP, status_code=201)
 def create_obligation(data: ObligationIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
-    principal.require_company(data.company_id, write=True)
+    principal.require('obligaciones.editar', data.company_id)
 
     get(db, Company, data.company_id)
     o = Obligation(**data.model_dump())
@@ -429,12 +443,12 @@ def create_obligation(data: ObligationIn, db: Session = Depends(session), princi
 
 @app.put('/api/obligations/{id}', dependencies=APP)
 def edit_obligation(id: str, data: ObligationIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
-    principal.require_company(data.company_id, write=True)
+    principal.require('obligaciones.editar', data.company_id)
 
     o = get(db, Obligation, id)
     get(db, Company, data.company_id)
 
-    principal.require_company(o.company_id, write=True)
+    principal.require('obligaciones.editar', o.company_id)
 
     for k, v in data.model_dump().items():
         setattr(o, k, v)
@@ -452,7 +466,7 @@ async def upload_document(
     db: Session = Depends(session),
     principal: Principal = Depends(auth),
 ):
-    principal.require_company(id, write=True)
+    principal.require('documentos.subir', id)
 
     get(db, Company, id)
 
@@ -538,9 +552,13 @@ def download_document(id: str, db: Session = Depends(session), principal: Princi
     return document_response(storage_service(), principal.storage_actor(), id)
 
 
-@app.delete('/api/documents/{id}', dependencies=ADMIN, status_code=204)
-def delete_document(id: str, db: Session = Depends(session)):
+@app.delete('/api/documents/{id}', dependencies=APP, status_code=204)
+def delete_document(id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
     doc = get(db, Document, id)
+    if doc.company_id is None:
+        principal.require_admin()
+    else:
+        principal.require('documentos.eliminar', doc.company_id)
 
     from .models import DocumentVersion
 

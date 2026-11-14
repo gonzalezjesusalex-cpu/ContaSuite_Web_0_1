@@ -17,7 +17,7 @@ from app.storage.migrate import STORAGE_HEAD, schema_revision, upgrade_schema, u
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
-HEAD = 'cs_0007_user_role'
+HEAD = 'cs_0008_user_company_actions'
 OLD_CHAIN = [
     ('fiscal_migrations', '001_control_obligaciones'),
     ('credential_migrations', '001_vault'),

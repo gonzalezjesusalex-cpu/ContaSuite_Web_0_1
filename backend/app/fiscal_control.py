@@ -257,7 +257,7 @@ def _matrix_data(year, month, principal, db):
 @router.put('/cell')
 def save_cell(payload: CellIn, principal: Principal = Depends(auth), db=Depends(session)):
     ready(db)
-    principal.require_company(payload.company_id, write=True)
+    principal.require('obligaciones.editar', payload.company_id)
     if not db.get(Company, payload.company_id):
         raise HTTPException(404, 'Empresa no encontrada.')
     definition = db.execute(select(catalog).where(catalog.c.id == payload.obligation_id)).mappings().first()
@@ -392,7 +392,7 @@ class ApplicabilityIn(BaseModel):
 @router.put('/applicability')
 def save_applicability(payload: ApplicabilityIn, principal: Principal = Depends(auth), db=Depends(session)):
     ready(db)
-    principal.require_company(payload.company_id, write=True)
+    principal.require('obligaciones.editar', payload.company_id)
     if (
         not db.get(Company, payload.company_id)
         or not db.execute(select(catalog.c.id).where(catalog.c.id == payload.obligation_id)).first()

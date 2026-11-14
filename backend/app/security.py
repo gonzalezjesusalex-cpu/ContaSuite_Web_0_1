@@ -3,13 +3,24 @@
 import hashlib
 import os
 import secrets
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import timezone, timedelta
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, update
 from .database import SessionLocal
-from .models import ROLES, IdentityState, UserAccount, UserCompanyGrant, UserSession, SecurityEvent, now
+from .models import (
+    ROLES,
+    IdentityState,
+    UserAccount,
+    UserCompanyAction,
+    UserCompanyGrant,
+    UserSession,
+    SecurityEvent,
+    now,
+)
+from .permissions import ACTIONS, company_actions
 
 security = HTTPBearer(auto_error=False)
 SESSION_COOKIE = 'contasuite_session'
@@ -35,6 +46,8 @@ class Principal:
     bootstrap: bool = False
     session_id: str | None = None
     role: str | None = None
+    # Explicit actions of an auxiliar per company (UserCompanyAction rows); absent = never set.
+    explicit_actions: Mapping[str, frozenset[str]] = field(default_factory=dict, hash=False)
 
     def __post_init__(self):
         # Role comes from the server-side account; `admin` is derived from it and both must agree.
@@ -51,15 +64,34 @@ class Principal:
         if not self.admin and company_id not in (self.write_company_ids if write else self.company_ids):
             raise HTTPException(404, 'Registro no encontrado.')
 
+    def actions(self, company_id):
+        if self.admin:
+            return ACTIONS
+        if company_id not in self.company_ids:
+            return frozenset()
+        return company_actions(self.role, company_id in self.write_company_ids, self.explicit_actions.get(company_id))
+
+    def can(self, action, company_id):
+        if action not in ACTIONS:
+            raise ValueError('Acción desconocida: ' + action)
+        return action in self.actions(company_id)
+
+    def require(self, action, company_id):
+        """Company-scoped action check: 404 without access to the company, 403 without the action."""
+        self.require_company(company_id)
+        if not self.can(action, company_id):
+            raise HTTPException(403, 'Tu perfil no permite esta operación en esta empresa.')
+
     def storage_actor(self):
         from .storage.service import StorageActor
 
+        uploads = frozenset(c for c in self.company_ids if self.can('documentos.subir', c))
         return StorageActor(
             self.subject,
             self.company_ids,
-            frozenset({'read'} | ({'write'} if self.write_company_ids else set())),
+            frozenset({'read'} | ({'write'} if uploads else set())),
             self.admin,
-            write_company_ids=self.write_company_ids,
+            write_company_ids=uploads,
         )
 
     def public(self):
@@ -71,6 +103,7 @@ class Principal:
             bootstrap=self.bootstrap,
             company_ids=sorted(self.company_ids),
             write_company_ids=sorted(self.write_company_ids),
+            actions={c: sorted(self.actions(c)) for c in sorted(self.company_ids)},
         )
 
 
@@ -139,6 +172,10 @@ def auth(request: Request, credentials: HTTPAuthorizationCredentials | None = Se
                             403, 'La sesión requiere una comprobación de seguridad. Actualiza la página.'
                         )
                 grants = db.scalars(select(UserCompanyGrant).where(UserCompanyGrant.user_id == user.id)).all()
+                explicit = {}
+                if user.role == 'auxiliar':
+                    for item in db.scalars(select(UserCompanyAction).where(UserCompanyAction.user_id == user.id)):
+                        explicit.setdefault(item.company_id, set()).add(item.action)
                 principal = Principal(
                     user.id,
                     user.display_name,
@@ -147,6 +184,7 @@ def auth(request: Request, credentials: HTTPAuthorizationCredentials | None = Se
                     frozenset(g.company_id for g in grants if g.access == 'write'),
                     session_id=ident,
                     role=user.role,
+                    explicit_actions={c: frozenset(a) for c, a in explicit.items()},
                 )
                 activity = request.method not in SAFE_METHODS or request.headers.get('x-contasuite-activity') == '1'
                 if activity and utc(row.last_seen_at) + timedelta(minutes=1) < stamp:

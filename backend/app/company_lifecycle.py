@@ -134,8 +134,7 @@ def directory(
 
 @router.put('/{company_id}')
 def set_archive(company_id: str, payload: ArchiveIn, principal: Principal = Depends(auth), db=Depends(session)):
-    principal.require_admin()
-    principal.require_company(company_id, write=True)
+    principal.require('empresa.archivar', company_id)
     if not available(db):
         raise HTTPException(503, 'Archivado pendiente de migración explícita autorizada. No se modificaron datos.')
     if not db.get(Company, company_id):
