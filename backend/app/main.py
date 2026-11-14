@@ -4,7 +4,6 @@ import os
 
 import re
 
-import secrets
 
 from contextlib import asynccontextmanager
 
@@ -14,9 +13,8 @@ from pathlib import Path
 
 from uuid import uuid4
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Security, Request, Query
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query
 
-from fastapi.security import HTTPAuthorizationCredentials
 
 from fastapi.responses import FileResponse
 
@@ -36,27 +34,14 @@ from .database import engine, session, DATA, ROOT, SessionLocal
 
 from .models import Company, Task, Obligation, Document, Audit, Agent, Job, UserAccount, UserCompanyGrant
 from .csf_extract import ocr_available
+from .agent_links import agent_caller
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
 from .schemas import CompanyIn, TaskIn, ObligationIn, Heartbeat, JobIn, JobResult
 
 
-from .security import auth, admin_auth, security, Principal
-
-
-def agent_auth(request: Request, credentials: HTTPAuthorizationCredentials | None = Security(security)):
-    token = os.getenv('AGENT_TOKEN', '')
-
-    if (
-        len(token) < 24
-        or not credentials
-        or len(credentials.credentials) > 512
-        or not secrets.compare_digest(credentials.credentials.encode(), token.encode())
-    ):
-        raise HTTPException(401, 'Agente no autorizado')
-
-    request.state.agent_authenticated = True
+from .security import auth, admin_auth, Principal
 
 
 def regime_labels(db, company_id):
@@ -218,8 +203,6 @@ APP = [Depends(auth)]
 
 ADMIN = [Depends(admin_auth)]
 
-AGENT = [Depends(agent_auth)]
-
 
 @app.exception_handler(RequestValidationError)
 async def safe_validation_error(request, exc):
@@ -362,6 +345,10 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
     normalized = [normalize_rfc(c.rfc) for c in companies]
 
     regimes = regimes_by_company(db, [c.id for c in companies])
+    from .agent_links import my_agent
+
+    agent_status = my_agent(db, principal)
+    db.commit()
 
     def company_public(c):
         return {
@@ -389,6 +376,8 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
         # Responsible users of the visible companies, so the client can show "(inactivo)".
         'responsibles': responsibles(db, companies),
         'current_user': principal.public(),
+        # Bloque 4: the user's own linked agent, or why there is none.
+        'agent_link': agent_status,
         'archive_available': archive_available,
         'tasks': db.scalars(
             select(Task)
@@ -810,93 +799,153 @@ def delete_document(id: str, db: Session = Depends(session), principal: Principa
     path.unlink(missing_ok=True)
 
 
-@app.post('/api/jobs', dependencies=ADMIN, status_code=201)
+@app.post('/api/jobs', dependencies=APP, status_code=201)
 def create_job(data: JobIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Folder analysis through the requesting user's own linked agent (Bloque 4)."""
+    from .agent_links import active_link_for, inside_roots, online as link_online, roots, shared_token_allowed
+
+    principal.require('carpeta.analizar', data.company_id)
     company = get(db, Company, data.company_id)
-    agent = get(db, Agent, data.agent_id)
-
-    if not online(agent):
-        raise HTTPException(409, 'El agente está desconectado')
-
-    if data.kind not in agent.capabilities:
-        raise HTTPException(409, 'El agente no tiene esta capacidad')
-
     expire_stale_jobs(db)
-
     if not company.folder:
-        raise HTTPException(422, 'Primero configura la carpeta de la empresa')
-
+        raise HTTPException(422, 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.')
+    allowed = roots(db)
+    link = active_link_for(db, principal.subject)
+    if link is None and data.agent_id and principal.admin and shared_token_allowed():
+        # Transition only: an agent with the former shared token, chosen by an administrator.
+        agent = get(db, Agent, data.agent_id)
+        if not online(agent) or data.kind not in agent.capabilities:
+            raise HTTPException(409, 'El agente está desconectado o no tiene esta capacidad.')
+        agent_id, link_id, machine = agent.id, None, None
+    else:
+        if link is None:
+            db.commit()
+            raise HTTPException(
+                409, 'Tu agente local no está vinculado: inicia sesión en ContaSuite en el equipo Windows.'
+            )
+        if not link_online(link):
+            raise HTTPException(
+                409,
+                'Tu agente local está desconectado: revisa que esté en ejecución en '
+                + (link.machine or 'el equipo')
+                + '.',
+            )
+        if not allowed:
+            raise HTTPException(409, 'No hay carpetas autorizadas para el agente: las define la administración.')
+        if not inside_roots(company.folder, allowed):
+            raise HTTPException(409, 'La ruta de la empresa está fuera de las carpetas autorizadas para el agente.')
+        agent_id, link_id, machine = link.agent_id, link.id, link.machine
     job = Job(
-        company_id=company.id, agent_id=agent.id, kind=data.kind, payload={'folder': company.folder, 'rfc': company.rfc}
+        company_id=company.id,
+        agent_id=agent_id,
+        kind=data.kind,
+        payload={'folder': company.folder, 'rfc': company.rfc},
+        requested_by=principal.subject,
+        link_id=link_id,
+        machine=machine,
     )
-
     db.add(job)
-    record(db, 'Análisis de carpeta solicitado', company.id, principal.subject)
+    record(
+        db,
+        'Análisis de carpeta solicitado',
+        company.id,
+        principal.subject,
+        {'agente': {'after': agent_id}, 'equipo': {'after': machine}} if link_id else None,
+    )
     save(db)
     return job
 
 
-@app.post('/api/agent/heartbeat', dependencies=AGENT)
-def heartbeat(data: Heartbeat, db: Session = Depends(session)):
-    agent = db.get(Agent, data.id)
+@app.post('/api/agent/heartbeat')
+def heartbeat(data: Heartbeat, db: Session = Depends(session), caller=Depends(agent_caller)):
+    from .agent_links import end_link, roots
 
+    if caller is not None and data.id != caller.link.agent_id:
+        raise HTTPException(403, 'El agente no corresponde a su vínculo.')
+    agent = db.get(Agent, data.id)
     if not agent:
         agent = Agent(id=data.id)
         db.add(agent)
-
     agent.last_seen = datetime.now(timezone.utc)
     agent.capabilities = data.capabilities
-
+    if caller is None:
+        save(db)
+        return {'ok': True}
+    caller.link.last_seen = datetime.now(timezone.utc)
+    if caller.link.restart_requested:
+        end_link(db, caller.link, 'Reinicio solicitado por la administración.')
+        save(db)
+        return {'ok': True, 'restart': True}
     save(db)
-    return {'ok': True}
+    return {'ok': True, 'user': caller.user.display_name, 'roots': roots(db)}
 
 
-@app.post('/api/agent/{agent_id}/claim', dependencies=AGENT)
-def claim(agent_id: str, db: Session = Depends(session), not_before: datetime | None = Query(None)):
+@app.post('/api/agent/{agent_id}/claim')
+def claim(
+    agent_id: str,
+    db: Session = Depends(session),
+    caller=Depends(agent_caller),
+    not_before: datetime | None = Query(None),
+):
+    from .agent_links import roots, user_can_analyze
+
     get(db, Agent, agent_id)
-
+    if caller is not None and agent_id != caller.link.agent_id:
+        raise HTTPException(403, 'El agente no corresponde a su vínculo.')
     # Atomic compare-and-swap prevents duplicate claims on both supported databases.
-
     if not_before is not None and (not_before.tzinfo is None or not_before > datetime.now(timezone.utc)):
         raise HTTPException(422, 'Fecha de activación inválida.')
     query = select(Job).where(Job.agent_id == agent_id, Job.status == 'queued')
+    if caller is not None:
+        # A linked agent only works for its user, and only while that user may still analyze the company.
+        query = query.where(Job.requested_by == caller.link.user_id)
     if not_before is not None:
         query = query.where(Job.created_at >= not_before)
     expire_stale_jobs(db)
     for job in db.scalars(query.order_by(Job.created_at).limit(50)).all():
+        if caller is not None and not user_can_analyze(db, caller.user, job.company_id):
+            db.execute(
+                update(Job)
+                .where(Job.id == job.id, Job.status == 'queued')
+                .values(status='failed', result={'error': 'El usuario ya no tiene permiso para analizar esta empresa.'})
+            )
+            db.commit()
+            continue
+        marker = claim_marker()
         changed = db.execute(
-            update(Job).where(Job.id == job.id, Job.status == 'queued').values(status='running', result=claim_marker())
+            update(Job).where(Job.id == job.id, Job.status == 'queued').values(status='running', result=marker)
         )
-
         db.commit()
-
         if changed.rowcount:
             db.refresh(job)
+            if caller is not None:
+                # The folders the administrator authorizes travel with each job; the agent cannot widen them.
+                return {
+                    **{c.name: getattr(job, c.name) for c in Job.__table__.columns},
+                    'payload': {**job.payload, 'roots': roots(db)},
+                }
             return job
-
     return None
 
 
-@app.post('/api/agent/jobs/{id}/result', dependencies=AGENT)
-def result(id: str, data: JobResult, db: Session = Depends(session)):
+@app.post('/api/agent/jobs/{id}/result')
+def result(id: str, data: JobResult, db: Session = Depends(session), caller=Depends(agent_caller)):
     job = get(db, Job, id)
-
     if job.agent_id != data.agent_id or job.status != 'running':
         raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
-
+    if caller is not None and (data.agent_id != caller.link.agent_id or job.requested_by != caller.link.user_id):
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
     if len(json.dumps(data.result)) > 2_000_000:
         raise HTTPException(413, 'Resultado demasiado grande')
-
     job.status = data.status
     job.result = data.result
-
     record(
         db,
         'Análisis local ' + ('completado' if data.status == 'completed' else 'fallido'),
         job.company_id,
-        'agent:' + job.agent_id,
+        job.requested_by or 'agent:' + job.agent_id,
+        {'agente': {'after': job.agent_id}, 'equipo': {'after': job.machine}} if job.requested_by else None,
     )
-
     save(db)
     return {'ok': True}
 
@@ -1001,6 +1050,11 @@ app.include_router(accounts_router)
 from .responsible import router as responsible_router
 
 app.include_router(responsible_router)
+
+
+from .agent_links import router as agent_links_router
+
+app.include_router(agent_links_router)
 
 
 from .fiscal_control import router as fiscal_control_router

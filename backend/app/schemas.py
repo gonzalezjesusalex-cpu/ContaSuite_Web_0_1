@@ -159,8 +159,9 @@ class Heartbeat(CleanModel):
 
 class JobIn(CleanModel):
     company_id: str
-    agent_id: str
-    kind: Literal['scan_folder']
+    # Bloque 4: the server uses the requester's linked agent; an id is only read for the legacy shared token.
+    agent_id: str | None = None
+    kind: Literal['scan_folder'] = 'scan_folder'
 
 
 class JobResult(CleanModel):
