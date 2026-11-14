@@ -274,7 +274,7 @@ def reviews(company_id: str | None = None, p: Principal = Depends(auth), db=Depe
     for row in db.scalars(query):
         if row.evidence.get('origin') != 'metadata_rules_v3':
             continue
-        if company_id and company_id not in {l['company_id'] for l in row.proposed_links}:
+        if company_id and company_id not in {link['company_id'] for link in row.proposed_links}:
             continue
         result.append(dict(id=row.id, document_id=row.document_id, version_id=row.version_id, evidence=row.evidence))
     return result

@@ -1,7 +1,6 @@
 """Read-only integration over existing modules; missing migrations remain explicit."""
 
 from collections import Counter
-from zoneinfo import ZoneInfo
 from sqlalchemy import select, or_, and_, exists as sql_exists
 from fastapi import HTTPException
 from .models import (
@@ -14,7 +13,6 @@ from .models import (
     DocumentLocation,
     Task,
     DocumentClassificationReview,
-    now,
 )
 from .storage.catalog import DocumentCatalog
 from .company_reconcile import normalized_name
@@ -35,8 +33,6 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
     archive_ready, archive_rows = archive_metadata(db, [c.id for c in companies])
     if archive_ready and not company and not include_archived:
         companies = [c for c in companies if not archive_rows.get(c.id, {}).get('archived', False)]
-    base_ids = {c.id for c in companies}
-    today = now().astimezone(ZoneInfo('America/Mexico_City')).date()
     fiscal_available = exists(db, 'fiscal_records')
     entries = []
     definitions = []
@@ -55,9 +51,12 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
         companies = [c for c in companies if c.id in scoped]
     elif responsible:
         companies = [c for c in companies if c.accountant == responsible]
-    owner = lambda r: r.get('responsible_name') or next(
-        (c.accountant for c in companies if c.id == r['company_id']), 'Sin asignar'
-    )
+
+    def owner(r):
+        return r.get('responsible_name') or next(
+            (c.accountant for c in companies if c.id == r['company_id']), 'Sin asignar'
+        )
+
     ids = {c.id for c in companies}
     states = Counter(fiscal['summary']['counts']) if fiscal else Counter()
     verified_ids = {r['id'] for r in entries if r.get('verification_state') == 'verified'}

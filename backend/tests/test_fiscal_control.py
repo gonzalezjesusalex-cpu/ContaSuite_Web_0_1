@@ -56,7 +56,7 @@ def test_migration_guard_and_no_implicit_seed(core):
 
 def test_roundtrip_audit_conflict_and_permissions(fiscal):
     with fiscal() as db:
-        saved = save_cell(payload(due_date=date(2020, 1, 1), due_verified=True), ADMIN, db)
+        save_cell(payload(due_date=date(2020, 1, 1), due_verified=True), ADMIN, db)
         data = matrix(2026, 11, ADMIN, db)
         assert len(data['catalog']) == 11 and len(data['companies']) == 2
         assert data['records'][0]['effective_status'] == 'overdue'

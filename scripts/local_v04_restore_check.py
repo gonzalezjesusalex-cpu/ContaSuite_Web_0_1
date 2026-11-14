@@ -40,6 +40,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception:
+    except Exception:  # noqa: BLE001 - top-level handler: exits non-zero without printing secrets or internal messages
         print('Restauración de prueba detenida; no se muestran credenciales ni mensajes internos.')
-        raise SystemExit(1)
+        raise SystemExit(1) from None

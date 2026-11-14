@@ -105,7 +105,7 @@ def inspect_project(root):
                 'pending',
                 'Base no SQLite: comprobar conectividad y migración con el técnico; no se sondea por red',
             )
-    except Exception:
+    except Exception:  # noqa: BLE001 - diagnostic: an unreadable schema is reported as pending, never repaired
         add('database_schema', 'pending', 'Base nueva o esquema pendiente; respaldar antes de iniciar migraciones')
     add(
         'smb',

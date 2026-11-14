@@ -211,7 +211,7 @@ def _read_xlsx(payload, source):
                 }
                 if sheet_info['ambiguous_headers']:
                     safe['warnings'].append('ambiguous_headers')
-                for field, value, cell in zip(mapping, values, cells):
+                for field, value, cell in zip(mapping, values, cells, strict=False):  # short rows end early
                     if field in ('sensitive', 'ignored'):
                         continue
                     if cell.data_type == 'f':

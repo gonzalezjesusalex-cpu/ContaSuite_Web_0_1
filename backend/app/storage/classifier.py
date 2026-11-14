@@ -118,10 +118,14 @@ def classify(stream, name, companies):
         for r in evidence['rfcs']
         if len(known.get(r['rfc'], set())) == 1
     ]
-    links = [dict(company_id=cid, role=role) for cid, role in sorted({(l['company_id'], l['role']) for l in links})]
+    links = [
+        dict(company_id=cid, role=role) for cid, role in sorted({(link['company_id'], link['role']) for link in links})
+    ]
     distinct_rfcs = {r['rfc'] for r in roles}
     # CFDI naturally includes an external counterparty; other formats must have one RFC total.
-    automatic = bool(links) and not ambiguous and evidence['complete'] and len({l['company_id'] for l in links}) == 1
+    automatic = (
+        bool(links) and not ambiguous and evidence['complete'] and len({link['company_id'] for link in links}) == 1
+    )
     if kind != 'cfdi' and len(distinct_rfcs) != 1:
         automatic = False
     evidence['authority_validated'] = False
@@ -131,7 +135,7 @@ def classify(stream, name, companies):
         else 'unambiguous'
         if automatic
         else 'multiple_companies'
-        if len({l['company_id'] for l in links}) > 1
+        if len({link['company_id'] for link in links}) > 1
         else 'incomplete_content'
         if not evidence['complete']
         else 'unknown_rfc'

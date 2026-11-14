@@ -39,7 +39,9 @@ def tick(db, clock=now, provider=None, interval=900):
     if provider is None:
         from .credential_alerts import candidates
 
-        provider = lambda session, p: candidates(session, p, stamp=stamp)
+        def provider(session, p):
+            return candidates(session, p, stamp=stamp)
+
     evaluate(db, principal, provider(db, principal), commit=False, today=day)
     db.execute(update(schedule).where(schedule.c.id == 1).values(last_success=stamp))
     return {'state': 'evaluated', 'at': stamp, 'timezone': TIMEZONE}

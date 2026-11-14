@@ -204,7 +204,7 @@ def generate(data: Batch, db: Session = Depends(session)):
     created = []
     rows = []
     try:
-        for item, d in zip(data.items, prepared):
+        for item, d in zip(data.items, prepared, strict=True):
             # Atomic annual counter works across processes in both supported databases.
             if db.bind.dialect.name == 'postgresql':
                 from sqlalchemy.dialects.postgresql import insert

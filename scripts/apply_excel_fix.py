@@ -87,7 +87,7 @@ def main(extra_files=()):
     target = Path(directory)
     try:
         marker(target)
-    except Exception:
+    except Exception:  # noqa: BLE001 - UI tool: the failure is shown to the user and nothing is applied
         messagebox.showerror(
             'ContaSuite',
             'No es la carpeta instalada. Selecciona la que contiene ABRIR_CONTASUITE y LOCAL_INSTALLATION.json.',
@@ -112,7 +112,7 @@ def main(extra_files=()):
     def worker():
         try:
             events.put((True, apply(source, target, extra_files)))
-        except BaseException as exc:
+        except BaseException as exc:  # noqa: BLE001 - UI tool: the failure is shown to the user and nothing is applied
             events.put((False, type(exc).__name__))
 
     def poll():

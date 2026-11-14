@@ -78,7 +78,7 @@ def save(db):
     except IntegrityError:
         db.rollback()
 
-        raise HTTPException(409, 'El RFC ya está registrado o la relación es inválida')
+        raise HTTPException(409, 'El RFC ya está registrado o la relación es inválida') from None
 
 
 def online(agent):

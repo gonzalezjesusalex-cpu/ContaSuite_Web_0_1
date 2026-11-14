@@ -7,7 +7,7 @@ from .storage.classify_process import memory_limit
 
 
 def main():
-    guard = memory_limit()
+    _guard = memory_limit()  # keeps the memory-limit job object alive for the whole extraction
     from .pilot_extract import analyze
 
     for _ in range(100):

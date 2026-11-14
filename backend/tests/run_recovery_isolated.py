@@ -123,7 +123,10 @@ class RecoveryTests(previous.FinalizationTests):
         from sqlalchemy import update
 
         ident = self.save(status='fulfilled')['id']
-        source = lambda: [r for r in candidates(self.db, self.p) if r['kind'] == 'evidence_review']
+
+        def source():
+            return [r for r in candidates(self.db, self.p) if r['kind'] == 'evidence_review']
+
         self.assertEqual(len(source()), 1)
         evaluate(self.db, self.p, source())
         first = self.db.execute(select(alerts)).mappings().one()

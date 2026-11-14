@@ -266,7 +266,7 @@ def decide(ident: str, number: int, payload: DecisionIn, p: Principal = Depends(
         proposal.update(rfc=rfc, name=payload.name.strip())
     else:
         proposal.update(
-            type=payload.document_type, include=payload.include, links=[l.model_dump() for l in payload.links]
+            type=payload.document_type, include=payload.include, links=[link.model_dump() for link in payload.links]
         )
     proposal['decision'] = {'actor': p.subject, 'at': now().isoformat(), 'reason': payload.reason.strip()}
     db.execute(
@@ -425,7 +425,7 @@ def confirm(
             )
             if version.sha256 != row['sha256']:
                 raise HTTPException(409, 'El contenido cambió durante la importación; no se guardaron cambios.')
-            chosen = [{'company_id': mapping[l['folder']], 'role': l['role']} for l in row['links']]
+            chosen = [{'company_id': mapping[link['folder']], 'role': link['role']} for link in row['links']]
             result = {**row['result'], 'type': row['type'], 'links': chosen, 'automatic': False}
             doc = db.get(Document, observed.id)
             latest = db.scalar(
@@ -435,16 +435,16 @@ def confirm(
                 .limit(1)
             )
             existing = {
-                (l.company_id, l.role)
-                for l in db.scalars(select(DocumentCompanyLink).where(DocumentCompanyLink.document_id == doc.id))
+                (link.company_id, link.role)
+                for link in db.scalars(select(DocumentCompanyLink).where(DocumentCompanyLink.document_id == doc.id))
             }
             if doc.company_id:
                 existing.add((doc.company_id, 'owner'))
-            desired = {(l['company_id'], l['role']) for l in chosen}
+            desired = {(link['company_id'], link['role']) for link in chosen}
             apply = latest is None or bool(row.get('decision'))
             if latest and latest.status == 'resolved' and desired == existing and row['type'] == doc.document_type:
                 apply = False
-            proposed = {(l['company_id'], l['role']) for l in latest.proposed_links} if latest else set()
+            proposed = {(link['company_id'], link['role']) for link in latest.proposed_links} if latest else set()
             if (
                 apply
                 and latest

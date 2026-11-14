@@ -22,6 +22,10 @@ ignore = [
 "backend/tests/**" = ["F401", "F811", "F403", "F405", "E402"]
 # Scripts adjust sys.path before importing the backend.
 "scripts/**" = ["E402"]
+# Routers are included after the app and its middleware exist; importing them at the top would
+# create import cycles (they import app.main helpers).
+"backend/app/main.py" = ["E402"]
+"backend/app/integral_api.py" = ["E402"]
 
 [format]
 quote-style = "preserve"

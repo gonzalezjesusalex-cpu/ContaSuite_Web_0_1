@@ -37,7 +37,7 @@ class CompanyIn(CleanModel):
         try:
             date(2000 + int(digits[:2]), int(digits[2:4]), int(digits[4:6]))
         except ValueError:
-            raise ValueError('La fecha del RFC es inválida')
+            raise ValueError('La fecha del RFC es inválida') from None
         return value
 
     @model_validator(mode='after')

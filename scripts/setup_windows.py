@@ -73,7 +73,7 @@ def configure(portable=False):
         try:
             subprocess.run(['docker', 'compose', 'up', '-d', '--wait', 'db'], cwd=root, check=True)
         except subprocess.CalledProcessError:
-            raise SystemExit('No se pudo iniciar PostgreSQL. Comprueba Docker Desktop y el puerto 5432.')
+            raise SystemExit('No se pudo iniciar PostgreSQL. Comprueba Docker Desktop y el puerto 5432.') from None
     print(f'\nContaSuite Web 0.1 - http://127.0.0.1:{port}')
     print('Clave para crear el primer administrador: ' + values['APP_TOKEN'])
     print('Si ya existen cuentas, ingresa con usuario y contraseña; esta clave no restablece el acceso.')

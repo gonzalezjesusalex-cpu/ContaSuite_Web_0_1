@@ -369,8 +369,10 @@ def generate(ident):
             if motor.sha256_file(dest) != i.sha256:
                 raise ValueError('Falló la verificación de una copia.')
             planned.append(motor.PdfInfo(**{**asdict(i), 'path': dest}))
-        eligible = [(original, copied) for original, copied in zip(infos, planned) if original.status in ELIGIBLE]
-        for original, copied in eligible:
+        eligible = [
+            (original, copied) for original, copied in zip(infos, planned, strict=True) if original.status in ELIGIBLE
+        ]
+        for _original, copied in eligible:
             name = copied.expected_name
             if not name or len(name) > 255 or safe_path(name).name != name:
                 raise ValueError('Hay un nombre de destino no válido. Revisa el archivo o acorta el nombre de empresa.')

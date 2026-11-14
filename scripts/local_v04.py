@@ -344,7 +344,7 @@ if __name__ == '__main__':
     try:
         action = sys.argv[1] if len(sys.argv) > 1 else 'run'
         {'setup': setup_pg, 'migrate': migrate, 'seed': seed, 'password': password, 'run': run}[action]()
-    except Exception:
+    except Exception:  # noqa: BLE001 - top-level handler: exits non-zero without printing secrets or internal messages
         print(
             'Operación detenida de forma segura. Revisar aislamiento/dependencias; no se muestran detalles que puedan contener credenciales.'
         )

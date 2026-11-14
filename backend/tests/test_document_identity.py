@@ -70,7 +70,7 @@ def test_uuid_conflict_quarantines_both_without_merge_or_cross_company_assignmen
 
 def test_upload_detects_conflicting_uuid_before_explicit_classification(core):
     service, factory, _ = core
-    a = service.upload(ADMIN, io.BytesIO(xml()), 'a.xml', company_id='company-a')
+    service.upload(ADMIN, io.BytesIO(xml()), 'a.xml', company_id='company-a')
     b = service.upload(ADMIN, io.BytesIO(xml('999')), 'b.xml', company_id='company-b')
     with factory() as db:
         assert all(blocked(db, v.id) for v in db.scalars(select(DocumentVersion)))

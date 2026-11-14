@@ -154,7 +154,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - top-level handler: exits non-zero without printing secrets or internal messages
         # No response bodies, DSNs, passwords or exception messages are emitted.
         import traceback
 

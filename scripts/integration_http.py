@@ -75,7 +75,7 @@ def main():
         request(client, 'GET', '/company-lifecycle?archive=archived')
         request(client, 'PUT', '/company-lifecycle/' + a, json={'archived': False, 'revision': 1})
         request(client, 'DELETE', '/companies/' + a, 409)
-        date = request(
+        request(
             client,
             'PUT',
             '/integral/calendar/manual/synthetic-manual',

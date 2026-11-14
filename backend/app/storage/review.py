@@ -152,8 +152,8 @@ class ClassificationService:
             review.proposed_links = result['links']
             existing = db.scalars(select(DocumentCompanyLink).where(DocumentCompanyLink.document_id == ident)).all()
             existing_ids = self._companies(db, doc)
-            proposed_ids = {l['company_id'] for l in result['links']}
-            manual = doc.company_id is not None or any(l.method != 'rfc-v1' for l in existing)
+            proposed_ids = {link['company_id'] for link in result['links']}
+            manual = doc.company_id is not None or any(link.method != 'rfc-v1' for link in existing)
             automatic = (
                 result['automatic']
                 and not blocked(db, version.id)

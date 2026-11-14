@@ -166,7 +166,7 @@ def finalize(db, ident):
         .where(rows.c.session_id == ident, rows.c.number > 0)
         .order_by(rows.c.number)
     )
-    for number, r in db.execute(query.execution_options(yield_per=100)):
+    for _number, r in db.execute(query.execution_options(yield_per=100)):
         if r.get('sha256'):
             hashes[r['sha256']] += 1
         u = r.get('result', {}).get('evidence', {}).get('cfdi_uuid')

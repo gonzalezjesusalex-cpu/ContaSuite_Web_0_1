@@ -137,6 +137,6 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - top-level handler: exits non-zero without printing secrets or internal messages
         print('Import check stopped; error_class=' + type(e).__name__, flush=True)
         raise SystemExit(1) from None

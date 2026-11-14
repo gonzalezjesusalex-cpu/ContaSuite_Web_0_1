@@ -524,7 +524,7 @@ def verify(c):
 if __name__ == '__main__':
     try:
         main()
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - top-level handler: exits non-zero without printing secrets or internal messages
         # Database exception representations can include bound fiscal values: never log them.
         print('Pilot operation stopped; error_class=' + type(error).__name__, flush=True)
         raise SystemExit(1) from None

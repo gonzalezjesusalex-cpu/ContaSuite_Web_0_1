@@ -217,7 +217,7 @@ def test_csd_unknown_rfc_mismatch_future_missing_and_missing_file(core):
 def test_label_permissions_revision_and_dashboard_scope(core):
     service, sessions, root = core
     doc = add_cert(service, category='General')
-    other = add_cert(service, company='company-b', rfc='BBB020202BB2', name='b.cer')
+    add_cert(service, company='company-b', rfc='BBB020202BB2', name='b.cer')
     reader = actor('company-a', 'read')
     assert [c['id'] for c in DashboardService(service).report(reader)['companies']] == ['company-a']
     assert [c['id'] for c in DashboardService(service).report(reader)['certificates']] == [doc.id]
