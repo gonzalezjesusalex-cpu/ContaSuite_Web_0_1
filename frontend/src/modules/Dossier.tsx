@@ -275,6 +275,7 @@ export default function Dossier({
           </button>
         ))}
       </div>
+      {section === 'Resumen' && <FiscalSummary period={period} companyId={c.id} compact />}
       {section === 'Actividad' && <ArchiveActivity companyId={c.id} available={!!state.archive_available} />}
       <div className="actions" aria-label="Vistas de la sección">
         {(section === 'Obligaciones'
@@ -366,9 +367,16 @@ export default function Dossier({
               <dl>
                 {[
                   ['RFC', c.rfc],
+                  ['idCIF', c.idcif],
+                  ...(c.person_type === 'Física' ? [['CURP', c.curp]] : []),
                   ['Nombre comercial', c.trade_name],
                   ['Tipo de persona', c.person_type],
-                  ['Contador', c.accountant],
+                  ['Regímenes vigentes', (c.regimes || []).map((r) => r.label).join('; ') || c.regime],
+                  ['Inicio de operaciones', c.operations_start ? dateLabel(c.operations_start) : ''],
+                  ['Estatus en el padrón', c.padron_status],
+                  ['Domicilio fiscal', fiscalAddress(c)],
+                  ['Constancia emitida', c.csf_issued_on ? dateLabel(c.csf_issued_on) : ''],
+                  ['Contador', responsibleName(c, state.responsibles)],
                   ['Correo', c.email],
                   ['Teléfono', c.phone],
                   ['Ubicación', c.location],
@@ -456,4 +464,19 @@ export default function Dossier({
       )}
     </>
   );
+}
+
+/** Fiscal address of the constancia in one line, skipping empty parts (Bloque 1). */
+function fiscalAddress(c: Company) {
+  const street = [
+    c.tax_street_type,
+    c.tax_street,
+    c.tax_exterior_number,
+    c.tax_interior_number && 'int. ' + c.tax_interior_number,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return [street, c.tax_neighborhood, c.tax_postal_code && 'C.P. ' + c.tax_postal_code, c.tax_municipality, c.tax_state]
+    .filter(Boolean)
+    .join(', ');
 }
