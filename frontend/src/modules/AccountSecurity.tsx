@@ -351,7 +351,7 @@ function Editor({
               disabled={busy || !!account}
               minLength={3}
               maxLength={64}
-              pattern="[a-zA-Z0-9_.-]+"
+              pattern="[a-zA-Z0-9_.\-]+"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
