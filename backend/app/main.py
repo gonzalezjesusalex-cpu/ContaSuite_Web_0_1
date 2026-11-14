@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 from .database import engine, session, DATA, ROOT, SessionLocal
 
 from .models import Company, Task, Obligation, Document, Audit, Agent, Job, UserAccount, UserCompanyGrant
+from .csf_extract import ocr_available
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
@@ -409,7 +410,8 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
         ],
         'jobs': db.scalars(select(Job).order_by(Job.created_at.desc()).limit(50)).all() if principal.admin else [],
         'database': 'PostgreSQL' if engine.dialect.name == 'postgresql' else 'SQLite (modo de prueba)',
-        'integrations': {'sat': False, 'ocr': False, 'printing': False},
+        # OCR: local reading of scanned constancias (Bloque 1), only when the engine is installed.
+        'integrations': {'sat': False, 'ocr': ocr_available(), 'printing': False},
     }
 
 
@@ -471,6 +473,41 @@ def edit_company(id: str, data: CompanyIn, db: Session = Depends(session), princ
     record(db, 'Datos de empresa actualizados', id, principal.subject, changes)
     save(db)
     return company
+
+
+@app.post('/api/companies/csf/analyze', dependencies=APP)
+async def analyze_csf(
+    file: UploadFile = File(...),
+    company_id: str = Form(''),
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    """Read a Constancia de Situación Fiscal and propose the form values (Bloque 1). Saves nothing.
+
+    Registering needs the right to register companies; updating an existing company needs empresa.editar.
+    """
+    from starlette.concurrency import run_in_threadpool
+
+    from .csf_extract import MAX_BYTES, CsfError, analyze
+
+    if company_id:
+        principal.require('empresa.editar', company_id)
+    elif principal.role not in {'admin', 'contador'}:
+        raise HTTPException(403, 'Tu perfil no permite registrar empresas.')
+    data = await file.read(MAX_BYTES + 1)
+    await file.close()
+    try:
+        result = await run_in_threadpool(analyze, data)
+    except CsfError as exc:
+        raise HTTPException(422, str(exc)) from None
+    rfc = result['fields'].get('rfc')
+    existing = db.scalar(select(Company).where(Company.rfc == rfc)) if rfc else None
+    if existing and existing.id != company_id:
+        # Never merged: the user is offered the existing company, or only told that it exists.
+        visible = principal.admin or existing.id in principal.company_ids
+        result['existing_company'] = {'id': existing.id, 'name': existing.name} if visible else {'id': None}
+        result['warnings'].insert(0, 'Ya existe una empresa con este RFC. No se fusionará ni se creará otra.')
+    return result
 
 
 @app.get('/api/sat/regimes', dependencies=APP)
