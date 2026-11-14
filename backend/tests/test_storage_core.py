@@ -343,9 +343,9 @@ def test_sources_are_admin_only_smb_is_explicitly_unavailable(core):
     assert next(s for s in listing if s.id == 'pending-smb').state == 'pending_configuration'
 
 
+@pytest.mark.windows
+@pytest.mark.skipif(os.name != 'nt', reason='Windows UNC path handling')
 def test_windows_unc_is_rejected_before_any_filesystem_probe(tmp_path, monkeypatch):
-    if os.name != 'nt':
-        pytest.skip('Windows UNC path handling')
     from app.storage import paths
 
     def no_probe(path):

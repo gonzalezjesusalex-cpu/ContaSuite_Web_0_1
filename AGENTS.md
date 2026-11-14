@@ -36,5 +36,6 @@ Plan vigente: [PLAN_FINALIZACION.md](PLAN_FINALIZACION.md) (manda sobre cualquie
 
 ## Validación
 
-- Backend: `cd backend && python -m pytest -q`. `backend/app/database.py` carga `.env` de la raíz: ejecutar las pruebas sin `.env` real (dotenv deshabilitado y `DATABASE_URL` SQLite temporal), como hace `backend/tests/test_api.py`.
+- Backend: `cd backend && python -m pytest -q` (comando único: incluye las suites aisladas `tests/run_*.py` en subprocesos y la prueba `slow` del agente real; `-m "not slow"` la omite). `backend/app/database.py` carga `.env` de la raíz: ejecutar las pruebas sin `.env` real (dotenv deshabilitado y `DATABASE_URL` SQLite temporal), como hace `backend/tests/test_api.py`.
+- E2E: `npm --prefix frontend run build` y `npm --prefix frontend run e2e` con `E2E_PYTHON` (servidor sintético propio, ver README).
 - Frontend: `npm --prefix frontend ci` y `npm --prefix frontend run build`; sólo tipos: `npm --prefix frontend exec -- tsc --noEmit -p frontend/tsconfig.json`.

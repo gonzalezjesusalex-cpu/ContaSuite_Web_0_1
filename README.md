@@ -26,7 +26,7 @@ python -m venv .venv
 npm --prefix frontend ci
 ```
 
-Pruebas:
+Pruebas. El backend es un solo comando: incluye las suites aisladas de los lotes (`tests/run_*.py`, `recovery_defects.py`), cada una en su propio proceso, y la prueba del agente real por HTTP (`verify_live_agent.py`, marca `slow`, unos 15 s; se omite con `-m "not slow"`). Marcas en `backend/pytest.ini`: `slow`, `windows` y `postgres` (reservada; aún sin pruebas). Nunca leen `.env`:
 
 ```bash
 cd backend && python -m pytest -q
