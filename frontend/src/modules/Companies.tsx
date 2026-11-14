@@ -100,15 +100,6 @@ export default function Companies({
         statusOf(c, state, period, fiscal?.company_summaries[c.id]),
       ]),
     ]);
-  async function loadDemo() {
-    try {
-      await api('/demo', 'POST');
-      await refresh();
-      notify('Ejemplos de Stitch cargados');
-    } catch (e) {
-      notify((e as Error).message);
-    }
-  }
   return (
     <>
       <Heading
@@ -388,19 +379,21 @@ export default function Companies({
               <Empty title={all.length ? 'No se encontraron empresas' : 'Comienza con tu primera empresa'}>
                 {all.length ? (
                   'Ajusta los filtros de búsqueda.'
-                ) : (
+                ) : state.current_user.admin ? (
                   <>
-                    <span>Registra un contribuyente o carga el ejemplo de Stitch para explorar la aplicación.</span>
+                    <span>Registra tu primer contribuyente o importa tu cartera desde Empresas › Importar.</span>
                     <div className="actions centered">
                       <Link className="btn primary" to="/empresas/nueva">
                         <Plus size={16} />
                         Registrar empresa
                       </Link>
-                      <button className="btn" disabled={!state.current_user.admin} onClick={loadDemo}>
-                        Cargar ejemplo DEMO
-                      </button>
+                      <Link className="btn" to={companiesUrl('Importar')}>
+                        Importar cartera
+                      </Link>
                     </div>
                   </>
+                ) : (
+                  'Aún no tienes empresas asignadas. Solicita acceso al administrador del despacho.'
                 )}
               </Empty>
             )}

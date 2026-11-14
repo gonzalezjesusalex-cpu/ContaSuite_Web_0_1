@@ -34,7 +34,13 @@ test('primer acceso, sesión, empresas, expediente y documentos', async ({ page 
   await test.step('registrar una empresa y verla en el directorio', async () => {
     await sidebar(page, 'Empresas');
     await expect(page.getByRole('heading', { name: 'Centro de Control Fiscal' })).toBeVisible();
-    await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
+    // Empty directory: real next steps only, no fictitious Stitch/DEMO data offered.
+    await page.getByRole('button', { name: /^Directorio/ }).click();
+    const empty = page.locator('.directory .empty');
+    await expect(empty.getByRole('heading', { name: 'Comienza con tu primera empresa' })).toBeVisible();
+    await expect(empty.getByRole('link', { name: 'Importar cartera' })).toHaveAttribute('href', /tab=Importar/);
+    await expect(page.getByText(/ejemplo DEMO|ejemplo de Stitch/)).toHaveCount(0);
+    await empty.getByRole('link', { name: 'Registrar empresa' }).click();
     await page.getByLabel('RFC *').fill(company.rfc);
     await page.getByLabel('Razón social / Nombre completo *').fill(company.name);
     await page.getByRole('button', { name: 'Siguiente →' }).click();
