@@ -185,6 +185,41 @@ def should_audit(method, template, status_code):
     return bool(AUDITED_READ.search(template))
 
 
+# The compiled frontend only loads its own scripts, styles, fonts and icons. Previews embed same-origin
+# /api content or blob: URLs in iframes, so /api responses may be framed by this origin only.
+CONTENT_SECURITY_POLICY = '; '.join(
+    [
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self'",
+        "img-src 'self' data: blob:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "frame-src 'self' blob:",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ]
+)
+PAGE_HEADERS = {
+    'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'same-origin',
+    'X-Content-Type-Options': 'nosniff',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+}
+API_HEADERS = {
+    'Referrer-Policy': 'same-origin',
+    'X-Frame-Options': 'SAMEORIGIN',
+}
+
+
+def apply_security_headers(path, response):
+    for name, value in (API_HEADERS if path.startswith('/api/') else PAGE_HEADERS).items():
+        response.headers[name] = value
+
+
 @app.middleware('http')
 async def security_audit(request, call_next):
     try:
@@ -206,6 +241,8 @@ async def security_audit(request, call_next):
             )
 
         raise
+
+    apply_security_headers(request.url.path, response)
 
     if request.url.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'private, no-store'
