@@ -10,6 +10,8 @@ Reglas comunes: nunca restaurar ni instalar encima de una base o carpeta de dato
 
 ### Servidor (servicio Windows + HTTPS en LAN)
 
+Para este equipo como servidor definitivo, seguir paso a paso [docs/INSTALACION_DEFINITIVA.md](docs/INSTALACION_DEFINITIVA.md) y comprobar cada fase con `scripts/verify_installation.py` (sin administrador). Resumen general:
+
 1. Verificar el SHA-256 del paquete y extraer en una carpeta nueva (p. ej. `C:\ContaSuite\versions\RC1`). Datos en carpeta separada (p. ej. `C:\ProgramData\ContaSuite\data`).
 2. PostgreSQL: base nueva, propietario sin superusuario, sólo loopback, SCRAM. No reutilizar bases existentes.
 3. `INSTALL.cmd --mode Install --destination <código> --data-dir <datos>` con `DATABASE_URL`, `APP_TOKEN` y `AGENT_TOKEN` aprovisionados en el entorno privado. Rechaza esquemas existentes.

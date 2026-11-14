@@ -52,6 +52,15 @@ Locks: `backend/requirements.lock.txt` (producción, perfil PostgreSQL) y `backe
 - **npm producción: 0.** Desarrollo: 7 moderadas en `typescript-eslint` → `minimatch` (DoS, sólo herramienta de lint), sin corregir.
 - Pruebas: `httpx2` 2.16.0 (sucesor de `httpx` para `starlette.testclient`, mismo autor) sólo en desarrollo; elimina el aviso de obsolescencia. `httpx` sigue en producción para el supervisor local.
 
+## Instalación definitiva (Fase 5, 14/11/2026)
+
+Este equipo se usará como servidor definitivo. Sin permisos de administrador en la sesión de desarrollo: los pasos de sistema los ejecuta el usuario siguiendo [docs/INSTALACION_DEFINITIVA.md](docs/INSTALACION_DEFINITIVA.md).
+
+- Paquete `..\ENTREGAS\ContaSuite_v1.0_RC1_20261114.zip` (+ `.sha256`): runtime Python 3.12 construido desde el lock de producción, frontend actual; sin datos ni secretos. Ensayado sin administrador: verificación de hashes, instalación en carpetas nuevas, arranque y `/api/health` 200 con cabeceras de seguridad; plan de servicio generado (registro real: WinError 5 sin administrador).
+- `scripts/verify_installation.py`: comprobación de sólo lectura de servicio, recuperación, loopback, firewall, ACL y HTTPS.
+- Respaldos programados (punto 27): pospuestos hasta tener destino externo.
+- **Detectado:** los puntos 18 (`except` silenciosos) y 19 (PostgreSQL obligatorio, SQLite sólo en pruebas) no figuraban en ninguna fase y siguen sin hacer: hoy la API y el instalador aceptan SQLite (la configuración cifrada del servicio sí exige PostgreSQL).
+
 ## Pendientes
 
 Ver [PLAN_FINALIZACION.md](PLAN_FINALIZACION.md). Resumen:
