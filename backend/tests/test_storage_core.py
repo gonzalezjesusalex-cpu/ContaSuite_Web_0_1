@@ -33,6 +33,14 @@ XML = b'<?xml version="1.0"?><Comprobante Fecha="2026-10-01"/>'
 ADMIN = StorageActor('test-administrator', admin=True)
 
 
+# Revisions after the unified baseline (cs_0006) that alter tables the storage chain already created.
+LATER_REVISIONS = sorted(
+    p.stem
+    for p in (Path(__file__).resolve().parents[1] / 'migrations' / 'versions').glob('00[0-9][0-9]_*.py')
+    if p.stem >= '0007'
+)
+
+
 def apply_revision(engine, name):
     """Run one Alembic revision's upgrade() directly (no version bookkeeping) on a test engine."""
     import importlib.util
@@ -66,7 +74,8 @@ def core(tmp_path):
     identity_metadata.create_all(engine)
     # Later revisions that alter tables created by the storage chain (create_all skips existing tables).
     # Module tables such as the vault stay absent on purpose: their guards are tested without them.
-    apply_revision(engine, '0007_user_role')
+    for revision in LATER_REVISIONS:
+        apply_revision(engine, revision)
     sessions = sessionmaker(engine, expire_on_commit=False)
     with sessions.begin() as db:
         db.add_all(

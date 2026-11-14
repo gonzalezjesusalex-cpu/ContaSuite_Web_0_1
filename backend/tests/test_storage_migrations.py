@@ -86,7 +86,7 @@ def test_fresh_database_and_frozen_migration_schema_match_models(tmp_path):
             'security_events',
         ):
             # Columns added after the frozen storage chain, by later revisions of the single Alembic history.
-            later = {'user_accounts': {'role'}}.get(name, set())
+            later = {'user_accounts': {'role'}, 'companies': {'accountant_id', 'accountant_legacy'}}.get(name, set())
             assert {c.name for c in Base.metadata.tables[name].columns} - later == {
                 c['name'] for c in inspector.get_columns(name)
             }, name

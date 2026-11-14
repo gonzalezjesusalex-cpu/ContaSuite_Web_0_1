@@ -221,7 +221,12 @@ export default function Dossier({
           </span>
           Responsable: {responsibleName(c, state.responsibles)}
           {me.admin && (
-            <button type="button" className="link-button" onClick={() => setAssigning(true)}>
+            <button
+              type="button"
+              className="link-button"
+              aria-label="Cambiar contador responsable"
+              onClick={() => setAssigning(true)}
+            >
               Cambiar
             </button>
           )}

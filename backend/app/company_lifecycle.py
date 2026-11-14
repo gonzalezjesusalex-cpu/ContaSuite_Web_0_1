@@ -1,7 +1,7 @@
 """Explicit archival, independent from fiscal activity. Never migrated at startup."""
 
 from uuid import uuid4
-from typing import Literal
+from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import (
@@ -96,7 +96,7 @@ def directory(
     sort: Literal['name', 'rfc', 'accountant'] = 'name',
     accountant: str = '',
     # Responsible by user: '' all, 'none' without a linked user, 'mine' the caller's, or a user id.
-    responsible: str = Query('', max_length=36),
+    responsible: Annotated[str, Query(max_length=36)] = '',
 ):
     if not available(db):
         raise HTTPException(

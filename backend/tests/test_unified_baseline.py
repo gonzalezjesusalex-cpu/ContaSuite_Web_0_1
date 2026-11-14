@@ -53,13 +53,31 @@ def old_procedure(engine):
             module.upgrade(connection)
 
 
-def snapshot(engine):
+def snapshot(engine, columns=None):
+    """Rows of every table; with `columns`, only those columns (later revisions may add new ones)."""
     with engine.connect() as connection:
-        names = [n for n in inspect(connection).get_table_names() if n != 'alembic_version']
+        inspector = inspect(connection)
+        names = [n for n in inspector.get_table_names() if n != 'alembic_version']
+        wanted = columns or {n: [c['name'] for c in inspector.get_columns(n)] for n in names}
         return {
-            n: sorted(map(tuple, connection.exec_driver_sql('SELECT * FROM "' + n + '"').all()), key=repr)
+            n: sorted(
+                map(
+                    tuple,
+                    connection.exec_driver_sql(
+                        'SELECT ' + ', '.join('"' + c + '"' for c in wanted[n]) + ' FROM "' + n + '"'
+                    ).all(),
+                ),
+                key=repr,
+            )
             for n in names
+            if n in wanted
         }
+
+
+def columns_of(engine):
+    with engine.connect() as connection:
+        inspector = inspect(connection)
+        return {n: [c['name'] for c in inspector.get_columns(n)] for n in inspector.get_table_names()}
 
 
 def test_fresh_database_reaches_single_head_and_is_compatible(tmp_path):
@@ -79,15 +97,21 @@ def test_database_prepared_by_old_procedure_upgrades_without_changing_rows(tmp_p
     engine = local_engine(tmp_path / 'old.db')
     try:
         old_procedure(engine)
-        with Session(engine) as db:
-            db.add(Company(id='company-before', name='Sintética', rfc='AAA010101AA1'))
-            db.commit()
+        with engine.begin() as db:
+            # Raw insert: the current model has columns that this old schema does not have yet.
+            db.exec_driver_sql(
+                "INSERT INTO companies (id, is_demo, name, rfc, person_type, trade_name, regime, accountant, email, "
+                "phone, location, folder, notes, created_at) VALUES ('company-before', 0, 'Sintética', "
+                "'AAA010101AA1', 'Moral', '', '601', 'Sin asignar', '', '', '', '', '', CURRENT_TIMESTAMP)"
+            )
         assert schema_revision(engine) == (STORAGE_HEAD, HEAD)
+        old_columns = columns_of(engine)
         before = snapshot(engine)
         upgrade_schema(engine)
         upgrade_schema(engine)  # idempotent
         assert schema_revision(engine) == (HEAD, HEAD)
-        assert snapshot(engine) == before
+        # Existing rows keep every previous value; later revisions only add columns and tables.
+        assert snapshot(engine, old_columns) == before
         assert check_schema(engine)['compatible']
         with Session(engine) as db:
             assert db.scalar(select(Company.name).where(Company.id == 'company-before')) == 'Sintética'
@@ -123,7 +147,7 @@ def test_schema_admin_status_is_read_only(tmp_path):
     # --status only reports it.
     assert result.returncode == 1, result.stderr
     assert 'Revision: ' + STORAGE_HEAD + ' (head: ' + HEAD + ') - update pending' in result.stdout
-    assert 'Schema incompatible: user_accounts.role:missing' in result.stdout
+    assert 'Schema incompatible:' in result.stdout and 'user_accounts.role:missing' in result.stdout
     engine = local_engine(database)
     try:
         assert schema_revision(engine) == (STORAGE_HEAD, HEAD)
