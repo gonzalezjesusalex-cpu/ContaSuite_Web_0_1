@@ -66,8 +66,15 @@ def main():
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--log-dir', type=Path)
     parser.add_argument('--config-file', type=Path)
-    parser.add_argument('--port', type=int, default=8062)
+    parser.add_argument('--port', type=int, default=None, help='Default: CS_PORT or 8062')
     args = parser.parse_args()
+    if args.port is None:
+        from service_runtime import default_port
+
+        try:
+            args.port = default_port()
+        except ValueError as exc:
+            parser.error(str(exc))
     if args.probe:
         print(json.dumps(probe()))
         return

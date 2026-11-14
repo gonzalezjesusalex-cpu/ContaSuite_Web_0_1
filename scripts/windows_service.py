@@ -210,10 +210,17 @@ def main():
     parser.add_argument('--name', default='ContaSuiteApi')
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--log-dir', type=Path, required=True)
-    parser.add_argument('--port', type=int, default=8062)
+    parser.add_argument('--port', type=int, default=None, help='Default: CS_PORT or 8062')
     parser.add_argument('--console-test-seconds', type=float)
     parser.add_argument('--config-file', type=Path)
     args = parser.parse_args()
+    if args.port is None:
+        from service_runtime import default_port
+
+        try:
+            args.port = default_port()
+        except ValueError as exc:
+            parser.error(str(exc))
     if not 1 <= args.port <= 65535:
         parser.error('Invalid port')
     if not args.data_dir.is_absolute() or not args.log_dir.is_absolute():

@@ -12,7 +12,21 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 
 
+def launcher_port():
+    """INICIAR_* launchers serve the old instance kept in this folder: 8000 unless CS_PORT says otherwise."""
+    scripts = str(Path(__file__).resolve().parent)
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    from service_runtime import LEGACY_PORT, default_port
+
+    try:
+        return default_port(LEGACY_PORT)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from None
+
+
 def configure(portable=False):
+    port = launcher_port()
     env_path = root / '.env'
     if not env_path.exists():
         app = secrets.token_urlsafe(32)
@@ -38,7 +52,7 @@ def configure(portable=False):
         example.write_text(
             json.dumps(
                 {
-                    'api_url': 'http://127.0.0.1:8000',
+                    'api_url': f'http://127.0.0.1:{port}',
                     'agent_id': 'oficina-windows',
                     'allowed_roots': [str(root / 'data' / 'empresas')],
                     'token': values['AGENT_TOKEN'],
@@ -59,7 +73,7 @@ def configure(portable=False):
             subprocess.run(['docker', 'compose', 'up', '-d', '--wait', 'db'], cwd=root, check=True)
         except subprocess.CalledProcessError:
             raise SystemExit('No se pudo iniciar PostgreSQL. Comprueba Docker Desktop y el puerto 5432.')
-    print('\nContaSuite Web 0.1 - http://127.0.0.1:8000')
+    print(f'\nContaSuite Web 0.1 - http://127.0.0.1:{port}')
     print('Clave para crear el primer administrador: ' + values['APP_TOKEN'])
     print('Si ya existen cuentas, ingresa con usuario y contraseña; esta clave no restablece el acceso.')
     print('Conserva esta ventana abierta. Ctrl+C para detener.\n')

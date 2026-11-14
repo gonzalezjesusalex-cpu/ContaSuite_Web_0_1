@@ -3,8 +3,22 @@
 import argparse, os, sys, threading, ipaddress, json
 from pathlib import Path
 
+SERVICE_PORT = 8062  # packaged service / production
+LEGACY_PORT = 8000  # INICIAR_* launchers of the old instance kept in this folder (plan, point 28)
+DEV_PORT = 8090  # npm run dev; avoids the pilot (8062), local install (8072) and old instance (8000)
 
-def api_server(port=8062, host='127.0.0.1', stop_event=None, on_ready=None, log_config=None):
+
+def default_port(fallback=SERVICE_PORT):
+    """Single source for the API port: CS_PORT when set, otherwise the launcher's own default."""
+    raw = os.environ.get('CS_PORT', '').strip()
+    if not raw:
+        return fallback
+    if not raw.isdigit() or not 1 <= int(raw) <= 65535:
+        raise ValueError('CS_PORT must be a port number between 1 and 65535')
+    return int(raw)
+
+
+def api_server(port=SERVICE_PORT, host='127.0.0.1', stop_event=None, on_ready=None, log_config=None):
     import uvicorn
 
     server = uvicorn.Server(
@@ -55,10 +69,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--mode', choices=['api', 'alerts', 'index'], default='api')
-    parser.add_argument('--port', type=int, default=8062)
+    parser.add_argument('--port', type=int, default=None, help='Default: CS_PORT or 8062')
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--allow-lan', action='store_true')
     args = parser.parse_args()
+    if args.port is None:
+        try:
+            args.port = default_port()
+        except ValueError as exc:
+            parser.error(str(exc))
     if not 1 <= args.port <= 65535:
         parser.error('Invalid port')
     if not ipaddress.ip_address(args.host).is_loopback and (

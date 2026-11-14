@@ -5,14 +5,16 @@ import time
 import webbrowser
 import subprocess
 from pathlib import Path
-from setup_windows import configure
+from setup_windows import configure, launcher_port
 
 root = Path(__file__).resolve().parents[1]
 os.chdir(root)
 parser = argparse.ArgumentParser()
 parser.add_argument('--portable', action='store_true')
 args = parser.parse_args()
+port = launcher_port()
 configure(args.portable)
+base_url = f'http://127.0.0.1:{port}'
 import sys
 
 sys.path.insert(0, str(root / 'backend'))
@@ -31,7 +33,7 @@ def open_when_ready():
         if stopping.is_set():
             return
         try:
-            with urlopen('http://127.0.0.1:8000/api/health', timeout=1):
+            with urlopen(base_url + '/api/health', timeout=1):
                 pass
             with lifecycle:
                 if stopping.is_set():
@@ -41,7 +43,7 @@ def open_when_ready():
                     cwd=root / 'backend',
                     creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
                 )
-            webbrowser.open('http://127.0.0.1:8000')
+            webbrowser.open(base_url)
             return
         except OSError:
             time.sleep(1)
@@ -49,7 +51,7 @@ def open_when_ready():
 
 threading.Thread(target=open_when_ready, daemon=True).start()
 try:
-    uvicorn.run('app.main:app', host='127.0.0.1', port=8000)
+    uvicorn.run('app.main:app', host='127.0.0.1', port=port)
 finally:
     with lifecycle:
         stopping.set()

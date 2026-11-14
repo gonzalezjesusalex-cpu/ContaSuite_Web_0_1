@@ -36,6 +36,17 @@ npm --prefix frontend exec -- tsc --noEmit -p frontend/tsconfig.json
 
 Servidor de desarrollo: configurar un `.env` propio (ver `.env.example`, nunca uno con datos reales) y ejecutar `npm --prefix frontend run dev` (Vite 4173 + FastAPI). `scripts/dev.mjs` acepta `CONTA_PYTHON` con la ruta del Python preparado.
 
+### Puertos
+
+`CS_PORT` es la única fuente del puerto de la API; `--port` explícito tiene prioridad. Sin `CS_PORT`, cada lanzador usa su valor documentado:
+
+| Lanzador | Puerto por defecto |
+|---|---|
+| Servicio empaquetado (`service_runtime`, `windows_service`, `service_admin`) | 8062 |
+| Desarrollo (`npm run dev`: API y proxy de Vite) | 8090 |
+| `INICIAR_CONTASUITE.bat` / `INICIAR_PRUEBA.bat` (instancia antigua de esta carpeta) | 8000, hasta decidir su destino |
+| Instalador local de pruebas | 8072 (elegido en el asistente) |
+
 El arranque de la API **no migra ni siembra datos**: sólo verifica que el esquema sea compatible. Una base nueva se prepara con `scripts/schema_admin.py` (ver [OPERACION.md](OPERACION.md)).
 
 ## Qué no hay que versionar ni entregar
