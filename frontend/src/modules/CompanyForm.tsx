@@ -110,6 +110,7 @@ export default function CompanyForm({
   const [csfFile, setCsfFile] = useState<File | null>(null);
   const [fromCsf, setFromCsf] = useState<Set<string>>(new Set());
   const [csfRegimes, setCsfRegimes] = useState<CsfRegime[] | null>(null);
+  const [chosenObligations, setChosenObligations] = useState<Set<string>>(new Set());
   const shownRegimes = regimes.filter((r) => (form.person_type === 'Moral' ? r.moral : r.fisica));
   const responsibleChanged = admin && responsibleId !== (company?.accountant_id || '');
   const [busy, setBusy] = useState(false);
@@ -215,6 +216,19 @@ export default function CompanyForm({
         notices.forEach(notify);
       }
       if (csfFile) await attachCsf(c.id, csfFile, notify);
+      for (const s of csf?.suggested_obligations || []) {
+        if (!chosenObligations.has(s.obligation_id)) continue;
+        try {
+          await api('/fiscal-control/applicability', 'PUT', {
+            company_id: c.id,
+            obligation_id: s.obligation_id,
+            applicable: true,
+            revision: company ? s.revision : 0,
+          });
+        } catch (err) {
+          notify('No se activó la obligación ' + s.label + ': ' + (err as Error).message);
+        }
+      }
       await onSaved();
       if (!company) localStorage.removeItem(draftKey);
       notify(company ? 'Empresa actualizada' : 'Empresa registrada');
@@ -557,6 +571,35 @@ export default function CompanyForm({
                       )}
                     </div>
                   </div>
+                )}
+                {(csf?.suggested_obligations?.length || 0) > 0 && (
+                  <fieldset className="csf-address wide">
+                    <legend>Obligaciones sugeridas por la constancia</legend>
+                    <p className="muted">
+                      Marca las que quieres activar en el control de obligaciones. Ninguna se activa sin tu
+                      confirmación; las fechas de vencimiento no se infieren.
+                    </p>
+                    {csf!.suggested_obligations!.map((s) => (
+                      <label key={s.obligation_id} className="check-option">
+                        <input
+                          type="checkbox"
+                          checked={chosenObligations.has(s.obligation_id)}
+                          onChange={(e) =>
+                            setChosenObligations((old) => {
+                              const next = new Set(old);
+                              if (e.target.checked) next.add(s.obligation_id);
+                              else next.delete(s.obligation_id);
+                              return next;
+                            })
+                          }
+                        />
+                        <span>
+                          {s.label}
+                          <small className="muted"> · {s.sources.join(' / ')}</small>
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
                 )}
                 <Field label="Fecha de inicio de operaciones">
                   {mark(

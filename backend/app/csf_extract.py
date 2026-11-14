@@ -477,3 +477,45 @@ def csf_pages_pdf(data, pages):
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()
+
+
+# ---------------------------------------------------------------- suggested obligations (Bloque 1, point 8)
+
+# Obligation wording on the constancia -> label of the Obligations catalog. Checked in this order and the first
+# rule wins, so "retenciones de ISR" is a withholding, not the company's own ISR. Only a proposal: nothing is
+# activated without the user's confirmation, and unknown obligations are not mapped.
+OBLIGATION_RULES = [
+    ('DIOT', (r'\bDIOT\b', r'OPERACIONES CON TERCEROS')),
+    ('Retenciones', (r'RETENCION',)),
+    ('IVA', (r'\bIVA\b', r'VALOR AGREGADO')),
+    ('ISR', (r'\bISR\b', r'IMPUESTO SOBRE LA RENTA')),
+]
+
+
+def suggest_obligations(obligations, catalog_rows, applicable=None):
+    """[{obligation_id, label, revision, sources}] for catalog entries the constancia points to.
+
+    catalog_rows: (id, label) of the Obligations catalog. applicable: {obligation_id: (applicable, revision)}
+    already configured for the company; those already active are not proposed again.
+    """
+    by_label = {fold(label).strip(): ident for ident, label in catalog_rows}
+    applicable = applicable or {}
+    out = {}
+    for item in obligations:
+        text = fold(item['description'])
+        for label, patterns in OBLIGATION_RULES:
+            if any(re.search(p, text) for p in patterns):
+                ident = by_label.get(fold(label))
+                if ident and not applicable.get(ident, (False, 0))[0]:
+                    entry = out.setdefault(
+                        ident,
+                        {
+                            'obligation_id': ident,
+                            'label': label,
+                            'revision': applicable.get(ident, (False, 0))[1],
+                            'sources': [],
+                        },
+                    )
+                    entry['sources'].append(item['description'])
+                break
+    return list(out.values())

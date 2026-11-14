@@ -510,7 +510,24 @@ async def analyze_csf(
         visible = principal.admin or existing.id in principal.company_ids
         result['existing_company'] = {'id': existing.id, 'name': existing.name} if visible else {'id': None}
         result['warnings'].insert(0, 'Ya existe una empresa con este RFC. No se fusionará ni se creará otra.')
+    result['suggested_obligations'] = obligation_suggestions(db, result['obligations'], company_id or None)
     return result
+
+
+def obligation_suggestions(db, obligations, company_id):
+    """Obligations catalog entries pointed to by the constancia (Bloque 1); empty if the module is off."""
+    from .csf_extract import suggest_obligations
+    from .fiscal_control import applicability, catalog, metadata
+    from .schema_cache import tables_ready
+
+    if not obligations or not tables_ready(db, metadata):
+        return []
+    rows = db.execute(select(catalog.c.id, catalog.c.label)).all()
+    current = {}
+    if company_id:
+        for r in db.execute(select(applicability).where(applicability.c.company_id == company_id)).mappings():
+            current[r['obligation_id']] = (r['applicable'], r['revision'])
+    return suggest_obligations(obligations, rows, current)
 
 
 @app.post('/api/companies/{id}/csf/attach', dependencies=APP, status_code=201)

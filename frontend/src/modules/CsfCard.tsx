@@ -14,6 +14,8 @@ export type CsfResult = {
   pages: number[];
   page_count: number;
   existing_company?: { id: string | null; name?: string };
+  /** Obligations catalog entries the constancia points to; activated only if the user confirms. */
+  suggested_obligations?: { obligation_id: string; label: string; revision: number; sources: string[] }[];
 };
 
 /** Sends the PDF to be read on the server (text layer first, local OCR for scans). Nothing is saved. */
