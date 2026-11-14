@@ -106,9 +106,9 @@ def run(config, stop_event=None, request_fn=request):
                         raise ValueError('Operación no admitida')
                     result = safe_inventory(job['payload']['folder'], roots)
                     status = 'completed'
-                except Exception:  # noqa: BLE001 - any failure ends the job as failed; cause kept in the local log
+                except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
                     logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])
-                    result = {'error': 'No se pudo analizar: revisa permisos, disponibilidad y carpetas autorizadas.'}
+                    result = reason(exc)
                     status = 'failed'
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})
                 continue
@@ -117,8 +117,219 @@ def run(config, stop_event=None, request_fn=request):
         stop_event.wait(5)
 
 
+# ---------------------------------------------------------------- linked mode (Bloque 4, option A)
+
+# Data-free explanations of why a folder could not be read, shown to the user who asked for the analysis.
+REASONS = {
+    'unauthorized_root': 'La ruta está fuera de las carpetas autorizadas por la administración.',
+    'root_unavailable': 'La carpeta no existe o no está disponible en este equipo.',
+    'missing': 'La carpeta no existe en este equipo.',
+    'access_denied': 'Tu usuario de Windows no tiene permiso de lectura en la carpeta.',
+    'invalid_path': 'La ruta no es válida o usa un enlace o unión que no se permite.',
+    'smb_not_configured': 'Las carpetas de red no están habilitadas para el agente.',
+    'invalid_configuration': 'La configuración de carpetas autorizadas no es válida.',
+    'read_error': 'No se pudo leer la carpeta.',
+}
+
+
+def reason(exc):
+    code = getattr(exc, 'code', None) or (exc.args[0] if exc.args and isinstance(exc.args[0], str) else '')
+    return {'error': REASONS.get(code, 'No se pudo analizar la carpeta.'), 'error_code': code or 'unknown'}
+
+
+def default_agent_id():
+    """One agent per Windows session: computer and Windows user."""
+    import re
+
+    raw = (os.getenv('COMPUTERNAME', 'equipo') + '-' + os.getenv('USERNAME', 'usuario')).lower()
+    return ('pc-' + re.sub(r'[^a-z0-9_-]+', '-', raw))[:80]
+
+
+def post(url, path, data, token=None):
+    headers = {'Content-Type': 'application/json'}
+    if token:
+        headers['Authorization'] = 'Bearer ' + token
+    req = Request(url.rstrip('/') + '/api' + path, data=json.dumps(data).encode(), headers=headers, method='POST')
+    opener = (
+        build_opener(ProxyHandler({})).open if urlparse(url).hostname in {'localhost', '127.0.0.1', '::1'} else urlopen
+    )
+    with opener(req, timeout=20) as response:
+        return json.load(response)
+
+
+class LinkedAgent:
+    """Paired at the user's sign-in through http://127.0.0.1:<local_port>; the credential lives in memory only."""
+
+    def __init__(self, config, post_fn=post):
+        url = config['api_url']
+        parsed = urlparse(url)
+        if parsed.scheme != 'https' and not (
+            parsed.scheme == 'http' and parsed.hostname in {'localhost', '127.0.0.1', '::1'}
+        ):
+            raise ValueError('La API remota necesita HTTPS.')
+        self.url = url
+        self.agent_id = config.get('agent_id') or default_agent_id()
+        self.machine = config.get('machine') or os.getenv('COMPUTERNAME', '')
+        self.port = int(config.get('local_port', 47865))
+        origin = parsed.scheme + '://' + parsed.netloc
+        self.origins = set(config.get('app_origins') or [origin])
+        self.post = post_fn
+        self.lock = threading.Lock()
+        self.token = None
+        self.user = None
+        self.notice = 'Sin vincular: inicia sesión en ContaSuite en este equipo.'
+
+    def pair(self, code):
+        result = self.post(self.url, '/agent/pair', {'code': code, 'agent_id': self.agent_id, 'machine': self.machine})
+        with self.lock:
+            self.token, self.user = result['token'], result['user']
+            self.notice = 'Vinculado como ' + result['user']
+        logging.info('Agente vinculado.')
+        return {'paired': True, 'user': result['user'], 'agent_id': self.agent_id}
+
+    def unpair(self, notice):
+        with self.lock:
+            self.token, self.user, self.notice = None, None, notice
+        logging.info('Agente desvinculado: %s', notice)
+
+    def status(self):
+        with self.lock:
+            return {
+                'agent_id': self.agent_id,
+                'machine': self.machine,
+                'paired': bool(self.token),
+                'user': self.user,
+                'notice': self.notice,
+            }
+
+    def work(self, stop_event):
+        from urllib.error import HTTPError
+
+        pending = None
+        while not stop_event.is_set():
+            with self.lock:
+                token = self.token
+            if not token:
+                stop_event.wait(2)
+                continue
+            try:
+                beat = self.post(
+                    self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': ['scan_folder']}, token
+                )
+                if beat.get('restart'):
+                    self.unpair('Reinicio solicitado por la administración: inicia sesión de nuevo.')
+                    continue
+                if pending:
+                    try:
+                        self.post(self.url, '/agent/jobs/' + pending[0] + '/result', pending[1], token)
+                    except HTTPError as error:
+                        if error.code != 409:
+                            raise
+                    pending = None
+                job = self.post(self.url, '/agent/' + self.agent_id + '/claim', {}, token)
+                if job:
+                    logging.info('Procesando trabajo %s', job['id'])
+                    try:
+                        if job['kind'] != 'scan_folder':
+                            raise ValueError('Operación no admitida')
+                        result = safe_inventory(job['payload']['folder'], job['payload'].get('roots') or [])
+                        status = 'completed'
+                    except Exception as exc:  # noqa: BLE001 - every failure ends the job with its data-free reason
+                        logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])
+                        result, status = reason(exc), 'failed'
+                    pending = (job['id'], {'agent_id': self.agent_id, 'status': status, 'result': result})
+                    continue
+            except HTTPError as error:
+                if error.code in (401, 403):
+                    self.unpair('Vínculo terminado: inicia sesión en ContaSuite de nuevo.')
+                    pending = None
+                    continue
+                logging.warning('Respuesta inesperada del servidor (%s); reintento pendiente.', error.code)
+            except (URLError, TimeoutError, OSError, ValueError):
+                logging.warning('Agente sin comunicación; reintento pendiente.')
+            stop_event.wait(5)
+
+    def handler(self):
+        from http.server import BaseHTTPRequestHandler
+
+        agent = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *_):  # no request lines (they could carry codes) in the log
+                return
+
+            def allowed(self):
+                return self.headers.get('Origin', '') in agent.origins
+
+            def cors(self):
+                origin = self.headers.get('Origin', '')
+                self.send_header('Access-Control-Allow-Origin', origin)
+                self.send_header('Vary', 'Origin')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                # Private Network Access: a page of the app may call this loopback agent.
+                self.send_header('Access-Control-Allow-Private-Network', 'true')
+                self.send_header('Access-Control-Max-Age', '600')
+
+            def reply(self, code, data):
+                body = json.dumps(data).encode()
+                self.send_response(code)
+                if self.allowed():
+                    self.cors()
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Cache-Control', 'no-store')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_OPTIONS(self):  # noqa: N802 - http.server naming
+                self.send_response(204 if self.allowed() else 403)
+                if self.allowed():
+                    self.cors()
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+
+            def do_GET(self):  # noqa: N802
+                if not self.allowed():
+                    return self.reply(403, {})
+                if self.path != '/status':
+                    return self.reply(404, {})
+                return self.reply(200, agent.status())
+
+            def do_POST(self):  # noqa: N802
+                if not self.allowed() or self.path != '/pair':
+                    return self.reply(403, {})
+                try:
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if length > 1024:
+                        return self.reply(413, {})
+                    code = json.loads(self.rfile.read(length) or b'{}').get('code', '')
+                    if not isinstance(code, str) or not 8 <= len(code) <= 64:
+                        return self.reply(422, {'error': 'Código inválido.'})
+                    return self.reply(200, agent.pair(code))
+                except Exception:  # noqa: BLE001 - the browser gets a generic answer; details stay in the log
+                    logging.exception('No se pudo vincular el agente.')
+                    return self.reply(502, {'error': 'No se pudo vincular el agente con ContaSuite.'})
+
+        return Handler
+
+    def serve(self, stop_event=None):
+        from http.server import ThreadingHTTPServer
+
+        stop_event = stop_event or threading.Event()
+        server = ThreadingHTTPServer(('127.0.0.1', self.port), self.handler())
+        threading.Thread(target=self.work, args=(stop_event,), daemon=True).start()
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        logging.info('Agente %s esperando vinculación en 127.0.0.1:%s.', self.agent_id, self.port)
+        try:
+            stop_event.wait()
+        finally:
+            server.shutdown()
+
+
 def main(argv=None):
-    """Console launcher (INICIAR_AGENTE.bat): validates config.json and delegates to run()."""
+    """Launcher. Linked mode (no token in the configuration) is the default since Bloque 4; a configuration with
+    `token` keeps the former shared-token mode, which the server only accepts during a transition."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default=str(Path(__file__).with_name('config.json')))
     args = parser.parse_args(argv)
@@ -128,13 +339,21 @@ def main(argv=None):
         parsed.scheme == 'http' and parsed.hostname in {'localhost', '127.0.0.1', '::1'}
     ):
         raise SystemExit('La API remota necesita HTTPS. HTTP sólo está permitido en localhost.')
+    log_file = config.get('log_file')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(message)s',
+        **({'filename': log_file, 'encoding': 'utf-8'} if log_file else {}),
+    )
     token = os.getenv('CONTA_AGENT_TOKEN') or config.get('token', '')
+    if not token:
+        LinkedAgent(config).serve()
+        return
     if not config.get('allowed_roots'):
         raise SystemExit('Configura allowed_roots con las carpetas autorizadas antes de iniciar.')
     if len(token) < 24:
         raise SystemExit('Configura el token del agente (mínimo 24 caracteres).')
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
-    logging.info('Agente %s iniciado. Inventario de sólo lectura con exclusión de secretos.', config['agent_id'])
+    logging.info('Agente %s iniciado (modo de token compartido, transición).', config['agent_id'])
     run({**config, 'token': token})
 
 
