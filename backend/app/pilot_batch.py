@@ -1,13 +1,12 @@
 """Checkpointed analysis only, on existing reconcile staging. No company/document writes."""
 
 import base64
-import hashlib
 import json
 import os
 import subprocess
 import sys
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query

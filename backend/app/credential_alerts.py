@@ -3,12 +3,12 @@
 import hashlib
 from typing import Annotated
 from zoneinfo import ZoneInfo
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 from fastapi import Depends, Response, HTTPException, Query
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, update
 from .credential_api import router, ready, no_cache, allowed, event, temporal
-from .credential_models import certificates, alerts, settings
+from .credential_models import certificates, settings
 from .database import session
 from .models import Company, now
 from .security import auth, Principal
@@ -54,7 +54,7 @@ def candidates(db, p, stamp=None):
             )
     # Fiscal tables remain untouched, and may not yet exist in this installation.
     if has_table(db, 'fiscal_records'):
-        from .fiscal_control import records, evidence, effective
+        from .fiscal_control import records, effective
 
         fiscal_ids = list(db.scalars(select(Company.id))) if p.admin else list(p.company_ids)
         for row in db.execute(select(records).where(records.c.company_id.in_(fiscal_ids))).mappings():

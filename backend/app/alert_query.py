@@ -1,6 +1,5 @@
 """Authorization and filters precede SQL counting/paging. No content providers."""
 
-from fastapi import HTTPException
 from sqlalchemy import select, func, or_, and_
 from .models import Company
 from .credential_models import alerts, grants

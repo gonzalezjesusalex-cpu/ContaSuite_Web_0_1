@@ -1,6 +1,5 @@
 """Reversible code-only correction for an existing isolated local installation."""
 
-import argparse
 import json
 import shutil
 import threading

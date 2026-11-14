@@ -5,7 +5,7 @@ import json
 from uuid import uuid4
 from datetime import timedelta
 from typing import Literal
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, update, delete, or_
 from sqlalchemy.exc import IntegrityError

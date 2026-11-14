@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pilot_http import BASE, USERNAME, PASSWORD, request, review, checks
+from pilot_http import USERNAME, PASSWORD, request, review, checks
 from pilot_lab import RUN, configuration, original_hashes
 from concurrent.futures import ThreadPoolExecutor
 import httpx

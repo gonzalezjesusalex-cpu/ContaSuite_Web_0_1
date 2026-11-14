@@ -1,7 +1,6 @@
 """Read-only integration over existing modules; missing migrations remain explicit."""
 
 from collections import Counter
-from datetime import date
 from zoneinfo import ZoneInfo
 from sqlalchemy import select, or_, and_, exists as sql_exists
 from fastapi import HTTPException
@@ -14,14 +13,13 @@ from .models import (
     DocumentVersion,
     DocumentLocation,
     Task,
-    UserAccount,
     DocumentClassificationReview,
     now,
 )
 from .storage.catalog import DocumentCatalog
 from .company_reconcile import normalized_name
 from .storage.classifier import valid_rfc
-from .integral_models import activity, verification, classified, quality, opinions, cfdi_reviews, relations
+from .integral_models import activity, classified, quality, opinions, cfdi_reviews, relations
 from .schema_cache import has_table
 
 

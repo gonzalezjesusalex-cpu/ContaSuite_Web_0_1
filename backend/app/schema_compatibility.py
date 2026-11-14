@@ -5,7 +5,7 @@ from sqlalchemy import inspect, UniqueConstraint
 
 def metadatas():
     from .database import Base
-    from . import models
+    from . import models  # noqa: F401 - registers every model table on Base.metadata
     from .fiscal_control import metadata as fiscal
     from .credential_models import metadata as vault
     from .company_import_models import metadata as imports

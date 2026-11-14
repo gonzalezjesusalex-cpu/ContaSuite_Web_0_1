@@ -3,7 +3,6 @@
 import sys
 import os
 import json
-import hashlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))

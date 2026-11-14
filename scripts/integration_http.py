@@ -1,8 +1,6 @@
 """Live HTTP against the freshly marked synthetic runtime ONLY."""
 
 import json
-import sys
-from pathlib import Path
 import httpx
 from integration_runtime import RUN, environment
 

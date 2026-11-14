@@ -3,13 +3,10 @@
 from __future__ import annotations
 import ctypes
 import io
-import os
 import re
-import sqlite3
 import sys
 import unicodedata
-import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from xml.sax.saxutils import escape

@@ -1,6 +1,5 @@
 """Admin-only local/SMB configuration and read-only connectivity checks."""
 
-import re
 from datetime import timedelta
 from pathlib import Path
 from uuid import uuid4

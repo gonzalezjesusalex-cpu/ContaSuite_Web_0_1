@@ -3,7 +3,7 @@
 
 def seed_lab(engine, values, lab):
     import io
-    from datetime import timedelta, date
+    from datetime import timedelta
     from sqlalchemy import select
     from sqlalchemy.orm import sessionmaker
     from app.models import Company, UserAccount, UserCompanyGrant, IdentityState, Setting, now, Task

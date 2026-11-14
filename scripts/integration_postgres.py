@@ -5,7 +5,6 @@ import sys
 import json
 import hashlib
 import shutil
-import subprocess
 import threading
 import argparse
 import re

@@ -1,5 +1,5 @@
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from sqlalchemy import select, func
 from fastapi import HTTPException
 import run_lote4_isolated as previous

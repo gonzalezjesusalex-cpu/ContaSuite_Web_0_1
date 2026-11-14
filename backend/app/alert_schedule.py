@@ -1,8 +1,8 @@
 """Transactional singleton evaluation claim; used only by the existing worker, opt in."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from zoneinfo import ZoneInfo
-from sqlalchemy import MetaData, Table, Column, Integer, DateTime, select, update
+from sqlalchemy import MetaData, Table, Column, Integer, DateTime, update
 from .security import Principal, utc
 from .models import now
 from .lote4_lifecycle import available, evaluate, lock

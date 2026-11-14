@@ -1,7 +1,7 @@
 import json
 import httpx
 from release_lab import LAB, configuration
-from release_http import BASE, request, checks, xml
+from release_http import request, checks, xml
 
 
 def main():

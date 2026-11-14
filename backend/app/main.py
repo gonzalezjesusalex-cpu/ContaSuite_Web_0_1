@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Security, Request, Query
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials
 
 from fastapi.responses import FileResponse
 
@@ -26,15 +26,15 @@ from fastapi.exceptions import RequestValidationError
 
 from fastapi.responses import JSONResponse
 
-from sqlalchemy import select, update, delete, func
+from sqlalchemy import select, update, func
 
 from sqlalchemy.exc import IntegrityError
 
 from sqlalchemy.orm import Session
 
-from .database import Base, engine, session, DATA, ROOT, SessionLocal
+from .database import engine, session, DATA, ROOT, SessionLocal
 
-from .models import Company, Task, Obligation, Document, Audit, Agent, Job, Setting, Receipt
+from .models import Company, Task, Obligation, Document, Audit, Agent, Job
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
@@ -746,7 +746,7 @@ app.include_router(fiscal_control_router)
 
 from .credential_api import router as credential_router
 
-from . import credential_alerts  # Registers local alert endpoints on the same router.
+from . import credential_alerts  # noqa: F401 - registers local alert endpoints on the same router
 
 app.include_router(credential_router)
 

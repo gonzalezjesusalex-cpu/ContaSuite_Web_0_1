@@ -2,7 +2,6 @@
 
 import json
 import os
-import sys
 import zipfile
 import hashlib
 import subprocess

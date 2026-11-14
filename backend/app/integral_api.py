@@ -25,7 +25,6 @@ from .integral_models import (
     rules,
     classified,
     relations,
-    verification,
     activity,
     audit,
     opinions,

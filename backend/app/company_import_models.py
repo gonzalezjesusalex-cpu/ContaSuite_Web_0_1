@@ -1,7 +1,7 @@
 """Generic reconciliation staging; does not duplicate fiscal records or vault tables."""
 
 from sqlalchemy import MetaData, Table, Column, String, Integer, JSON, DateTime, ForeignKey, UniqueConstraint
-from .models import Company, UserAccount, Document
+from .models import Company, UserAccount
 
 metadata = MetaData()
 sessions = Table(

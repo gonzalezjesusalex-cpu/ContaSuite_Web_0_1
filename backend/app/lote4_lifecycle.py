@@ -1,7 +1,7 @@
 """Additive lifecycle metadata; existing certificates/alerts remain the source identities."""
 
 from uuid import uuid4
-from datetime import date, datetime
+from datetime import date
 import hashlib
 import json
 from typing import Literal
@@ -27,7 +27,7 @@ from .fiscal_read import cutoff
 from .credential_models import certificates, alerts
 from .credential_api import allowed, ready as vault_ready
 from .database import session
-from .security import auth, Principal, utc
+from .security import auth, Principal
 from .schema_cache import tables_ready
 
 metadata = MetaData()

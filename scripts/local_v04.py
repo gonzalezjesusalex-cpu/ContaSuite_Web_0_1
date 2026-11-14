@@ -9,7 +9,6 @@ import socket
 import ctypes
 import importlib.util
 import getpass
-import hashlib
 from pathlib import Path
 from ctypes import wintypes
 
@@ -226,7 +225,7 @@ def environment():
 
 def migrate():
     env, engine, values = environment()
-    from sqlalchemy import text, inspect
+    from sqlalchemy import inspect
 
     if inspect(engine).has_table('settings'):
         # Back up an existing dev database before repeat migrations. PGPASSWORD stays in memory.
@@ -243,7 +242,7 @@ def migrate():
 
     upgrade_storage(engine)
     from app.database import Base
-    from app import models
+    from app import models  # noqa: F401 - registers every model table before create_all
 
     Base.metadata.create_all(engine)
     for directory, name in [

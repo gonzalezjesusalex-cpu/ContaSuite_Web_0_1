@@ -3,12 +3,11 @@
 import sys
 import json
 import hashlib
-import subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from pilot_lab import RUN, configuration, original_hashes
-from integration_runtime import ROOT, BIN, RUN as PREVIOUS, call
+from integration_runtime import BIN, RUN as PREVIOUS, call
 
 
 def main():

@@ -5,7 +5,7 @@ from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 from typing import Literal
 from urllib.parse import urlencode
-from fastapi import Depends, Query
+from fastapi import Depends
 from sqlalchemy import select
 from .database import session
 from .security import auth, Principal, utc

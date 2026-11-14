@@ -1,7 +1,6 @@
 """Private isolated content analysis. No network, raw text, keys or fiscal verification."""
 
 import io
-import re
 from pathlib import Path
 from .storage.classifier import classify, valid_rfc, CFDI_NAMESPACES, RFC
 from .storage.internal import validate_payload

@@ -7,7 +7,6 @@ import sys
 import zipfile
 import shutil
 import json
-import hashlib
 from pathlib import Path
 from importlib.metadata import distributions
 

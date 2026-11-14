@@ -8,7 +8,7 @@ import time
 import statistics
 from pathlib import Path
 from release_lab import configuration
-from integration_runtime import ROOT, RUN, BIN, call
+from integration_runtime import ROOT, RUN, call
 
 
 def main():

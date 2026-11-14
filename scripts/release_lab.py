@@ -1,13 +1,12 @@
 """Only new synthetic databases in the previously verified disposable PostgreSQL cluster."""
 
-import os
 import sys
 import json
 import secrets
 import subprocess
 import time
 from pathlib import Path
-from integration_runtime import ROOT, RUN as PREVIOUS, BIN, environment, call
+from integration_runtime import ROOT, RUN as PREVIOUS, environment, call
 
 LAB = ROOT / '.qa/release-closure/lab'
 

@@ -3,7 +3,6 @@
 import os
 import json
 import time
-import subprocess
 from local_v04 import environment, LAB, BIN, PORT, USER, command
 
 

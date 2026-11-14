@@ -6,7 +6,6 @@ import secrets
 import shutil
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]

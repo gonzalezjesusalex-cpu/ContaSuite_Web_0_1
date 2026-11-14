@@ -1,6 +1,5 @@
 """Synthetic pilot only: new PostgreSQL database and generated local folders. No real paths."""
 
-import os
 import sys
 import json
 import secrets

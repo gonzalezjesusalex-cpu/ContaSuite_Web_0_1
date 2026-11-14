@@ -89,7 +89,7 @@ def main():
     from app.storage.classifier import classify
     from app.document_identity import identities
     from app.models import DocumentVersion
-    from sqlalchemy import select, func
+    from sqlalchemy import select
     from io import BytesIO
     from release_http import xml
 

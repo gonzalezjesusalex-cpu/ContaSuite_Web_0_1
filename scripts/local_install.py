@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 import queue
-import sys
 import threading
 import webbrowser
 from pathlib import Path

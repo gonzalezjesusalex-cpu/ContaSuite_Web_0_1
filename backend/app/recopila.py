@@ -1,6 +1,5 @@
 """Adaptador web del motor original de Recopila, sin interfaz de escritorio."""
 
-import io
 import json
 import logging
 import shutil
@@ -10,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
