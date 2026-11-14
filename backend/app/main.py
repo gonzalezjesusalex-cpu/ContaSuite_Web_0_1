@@ -728,23 +728,24 @@ app.include_router(company_lifecycle_router)
 
 
 from .receipts import router as receipts_router
+from .run_access import CFDI, DECLARA, RECIBOS, RECOPILA
 
-app.include_router(receipts_router, dependencies=ADMIN)
+app.include_router(receipts_router, dependencies=[Depends(RECIBOS.dependency())])
 
 
 from .recopila import router as recopila_router
 
-app.include_router(recopila_router, dependencies=ADMIN)
+app.include_router(recopila_router, dependencies=[Depends(RECOPILA.dependency())])
 
 
 from .organizador import router as organizador_router
 
-app.include_router(organizador_router, dependencies=ADMIN)
+app.include_router(organizador_router, dependencies=[Depends(CFDI.dependency())])
 
 
 from .declara import router as declara_router
 
-app.include_router(declara_router, dependencies=ADMIN)
+app.include_router(declara_router, dependencies=[Depends(DECLARA.dependency())])
 
 
 from .storage.router import router as storage_router

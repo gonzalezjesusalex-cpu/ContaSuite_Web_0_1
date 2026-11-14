@@ -21,8 +21,11 @@ from .database import DATA, SessionLocal, session
 from .models import Audit, Company, DeclaraRun
 from .organizador import safe_path
 from . import declara_engine as motor
+from .run_access import DECLARA
+from .security import Principal, auth
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix='/api/declara', tags=['Declara'])
 MAX_UPLOAD = 100 * 1024 * 1024
 MAX_EXPANDED = 500 * 1024 * 1024
@@ -192,7 +195,9 @@ async def start(
     short_name: str = Form(...),
     files: list[UploadFile] = File(...),
     db: Session = Depends(session),
+    principal: Principal = Depends(auth),
 ):
+    DECLARA.require_company(principal, company_id)
     company = db.get(Company, company_id)
     if not company:
         raise HTTPException(404, 'Empresa no encontrada')
@@ -228,6 +233,7 @@ async def start(
             raise ValueError('La entrada está vacía.')
         run = DeclaraRun(
             id=ident,
+            created_by=principal.subject,
             company_id=company.id,
             expected_rfc=company.rfc,
             short_name=short_name,
@@ -252,16 +258,16 @@ async def start(
 
 
 @router.get('/runs')
-def runs(company_id: str = '', db: Session = Depends(session)):
-    query = select(DeclaraRun)
+def runs(company_id: str = '', db: Session = Depends(session), principal: Principal = Depends(auth)):
+    query = select(DeclaraRun).where(DECLARA.scope(principal, DeclaraRun))
     if company_id:
         query = query.where(DeclaraRun.company_id == company_id)
     return db.scalars(query.order_by(DeclaraRun.created_at.desc()).limit(50)).all()
 
 
 @router.get('/runs/{ident}')
-def detail(ident: str, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def detail(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = DECLARA.check(principal, get_run(db, ident))
     records = []
     if (folder(ident) / 'plan.json').exists():
         infos = load_plan(ident)
@@ -287,8 +293,8 @@ class ResolveIn(RevisionIn):
 
 
 @router.post('/runs/{ident}/resolve')
-def resolve(ident: str, data: ResolveIn, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def resolve(ident: str, data: ResolveIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = DECLARA.check(principal, get_run(db, ident))
     changed = db.execute(
         update(DeclaraRun)
         .where(DeclaraRun.id == ident, DeclaraRun.status == 'analyzed', DeclaraRun.revision == data.revision)
@@ -350,7 +356,7 @@ def resolve(ident: str, data: ResolveIn, db: Session = Depends(session)):
         if isinstance(exc, ValueError):
             raise HTTPException(422, str(exc)) from exc
         raise
-    return detail(ident, db)
+    return detail(ident, db, principal)
 
 
 def generate(ident):
@@ -425,8 +431,14 @@ def generate(ident):
 
 
 @router.post('/runs/{ident}/generate', status_code=202)
-def start_generate(ident: str, data: RevisionIn, background: BackgroundTasks, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def start_generate(
+    ident: str,
+    data: RevisionIn,
+    background: BackgroundTasks,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    run = DECLARA.check(principal, get_run(db, ident))
     if not run.summary.get('rfc_matches'):
         raise HTTPException(422, 'El RFC detectado no coincide con la empresa seleccionada.')
     if not (run.summary.get('rename', 0) + run.summary.get('correct', 0)):
@@ -444,8 +456,8 @@ def start_generate(ident: str, data: RevisionIn, background: BackgroundTasks, db
 
 
 @router.get('/runs/{ident}/file/{index}')
-def preview(ident: str, index: int, db: Session = Depends(session)):
-    get_run(db, ident)
+def preview(ident: str, index: int, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    DECLARA.check(principal, get_run(db, ident))
     if not (folder(ident) / 'plan.json').exists():
         raise HTTPException(409, 'Primero termina el análisis.')
     infos = load_plan(ident)
@@ -455,8 +467,8 @@ def preview(ident: str, index: int, db: Session = Depends(session)):
 
 
 @router.get('/runs/{ident}/download')
-def download(ident: str, kind: str = 'zip', db: Session = Depends(session)):
-    run = get_run(db, ident)
+def download(ident: str, kind: str = 'zip', db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = DECLARA.check(principal, get_run(db, ident))
     if run.status != 'generated':
         raise HTTPException(409, 'Los resultados aún no están listos.')
     if kind not in {'zip', 'csv'}:

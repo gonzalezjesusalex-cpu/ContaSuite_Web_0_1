@@ -17,6 +17,9 @@ from .database import DATA, SessionLocal, session
 from .models import Company, RecopilaRun, Audit
 from . import recopila_engine as motor
 
+from .run_access import RECOPILA
+from .security import Principal, auth
+
 router = APIRouter(prefix='/api/recopila', tags=['Recopila'])
 MAX_UPLOAD = 100 * 1024 * 1024
 MAX_EXPANDED = 500 * 1024 * 1024
@@ -207,7 +210,9 @@ async def start(
     files: list[UploadFile] = File(...),
     company_id: str = Form(''),
     db: Session = Depends(session),
+    principal: Principal = Depends(auth),
 ):
+    RECOPILA.require_company(principal, company_id)
     if company_id and not db.get(Company, company_id):
         raise HTTPException(404, 'Empresa no encontrada')
     if not files or len(files) > 1000:
@@ -242,6 +247,7 @@ async def start(
             raise ValueError('La entrada está vacía.')
         run = RecopilaRun(
             id=ident,
+            created_by=principal.subject,
             company_id=company_id or None,
             name=Path(files[0].filename or 'Documentos').name if len(files) == 1 else f'{len(files)} documentos',
             status='analyzing',
@@ -265,13 +271,18 @@ async def start(
 
 
 @router.get('/runs')
-def runs(db: Session = Depends(session)):
-    return db.scalars(select(RecopilaRun).order_by(RecopilaRun.created_at.desc()).limit(50)).all()
+def runs(db: Session = Depends(session), principal: Principal = Depends(auth)):
+    return db.scalars(
+        select(RecopilaRun)
+        .where(RECOPILA.scope(principal, RecopilaRun))
+        .order_by(RecopilaRun.created_at.desc())
+        .limit(50)
+    ).all()
 
 
 @router.get('/runs/{ident}')
-def detail(ident: str, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def detail(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = RECOPILA.check(principal, get_run(db, ident))
     policies = []
     leftovers = []
     if (folder(ident) / 'analysis.json').exists():
@@ -310,8 +321,14 @@ class GenerateIn(BaseModel):
 
 
 @router.post('/runs/{ident}/generate', status_code=202)
-def start_generate(ident: str, data: GenerateIn, background: BackgroundTasks, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def start_generate(
+    ident: str,
+    data: GenerateIn,
+    background: BackgroundTasks,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    run = RECOPILA.check(principal, get_run(db, ident))
     if run.status not in ('analyzed', 'generated', 'error') or not (folder(ident) / 'analysis.json').exists():
         raise HTTPException(409, 'Primero termina el análisis.')
     if not run.summary.get('policy_pages'):
@@ -330,8 +347,10 @@ def start_generate(ident: str, data: GenerateIn, background: BackgroundTasks, db
 
 
 @router.get('/runs/{ident}/file')
-def file(ident: str, name: str, kind: str = 'output', db: Session = Depends(session)):
-    run = get_run(db, ident)
+def file(
+    ident: str, name: str, kind: str = 'output', db: Session = Depends(session), principal: Principal = Depends(auth)
+):
+    run = RECOPILA.check(principal, get_run(db, ident))
     if kind not in ('output', 'input'):
         raise HTTPException(422, 'Tipo de archivo no válido')
     if kind == 'output' and run.status != 'generated':
@@ -350,8 +369,8 @@ def file(ident: str, name: str, kind: str = 'output', db: Session = Depends(sess
 
 
 @router.get('/runs/{ident}/zip')
-def download_zip(ident: str, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def download_zip(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = RECOPILA.check(principal, get_run(db, ident))
     if run.status != 'generated':
         raise HTTPException(409, 'Los archivos aún no están listos.')
     from starlette.background import BackgroundTask

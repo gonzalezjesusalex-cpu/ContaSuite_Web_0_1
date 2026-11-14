@@ -7,7 +7,7 @@ from sqlalchemy import select
 from test_api import client, company  # noqa: F401  Isolated environment before app imports.
 from test_accounts import PASSWORD, XML, login, setup, upload
 from app.database import SessionLocal
-from app.models import Company, UserCompanyAction, UserCompanyGrant
+from app.models import Company, DeclaraRun, OrganizadorRun, RecopilaRun, Receipt, UserCompanyAction, UserCompanyGrant
 from app.permissions import ACTIONS, LEGACY_WRITE_ACTIONS, READ_ACTIONS, WRITE_ACTIONS, company_actions
 from app.security import Principal
 
@@ -109,7 +109,7 @@ def test_contador_operates_its_companies_but_not_the_system(office):
         c.get('/api/auth/users'),
         c.post('/api/fiscal-control/catalog', json={'label': 'Nueva', 'periodicity': 'monthly'}),
         c.post('/api/jobs', json={'company_id': a, 'agent_id': 'x'}),
-        c.get('/api/recopila/runs'),
+        c.put('/api/receipts/settings', json={'receiver': 'X', 'place': 'Y'}),
     ]:
         assert denied.status_code == 403
 
@@ -178,3 +178,74 @@ def test_actions_cannot_be_supplied_by_the_client(office):
         ).status_code
         == 403
     )
+
+
+def runs_fixture(a, other, conta_id):
+    """One run per visibility case, written directly (the engines are not needed to test access)."""
+    rows = {}
+    with SessionLocal.begin() as db:
+        for model, extra in [(RecopilaRun, {}), (OrganizadorRun, {'options': {}})]:
+            for key, company_id, author in [
+                ('legacy', None, None),
+                ('own', None, conta_id),
+                ('company', a, 'someone-else'),
+                ('foreign', other, 'someone-else'),
+            ]:
+                row = model(name=key, company_id=company_id, created_by=author, **extra)
+                db.add(row)
+                db.flush()
+                rows[model.__tablename__, key] = row.id
+        for key, company_id in [('company', a), ('foreign', other)]:
+            row = DeclaraRun(company_id=company_id, short_name='X', expected_rfc='AAA010101AA1', name=key)
+            db.add(row)
+            db.flush()
+            rows['declara_runs', key] = row.id
+    return rows
+
+
+def test_automation_modules_show_own_runs_and_those_of_companies_with_the_action(office):
+    c, a, b, other = office
+    login(c, 'conta')
+    conta_id = c.get('/api/auth/me').json()['id']
+    rows = runs_fixture(a, other, conta_id)
+    for prefix, table in [('recopila', 'recopila_runs'), ('organizador', 'organizador_runs')]:
+        listed = {r['name'] for r in c.get('/api/' + prefix + '/runs').json()}
+        assert listed == {'own', 'company'}, prefix
+        assert c.get('/api/' + prefix + '/runs/' + rows[table, 'company']).status_code == 200
+        for hidden in ['legacy', 'foreign']:
+            assert c.get('/api/' + prefix + '/runs/' + rows[table, hidden]).status_code == 404
+    assert {r['name'] for r in c.get('/api/declara/runs').json()} == {'company'}
+    assert c.get('/api/declara/runs/' + rows['declara_runs', 'foreign']).status_code == 404
+    # A new run for a company outside the grants, or read-only, is refused before reading the files.
+    files = {'files': ('a.pdf', b'%PDF-1.4', 'application/pdf')}
+    assert c.post('/api/declara/runs', data={'company_id': other, 'short_name': 'X'}, files=files).status_code == 404
+    assert c.post('/api/recopila/runs', data={'company_id': b}, files=files).status_code == 403
+    login(c, 'aux')
+    assert c.get('/api/recopila/runs').status_code == 403
+    assert c.get('/api/receipts').status_code == 403
+    login(c, 'admin')
+    assert {r['name'] for r in c.get('/api/recopila/runs').json()} == {'legacy', 'own', 'company', 'foreign'}
+
+
+def test_receipts_are_scoped_and_settings_stay_with_administration(office):
+    c, a, b, other = office
+    login(c, 'conta')
+    item = {'month': 10, 'year': 2026, 'amount': '1500.00', 'issued': '2026-10-31'}
+    assert c.get('/api/receipts/settings').status_code == 200
+    issued = c.post('/api/receipts', json={'items': [{**item, 'company_id': a}]})
+    assert issued.status_code == 201, issued.text
+    rid = issued.json()[0]['id']
+    with SessionLocal() as db:
+        assert db.get(Receipt, rid).created_by == c.get('/api/auth/me').json()['id']
+    assert c.post('/api/receipts', json={'items': [{**item, 'company_id': b}]}).status_code == 403
+    assert c.post('/api/receipts', json={'items': [{**item, 'company_id': other}]}).status_code == 404
+    client_row = c.post('/api/receipts/clients', json={'name': 'Cliente sintético'})
+    assert client_row.status_code == 201
+    assert c.delete('/api/receipts/clients/' + client_row.json()['id']).status_code == 403
+    login(c, 'admin')
+    foreign = c.post('/api/receipts', json={'items': [{**item, 'company_id': other}]}).json()[0]['id']
+    login(c, 'conta')
+    assert [r['id'] for r in c.get('/api/receipts').json()] == [rid]
+    assert c.get('/api/receipts/' + foreign + '/pdf').status_code == 404
+    assert c.post('/api/receipts/export', json={'ids': [rid, foreign]}).status_code == 404
+    assert c.get('/api/receipts/' + rid + '/pdf').status_code == 200

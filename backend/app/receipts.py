@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from .database import session, DATA
 from .models import Company, Receipt, ReceiptCounter, Setting, Audit, ReceiptClient
 from . import receipt_engine as motor
+from .run_access import RECIBOS
+from .security import Principal, auth
 
 router = APIRouter(prefix='/api/receipts', tags=['Recibos'])
 
@@ -47,6 +49,11 @@ def settings(db):
         k: (db.get(Setting, 'receipts_' + k).value if db.get(Setting, 'receipts_' + k) else v)
         for k, v in motor.DEFAULTS.items()
     }
+
+
+def allowed_item(p, item):
+    # A receipt for a company needs recibos.usar there; one for a client only needs the module.
+    RECIBOS.require_company(p, item.company_id)
 
 
 def validated(db, item):
@@ -101,12 +108,12 @@ class ClientIn(BaseModel):
 
 
 @router.get('/clients')
-def clients(db: Session = Depends(session)):
+def clients(db: Session = Depends(session), principal: Principal = Depends(auth)):
     return db.scalars(select(ReceiptClient).order_by(ReceiptClient.name)).all()
 
 
 @router.post('/clients', status_code=201)
-def add_client(data: ClientIn, db: Session = Depends(session)):
+def add_client(data: ClientIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
     name = ' '.join(data.name.split()).upper()
     if not name:
         raise HTTPException(422, 'Escribe el nombre del cliente.')
@@ -123,7 +130,8 @@ def add_client(data: ClientIn, db: Session = Depends(session)):
 
 
 @router.delete('/clients/{ident}', status_code=204)
-def remove_client(ident: str, db: Session = Depends(session)):
+def remove_client(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    principal.require_admin()
     client = db.get(ReceiptClient, ident)
     if not client:
         raise HTTPException(404, 'Cliente no encontrado')
@@ -134,12 +142,13 @@ def remove_client(ident: str, db: Session = Depends(session)):
 
 
 @router.get('/settings')
-def get_settings(db: Session = Depends(session)):
+def get_settings(db: Session = Depends(session), principal: Principal = Depends(auth)):
     return settings(db)
 
 
 @router.put('/settings')
-def put_settings(data: Settings, db: Session = Depends(session)):
+def put_settings(data: Settings, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    principal.require_admin()
     values = {k: v.strip() for k, v in data.model_dump().items()}
     if not all(values.values()):
         raise HTTPException(422, 'Completa el nombre de quien recibe y el lugar.')
@@ -150,7 +159,8 @@ def put_settings(data: Settings, db: Session = Depends(session)):
 
 
 @router.post('/preview')
-def preview(item: Item, db: Session = Depends(session)):
+def preview(item: Item, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    allowed_item(principal, item)
     d = validated(db, item)
     return Response(
         motor.receipt_pdf(d, settings(db)), media_type='application/pdf', headers={'Cache-Control': 'no-store'}
@@ -158,15 +168,26 @@ def preview(item: Item, db: Session = Depends(session)):
 
 
 @router.post('/duplicates')
-def check_duplicates(data: Batch, db: Session = Depends(session)):
+def check_duplicates(data: Batch, db: Session = Depends(session), principal: Principal = Depends(auth)):
     for item in data.items:
+        allowed_item(principal, item)
         validated(db, item)
     return duplicates(db, data.items)
 
 
 @router.get('')
-def history(company_id: str | None = None, q: str = '', year: int | None = None, db: Session = Depends(session)):
-    query = select(Receipt).order_by(Receipt.created_at.desc(), Receipt.folio.desc())
+def history(
+    company_id: str | None = None,
+    q: str = '',
+    year: int | None = None,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    query = (
+        select(Receipt)
+        .where(RECIBOS.scope(principal, Receipt))
+        .order_by(Receipt.created_at.desc(), Receipt.folio.desc())
+    )
     if company_id:
         query = query.where(Receipt.company_id == company_id)
     if year:
@@ -181,7 +202,9 @@ def history(company_id: str | None = None, q: str = '', year: int | None = None,
 
 
 @router.post('', status_code=201)
-def generate(data: Batch, db: Session = Depends(session)):
+def generate(data: Batch, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    for item in data.items:
+        allowed_item(principal, item)
     # Serialize duplicate checks and issuance, including concurrent browser sessions.
     if db.bind.dialect.name == 'sqlite':
         db.execute(text('BEGIN IMMEDIATE'))
@@ -227,6 +250,7 @@ def generate(data: Batch, db: Session = Depends(session)):
             filename = f"RECIBO_{folio}_{motor.slug(d['name'])}_{d['year']}-{d['month']:02d}.pdf"
             row = Receipt(
                 id=ident,
+                created_by=principal.subject,
                 company_id=item.company_id or None,
                 client_id=item.client_id if item.client_id and db.get(ReceiptClient, item.client_id) else None,
                 folio=folio,
@@ -252,10 +276,11 @@ def d_without_folio(d):
     return {k: v for k, v in d.items() if k != 'folio'}
 
 
-def receipt_file(db, ident):
+def receipt_file(db, ident, principal):
     r = db.get(Receipt, ident)
     if not r:
         raise HTTPException(404, 'Recibo no encontrado')
+    RECIBOS.check(principal, r)
     path = DATA / 'receipts' / r.storage_name
     if not path.is_file():
         raise HTTPException(404, 'El PDF original no está disponible. Revisa el respaldo de los documentos.')
@@ -263,8 +288,8 @@ def receipt_file(db, ident):
 
 
 @router.get('/{ident}/pdf')
-def pdf(ident: str, db: Session = Depends(session)):
-    r, path = receipt_file(db, ident)
+def pdf(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    r, path = receipt_file(db, ident, principal)
     return Response(
         path.read_bytes(),
         media_type='application/pdf',
@@ -273,10 +298,10 @@ def pdf(ident: str, db: Session = Depends(session)):
 
 
 @router.post('/export')
-def export(data: Selection, db: Session = Depends(session)):
+def export(data: Selection, db: Session = Depends(session), principal: Principal = Depends(auth)):
     if data.format not in ('pdf', 'zip'):
         raise HTTPException(422, 'Elige PDF o ZIP.')
-    files = [receipt_file(db, i) for i in dict.fromkeys(data.ids)]
+    files = [receipt_file(db, i, principal) for i in dict.fromkeys(data.ids)]
     out = io.BytesIO()
     if data.format == 'zip':
         with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:

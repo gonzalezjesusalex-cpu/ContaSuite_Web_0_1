@@ -137,6 +137,7 @@ class Receipt(Base):
     place: Mapped[str] = mapped_column(String(180))
     filename: Mapped[str] = mapped_column(String(255))
     storage_name: Mapped[str] = mapped_column(String(100))
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # cs_0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -163,6 +164,7 @@ class RecopilaRun(Base):
     summary: Mapped[dict] = mapped_column(JSON, default=dict)
     warnings: Mapped[list] = mapped_column(JSON, default=list)
     by_month: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # cs_0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -176,6 +178,7 @@ class OrganizadorRun(Base):
     options: Mapped[dict] = mapped_column(JSON, default=dict)
     summary: Mapped[dict] = mapped_column(JSON, default=dict)
     warnings: Mapped[list] = mapped_column(JSON, default=list)
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # cs_0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -193,6 +196,7 @@ class DeclaraRun(Base):
     warnings: Mapped[list] = mapped_column(JSON, default=list)
     months: Mapped[dict] = mapped_column(JSON, default=dict)
     evaluated_on: Mapped[str] = mapped_column(String(10), default='')
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # cs_0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

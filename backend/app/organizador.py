@@ -17,8 +17,11 @@ from sqlalchemy.orm import Session
 from .database import DATA, SessionLocal, session
 from .models import Audit, Company, OrganizadorRun
 from . import organizador_engine as motor
+from .run_access import CFDI
+from .security import Principal, auth
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix='/api/organizador', tags=['Organizador CFDI'])
 MAX_UPLOAD = 100 * 1024 * 1024
 MAX_EXPANDED = 500 * 1024 * 1024
@@ -227,7 +230,9 @@ async def start(
     reports: bool = Form(True),
     company_id: str = Form(''),
     db: Session = Depends(session),
+    principal: Principal = Depends(auth),
 ):
+    CFDI.require_company(principal, company_id)
     if company_id and not db.get(Company, company_id):
         raise HTTPException(404, 'Empresa no encontrada')
     if not files or len(files) > 1000:
@@ -269,6 +274,7 @@ async def start(
             raise ValueError('La entrada está vacía.')
         run = OrganizadorRun(
             id=ident,
+            created_by=principal.subject,
             company_id=company_id or None,
             options=options,
             name=path.name[:255] if is_zip else f'{len(files)} archivos',
@@ -292,13 +298,18 @@ async def start(
 
 
 @router.get('/runs')
-def runs(db: Session = Depends(session)):
-    return db.scalars(select(OrganizadorRun).order_by(OrganizadorRun.created_at.desc()).limit(50)).all()
+def runs(db: Session = Depends(session), principal: Principal = Depends(auth)):
+    return db.scalars(
+        select(OrganizadorRun)
+        .where(CFDI.scope(principal, OrganizadorRun))
+        .order_by(OrganizadorRun.created_at.desc())
+        .limit(50)
+    ).all()
 
 
 @router.get('/runs/{ident}')
-def detail(ident: str, db: Session = Depends(session)):
-    run = get_run(db, ident)
+def detail(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = CFDI.check(principal, get_run(db, ident))
     records = []
     if (folder(ident) / 'plan.json').exists():
         plan = load_plan(ident)
@@ -309,8 +320,10 @@ def detail(ident: str, db: Session = Depends(session)):
 
 
 @router.post('/runs/{ident}/generate', status_code=202)
-def start_generate(ident: str, background: BackgroundTasks, db: Session = Depends(session)):
-    get_run(db, ident)
+def start_generate(
+    ident: str, background: BackgroundTasks, db: Session = Depends(session), principal: Principal = Depends(auth)
+):
+    CFDI.check(principal, get_run(db, ident))
     changed = db.execute(
         update(OrganizadorRun)
         .where(OrganizadorRun.id == ident, OrganizadorRun.status == 'analyzed')
@@ -324,8 +337,8 @@ def start_generate(ident: str, background: BackgroundTasks, db: Session = Depend
 
 
 @router.get('/runs/{ident}/download')
-def download(ident: str, kind: str = 'zip', db: Session = Depends(session)):
-    run = get_run(db, ident)
+def download(ident: str, kind: str = 'zip', db: Session = Depends(session), principal: Principal = Depends(auth)):
+    run = CFDI.check(principal, get_run(db, ident))
     if run.status != 'generated':
         raise HTTPException(409, 'Los resultados aún no están listos.')
     if kind not in ('zip', 'csv'):
