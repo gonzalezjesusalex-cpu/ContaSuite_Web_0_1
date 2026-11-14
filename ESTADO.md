@@ -32,6 +32,7 @@ Conexión/descarga SAT automática, OCR, validación fiscal externa, revelación
 
 - Backend: 251 aprobadas, 1 omitida (privilegio de enlaces simbólicos en Windows) — 14/11/2026, comando único `cd backend && python -m pytest -q` sin `.env` real (incluye las suites aisladas de los lotes y el agente real).
 - Frontend: compilación correcta, chunk principal 349 kB tras la carga diferida (antes 595 kB); 14 pruebas `node --test` y E2E Playwright de humo aprobadas — 14/11/2026.
+- Cancelación de borradores verificada en navegador real (Edge, E2E `frontend/e2e/drafts.spec.ts`): enlace del menú, Atrás, cambio de sección, cierre de diálogo por Escape/Cerrar/clic fuera y recarga; cancelar conserva página y valores, aceptar descarta sin volver a preguntar. Pendientes del punto 24: contraste en los tres temas y teclado.
 - Rendimiento RC1 del dashboard con 25.271 documentos: ~2,5 s y 92 consultas en PostgreSQL. Tras el punto 5 (13/11/2026, SQLite sintético, mismos 25.271 documentos): 40 consultas (antes 84 en SQLite), ~390 ms (antes ~486 ms), sin tope de 50.000 documentos. Pendiente medir en PostgreSQL.
 
 ## Linters (línea base 13/11/2026, sin corregir)

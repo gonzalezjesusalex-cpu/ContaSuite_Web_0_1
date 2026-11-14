@@ -23,10 +23,24 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 }
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const titleId = useId();
-  const close = () => {
-    if (confirmDiscard()) onClose();
-  };
   const ref = useRef<HTMLDialogElement>(null);
+  const leaving = useRef(false);
+  const keeping = useRef(false);
+  const close = () => {
+    if (confirmDiscard()) {
+      leaving.current = true;
+      onClose();
+      return;
+    }
+    // The user kept their changes. Chromium may still close the <dialog> after an Escape whose
+    // cancel event was prevented (close-watcher rules), leaving it mounted but invisible: reopen it.
+    keeping.current = true;
+    setTimeout(() => {
+      const dialog = ref.current;
+      if (dialog?.isConnected && !dialog.open) dialog.showModal();
+      else keeping.current = false;
+    });
+  };
   useEffect(() => {
     ref.current?.showModal();
     return () => ref.current?.close();
@@ -38,6 +52,12 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       onCancel={(e) => {
         e.preventDefault();
         close();
+      }}
+      onClose={() => {
+        // Closed by the browser: either the pending close after "keep" above, or a close request that
+        // never went through the guard (non-cancelable Escape). Only the latter needs to ask.
+        if (keeping.current) keeping.current = false;
+        else if (!leaving.current) close();
       }}
       onClick={(e) => {
         if (e.target === ref.current) close();

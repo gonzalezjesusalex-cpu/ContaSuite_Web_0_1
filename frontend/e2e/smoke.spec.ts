@@ -1,14 +1,11 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { company, password as passwordOf, sidebar, user } from './helpers';
 
 // Minimal end-to-end smoke test against a throwaway synthetic server (scripts/e2e_server.py):
 // first access, login, companies, dossier, and document upload/download. No real data is involved.
-const user = 'qa.e2e';
-const password = process.env.E2E_PASSWORD!;
-const company = { name: 'Empresa Sintética E2E', rfc: 'ESE010101AB1' };
+const password = passwordOf();
 const pdf = Buffer.from('%PDF-1.4\nContaSuite E2E sintético\n%%EOF\n');
-const sidebar = (page: Page, name: string) =>
-  page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
 test('primer acceso, sesión, empresas, expediente y documentos', async ({ page }) => {
   await test.step('primer acceso crea la cuenta administradora', async () => {

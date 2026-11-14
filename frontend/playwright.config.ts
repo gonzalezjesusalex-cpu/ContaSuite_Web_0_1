@@ -21,6 +21,12 @@ export default defineConfig({
     acceptDownloads: true,
     trace: 'retain-on-failure',
   },
+  // The smoke test creates the administrator and the synthetic company through the UI; the other
+  // flows log in with that account and run after it on the same throwaway server.
+  projects: [
+    { name: 'humo', testMatch: /smoke\.spec\.ts/ },
+    { name: 'flujos', testIgnore: /smoke\.spec\.ts/, dependencies: ['humo'] },
+  ],
   webServer: {
     // E2E_PYTHON: interpreter with backend/requirements-dev.txt installed (default: python).
     command: (process.env.E2E_PYTHON || 'python') + ' ../scripts/e2e_server.py',
