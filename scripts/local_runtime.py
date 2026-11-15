@@ -78,15 +78,9 @@ def serve(root):
                         return
 
             threading.Thread(target=watch, daemon=True).start()
-            from managed_agent import run_agent
-
-            result = execute(
-                lifecycle,
-                root / 'data',
-                values['api_port'],
-                root / 'logs',
-                extra_workers=[('windows-agent', lambda event: run_agent(root, event))],
-            )
+            # Bloque 4: the agent no longer runs inside the service with a shared token; it starts with each
+            # user's Windows sign-in (scripts/agent_startup.py) and pairs with that user's ContaSuite session.
+            result = execute(lifecycle, root / 'data', values['api_port'], root / 'logs')
             return result
         except BaseException:  # noqa: BLE001 - supervisor: reports failure in the status file and stops
             report(1, 1)

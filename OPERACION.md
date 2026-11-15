@@ -74,6 +74,18 @@ Rechaza bases o carpetas existentes. Comprobar conteos e historial antes de apun
 
 ## Análisis del agente local
 
+**Vinculado al usuario (Bloque 4, desde `cs_0013_agent_links`).**
+
+- **Arranque:** el instalador registra el agente en el inicio de sesión de Windows del usuario que instala (acceso directo «ContaSuite - Agente local» en su carpeta Inicio; `runtime\pythonw.exe`, sin ventana ni servicio) con `agent-session.json` en la carpeta de instalación: URL de la API, puerto local `47865` y orígenes de la app, **sin token**. Registro: `%LOCALAPPDATA%\ContaSuitegente.log`, sin datos de documentos. El agente ya no corre dentro del servicio.
+- **Vinculación:** al iniciar sesión en ContaSuite en ese equipo, el navegador pide al servidor un código de un solo uso (2 minutos) y se lo entrega al agente en `http://127.0.0.1:47865` (sólo responde a los orígenes de la app). El agente lo canjea por una credencial propia que guarda sólo en memoria; el servidor guarda sólo su hash. Al cerrar sesión, expirar (30 minutos de inactividad o 12 horas), revocar la sesión o deshabilitar al usuario, el agente queda desvinculado hasta el siguiente inicio de sesión. Un agente por sesión de Windows; un usuario por agente.
+- **Carpetas:** sólo el administrador las define en Configuración › Agentes vinculados (rutas absolutas `C:\…` o UNC). El agente lee sólo bajo esas rutas y sólo para empresas en las que el usuario vinculado tiene `carpeta.analizar`. El servidor rechaza antes de encolar una ruta fuera de ellas, con el motivo.
+- **Atribución:** cada análisis guarda usuario, equipo y agente, y queda en el historial de la empresa.
+- **Encabezado:** «Agente conectado como …» o el motivo (sin conexión, no detectado en el equipo, sin vincular). Sin agente sólo se deshabilita Analizar carpeta, con su motivo.
+- **Administración:** Configuración › Agentes vinculados permite revocar un vínculo o pedir el reinicio del agente (se desvincula y espera el siguiente inicio de sesión).
+- **Fallos:** el resultado indica la causa sin datos: fuera de las carpetas autorizadas, no existe en este equipo, sin permiso de lectura de Windows, enlace o unión no permitidos, carpetas de red no habilitadas.
+- **Transición:** el token compartido `AGENT_TOKEN` (modo anterior: `agent/config.json` con `token`, `INICIAR_AGENTE.bat`) sólo se acepta con `CS_ALLOW_SHARED_AGENT_TOKEN=1`; las instalaciones nuevas no lo generan. Una instalación existente (p. ej. 8072) sigue con su agente anterior hasta actualizarla con autorización.
+- **Pendiente:** icono en la bandeja (requiere autorizar `pystray`); otros usuarios de Windows del mismo equipo necesitan permisos sobre la carpeta de instalación, que hoy sólo tiene el usuario que instaló.
+
 Un análisis reclamado por el agente que no entrega resultado en `CS_AGENT_JOB_TIMEOUT_MINUTES` (15 por defecto, mínimo 5; un valor inválido impide arrancar la API) pasa a «Fallido» con el motivo y queda en la auditoría de la empresa. No se reencola: el administrador lo solicita de nuevo. Un resultado tardío se rechaza. La comprobación ocurre cuando el agente consulta trabajos, al solicitar un análisis y cuando un administrador carga el estado.
 
 ## Migrar una instancia a otro equipo

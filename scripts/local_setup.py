@@ -232,7 +232,6 @@ def install(source, destination, username, password, port, roots, progress=lambd
                 database=database,
             ).render_as_string(hide_password=False),
             'APP_TOKEN': secrets.token_urlsafe(48),
-            'AGENT_TOKEN': secrets.token_urlsafe(48),
             'CS_ALLOWED_HOSTS': '["127.0.0.1","localhost"]',
             'CS_STORAGE_ALLOWED_ROOTS': json.dumps(roots),
             'CS_STORAGE_SMB_ALLOWED_ROOTS': '[]',
@@ -278,6 +277,15 @@ def install(source, destination, username, password, port, roots, progress=lambd
             + '\nSin carpetas importadas.\n',
             encoding='utf-8',
         )
+        # Bloque 4: the agent starts with this user's Windows sign-in and pairs at each ContaSuite sign-in.
+        progress('Registrando el agente local en el inicio de sesión de Windows…')
+        try:
+            from agent_startup import register, start_now
+
+            register(root, port)
+            start_now(root)
+        except Exception:  # noqa: BLE001 - the app works without the agent; it can be registered later
+            progress('No se pudo registrar el agente al iniciar Windows; consulta OPERACION.md.')
         progress('Instalación preparada. No se ha leído ni importado ninguna carpeta.')
         return values
     finally:

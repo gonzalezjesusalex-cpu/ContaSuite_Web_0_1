@@ -46,6 +46,7 @@ def main():
             'local_install',
             'apply_excel_fix',
             'managed_agent',
+            'agent_startup',
             'apply_agent',
             'queue_authorized_source',
         ):
