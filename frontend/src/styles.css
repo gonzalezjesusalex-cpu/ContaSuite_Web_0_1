@@ -219,8 +219,10 @@ strong {
   border-radius: 7px;
   margin-bottom: 3px;
 }
-.sidebar nav a:hover {
-  background: #ffffff12;
+@media (hover: hover) and (pointer: fine) {
+  .sidebar nav a:hover {
+    background: #ffffff12;
+  }
 }
 .sidebar nav a.active {
   background: #2563eb;
@@ -341,8 +343,10 @@ strong {
   display: block;
   color: var(--text);
 }
-.search-results a:hover {
-  background: var(--hover);
+@media (hover: hover) and (pointer: fine) {
+  .search-results a:hover {
+    background: var(--hover);
+  }
 }
 .search-results small {
   display: block;
@@ -387,9 +391,11 @@ strong {
   background: transparent;
   color: inherit;
 }
-.icon-button:hover {
-  background: var(--hover);
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .icon-button:hover {
+    background: var(--hover);
+    color: var(--primary);
+  }
 }
 .menu-button {
   display: none;
@@ -462,8 +468,10 @@ strong {
   line-height: 18px;
   white-space: nowrap;
 }
-.btn:hover {
-  background: var(--hover);
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    background: var(--hover);
+  }
 }
 .btn.primary {
   background: var(--primary);
@@ -471,8 +479,10 @@ strong {
   border-color: var(--primary);
   box-shadow: 0 2px 4px #004ac61a;
 }
-.btn.primary:hover {
-  background: #0053db;
+@media (hover: hover) and (pointer: fine) {
+  .btn.primary:hover {
+    background: #0053db;
+  }
 }
 /* Variants of the single button (A2): primary, danger and icon; .stitch-button stays an alias. */
 .btn.danger {
@@ -819,8 +829,10 @@ td small {
 tbody tr:last-child td {
   border-bottom: 0;
 }
-tbody tr:hover {
-  background: var(--hover);
+@media (hover: hover) and (pointer: fine) {
+  tbody tr:hover {
+    background: var(--hover);
+  }
 }
 .company-cell {
   display: flex;
@@ -1788,8 +1800,10 @@ dd {
   border-color: #fecaca;
   color: #ba1a1a;
 }
-.btn.danger:hover {
-  background: #fee2e2;
+@media (hover: hover) and (pointer: fine) {
+  .btn.danger:hover {
+    background: #fee2e2;
+  }
 }
 
 .empty-description {
@@ -2031,8 +2045,10 @@ dd {
   line-height: 1.7;
   white-space: normal;
 }
-.receipt-text-button:hover {
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .receipt-text-button:hover {
+    color: var(--primary);
+  }
 }
 .receipt-search {
   display: flex;
@@ -2335,9 +2351,11 @@ dd {
     box-shadow 0.18s,
     transform 0.12s;
 }
-.stitch-live-module .stitch-button:hover:not(:disabled) {
-  background: var(--hover);
-  box-shadow: 0 2px 5px #0b1c3012;
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .stitch-button:hover:not(:disabled) {
+    background: var(--hover);
+    box-shadow: 0 2px 5px #0b1c3012;
+  }
 }
 .stitch-live-module .stitch-button:active:not(:disabled) {
   transform: scale(0.985);
@@ -2347,8 +2365,10 @@ dd {
   color: #eeefff;
   box-shadow: 0 1px 2px #0b1c3012;
 }
-.stitch-live-module .stitch-button.primary:hover:not(:disabled) {
-  background: #004ac6;
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .stitch-button.primary:hover:not(:disabled) {
+    background: #004ac6;
+  }
 }
 .stitch-live-module .stitch-button.primary:active:not(:disabled) {
   background: #003ea8;
@@ -2357,8 +2377,10 @@ dd {
   color: #ba1a1a;
   background: #fef2f2;
 }
-.stitch-live-module .stitch-button.danger:hover:not(:disabled) {
-  background: #fee2e2;
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .stitch-button.danger:hover:not(:disabled) {
+    background: #fee2e2;
+  }
 }
 .stitch-live-module .stitch-card {
   background: var(--panel);
@@ -2367,10 +2389,12 @@ dd {
   box-shadow: var(--elev-control);
   transition: box-shadow 0.2s;
 }
-.stitch-live-module .stitch-card:hover {
-  box-shadow:
-    0 4px 6px -1px #0b1c3010,
-    0 2px 4px -2px #0b1c300d;
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .stitch-card:hover {
+    box-shadow:
+      0 4px 6px -1px #0b1c3010,
+      0 2px 4px -2px #0b1c300d;
+  }
 }
 .stitch-live-module .kpi {
   border: 0;
@@ -2378,8 +2402,10 @@ dd {
   box-shadow: 0 1px 2px #0b1c300d;
   transition: box-shadow 0.2s;
 }
-.stitch-live-module .kpi:hover {
-  box-shadow: 0 4px 8px #0b1c3010;
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .kpi:hover {
+    box-shadow: 0 4px 8px #0b1c3010;
+  }
 }
 .stitch-live-module .kpi > strong {
   font-size: 36px;
@@ -2405,8 +2431,10 @@ dd {
     border-color 0.2s,
     background-color 0.2s;
 }
-.stitch-live-module .receipt-tabs > button:hover {
-  color: var(--primary);
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .receipt-tabs > button:hover {
+    color: var(--primary);
+  }
 }
 .stitch-live-module .icon-button {
   border-radius: 8px;
@@ -2421,8 +2449,10 @@ dd {
 .stitch-live-module .receipt-table tbody tr {
   transition: background-color 0.18s;
 }
-.stitch-live-module .receipt-table tbody tr:hover {
-  background: var(--hover);
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .receipt-table tbody tr:hover {
+    background: var(--hover);
+  }
 }
 .stitch-live-module .receipt-selected {
   animation: stitch-row 0.25s ease-out;
@@ -2442,9 +2472,11 @@ dd {
   border-radius: 5px;
   transition: background-color 0.18s;
 }
-.stitch-live-module .receipt-month-checkboxes label:hover,
-.stitch-live-module .receipt-months label:hover {
-  background: var(--hover);
+@media (hover: hover) and (pointer: fine) {
+  .stitch-live-module .receipt-month-checkboxes label:hover,
+  .stitch-live-module .receipt-months label:hover {
+    background: var(--hover);
+  }
 }
 .toast {
   animation: stitch-enter 0.24s ease-out both;
@@ -2457,8 +2489,10 @@ dd {
   color: #ffaaa4;
   background: #452329;
 }
-[data-theme='dark'] .stitch-live-module .stitch-button.danger:hover:not(:disabled) {
-  background: #60313a;
+@media (hover: hover) and (pointer: fine) {
+  [data-theme='dark'] .stitch-live-module .stitch-button.danger:hover:not(:disabled) {
+    background: #60313a;
+  }
 }
 [data-theme='contrast'] .stitch-live-module .stitch-card,
 [data-theme='contrast'] .stitch-live-module .stitch-button,
@@ -2579,8 +2613,10 @@ dd {
   padding: 5px;
   border-radius: 5px;
 }
-.organizador-checks label:hover {
-  background: var(--hover);
+@media (hover: hover) and (pointer: fine) {
+  .organizador-checks label:hover {
+    background: var(--hover);
+  }
 }
 .organizador-checks input {
   accent-color: var(--primary);
