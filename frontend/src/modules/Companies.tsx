@@ -330,7 +330,7 @@ export default function Companies({
               </button>
             </div>
             {directoryLoading || directoryError ? null : list.length ? (
-              <div className="table-wrap">
+              <div className="table-wrap scroll sticky-actions">
                 <table>
                   <thead>
                     <tr>

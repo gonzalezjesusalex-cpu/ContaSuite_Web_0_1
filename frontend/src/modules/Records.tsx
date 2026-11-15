@@ -144,7 +144,7 @@ export function Records({
           </button>
         </div>
         {rows.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap scroll sticky-actions">
             <table>
               <thead>
                 <tr>

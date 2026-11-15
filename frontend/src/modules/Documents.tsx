@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom';
 import { Download, Eye, FolderOpen, RefreshCw, Search, Upload, X } from 'lucide-react';
 import { api, dateLabel, getToken } from '../api';
-import { Badge, Empty, Field, Modal } from '../components/ui';
+import { Badge, Empty, Field, MiddleText, Modal } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
 import type { StorageDetail, StorageDocument, StorageOptions, StoragePage } from '../types';
 import StorageReview from './StorageReview';
@@ -455,7 +455,7 @@ export default function Documents({
         {!companyId && options?.can_index && <StorageJobs sources={options.sources} onComplete={refreshJobs} />}
         <div className="documents-workspace">
           <div>
-            <div className="receipt-table" aria-busy={loading}>
+            <div className="receipt-table scroll sticky-actions" aria-busy={loading}>
               <table>
                 <thead>
                   <tr>
@@ -480,7 +480,9 @@ export default function Documents({
                               }
                             }}
                           >
-                            <strong>{d.name}</strong>
+                            <strong>
+                              <MiddleText value={d.name} />
+                            </strong>
                             <small>
                               {d.format.toUpperCase()} · {typeNames[d.document_type] || d.document_type} ·{' '}
                               {(d.size / 1024).toFixed(1)} KB

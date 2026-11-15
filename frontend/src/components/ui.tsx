@@ -102,6 +102,19 @@ export function Heading({
     </div>
   );
 }
+/** Long file names or paths: the start and the end stay visible, the full value in `title` and for screen
+ *  readers (Bloque 6, B3). Never used for amounts, dates or identifiers the user compares. */
+export function MiddleText({ value, max = 44 }: { value: string; max?: number }) {
+  if (value.length <= max) return <span title={value}>{value}</span>;
+  const head = Math.ceil((max - 1) * 0.6);
+  const tail = max - 1 - head;
+  return (
+    <span title={value}>
+      <span aria-hidden="true">{value.slice(0, head) + '…' + value.slice(-tail)}</span>
+      <span className="sr-only">{value}</span>
+    </span>
+  );
+}
 export function Field({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
   return (
     <label className={wide ? 'field wide' : 'field'}>
