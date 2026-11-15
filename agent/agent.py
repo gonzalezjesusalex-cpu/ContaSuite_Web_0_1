@@ -347,7 +347,21 @@ def main(argv=None):
     )
     token = os.getenv('CONTA_AGENT_TOKEN') or config.get('token', '')
     if not token:
-        LinkedAgent(config).serve()
+        agent = LinkedAgent(config)
+        if config.get('tray', True):
+            import sys
+
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import tray
+
+            if tray.available():
+                # The icon needs the main thread; the agent works in the background until «Detener el agente».
+                stop_event = threading.Event()
+                threading.Thread(target=agent.serve, args=(stop_event,), daemon=True).start()
+                tray.run(agent, (config.get('app_origins') or [config['api_url']])[0], log_file, stop_event)
+                return
+            logging.info('Sin icono en el área de notificación (pystray no instalado).')
+        agent.serve()
         return
     if not config.get('allowed_roots'):
         raise SystemExit('Configura allowed_roots con las carpetas autorizadas antes de iniciar.')

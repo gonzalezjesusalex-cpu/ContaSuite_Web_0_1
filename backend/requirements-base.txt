@@ -21,3 +21,6 @@ pypdf>=6.1,<7
 # use at runtime. Only used when a PDF has no text layer. Verified in the packaged runtime on 14/11/2026.
 rapidocr==3.10.0
 onnxruntime==1.32.0
+# Notification-area icon of the local agent (Bloque 4, authorized 15/11/2026). Pure Python; on Windows it
+# only needs Pillow and six, already in the lock. Without it the agent runs without an icon.
+pystray==0.19.5
