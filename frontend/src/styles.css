@@ -2444,25 +2444,12 @@ dd {
   border: 0;
   border-radius: var(--radius-card);
   box-shadow: var(--elev-control);
-  transition: box-shadow 0.2s;
-}
-@media (hover: hover) and (pointer: fine) {
-  .stitch-live-module .stitch-card:hover {
-    box-shadow:
-      0 4px 6px -1px #0b1c3010,
-      0 2px 4px -2px #0b1c300d;
-  }
 }
 .stitch-live-module .kpi {
   border: 0;
   border-radius: 12px;
-  box-shadow: 0 1px 2px #0b1c300d;
-  transition: box-shadow 0.2s;
-}
-@media (hover: hover) and (pointer: fine) {
-  .stitch-live-module .kpi:hover {
-    box-shadow: 0 4px 8px #0b1c3010;
-  }
+  /* Bloque 6 (C6, O4): no animated shadow on KPIs or static cards (it repainted every frame). */
+  box-shadow: var(--elev-control);
 }
 .stitch-live-module .kpi > strong {
   font-size: 36px;
