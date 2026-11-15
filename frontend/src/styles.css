@@ -3663,3 +3663,20 @@ dd {
     transform: none;
   }
 }
+
+/* Bloque 6 (B4): required mark and the error next to its field. */
+.required-mark {
+  color: var(--danger);
+}
+.field-error {
+  color: var(--danger);
+  font-size: var(--fs-xs);
+}
+.field.invalid input,
+.field.invalid select,
+.field.invalid textarea,
+input:user-invalid,
+select:user-invalid,
+textarea:user-invalid {
+  border-color: var(--danger);
+}

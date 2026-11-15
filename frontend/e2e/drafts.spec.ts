@@ -11,7 +11,7 @@ test('enlace del menú con un formulario de alta modificado', async ({ page }) =
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
   await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-  const name = page.getByLabel('Razón social / Nombre completo *');
+  const name = page.getByLabel('Razón social / Nombre completo (obligatorio)');
   await name.fill('Borrador sin guardar');
 
   const asked = answerNextConfirm(page, false);
@@ -34,7 +34,7 @@ test('botón Atrás del navegador', async ({ page }) => {
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
   await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-  const rfc = page.getByLabel('RFC *');
+  const rfc = page.getByLabel('RFC (obligatorio)');
   await rfc.fill('BOR010101AB1');
 
   const asked = answerNextConfirm(page, false);
@@ -104,7 +104,7 @@ test('recargar o cerrar la página con cambios pide confirmación del navegador'
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
   await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-  await page.getByLabel('Razón social / Nombre completo *').fill('Borrador antes de cerrar');
+  await page.getByLabel('Razón social / Nombre completo (obligatorio)').fill('Borrador antes de cerrar');
   const types: string[] = [];
   page.on('dialog', async (dialog) => {
     types.push(dialog.type());

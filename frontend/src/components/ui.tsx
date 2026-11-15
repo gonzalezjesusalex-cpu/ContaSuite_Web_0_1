@@ -1,5 +1,15 @@
 import { confirmDiscard } from '../dirtyForms';
-import { useEffect, useRef, useId, type ReactNode } from 'react';
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useRef,
+  useId,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { X, Building2 } from 'lucide-react';
 import { OriginalIcon } from './OriginalIcon';
 export function Logo({ large = false, sidebar = false }: { large?: boolean; sidebar?: boolean }) {
@@ -115,11 +125,69 @@ export function MiddleText({ value, max = 44 }: { value: string; max?: number })
     </span>
   );
 }
-export function Field({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
+/**
+ * Form field (Bloque 6, B4). A label ending in « *» is required: the star is visual only and screen readers hear
+ * «obligatorio». On leaving the field its browser validation message appears next to it, linked to the control
+ * with aria-describedby; it clears as soon as the value becomes valid. `error` shows a message from the caller.
+ */
+export function Field({
+  label,
+  children,
+  wide = false,
+  error,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+  error?: string;
+}) {
+  const id = useId();
+  const [checked, setChecked] = useState('');
+  const required = /\s\*$/.test(label);
+  const text = required ? label.replace(/\s\*$/, '') : label;
+  const message = error || checked;
+  const control = (e: { target: EventTarget }) =>
+    e.target instanceof HTMLInputElement ||
+    e.target instanceof HTMLSelectElement ||
+    e.target instanceof HTMLTextAreaElement
+      ? e.target
+      : null;
+  const describe = (node: ReactNode): ReactNode =>
+    isValidElement(node) && typeof node.type === 'string' && ['input', 'select', 'textarea'].includes(node.type)
+      ? cloneElement(node as ReactElement<Record<string, unknown>>, {
+          'aria-describedby': message ? id : undefined,
+          'aria-invalid': message ? true : undefined,
+        })
+      : node;
   return (
-    <label className={wide ? 'field wide' : 'field'}>
-      <span>{label}</span>
-      {children}
+    <label
+      className={(wide ? 'field wide' : 'field') + (message ? ' invalid' : '')}
+      onBlur={(e) => {
+        const target = control(e);
+        if (target) setChecked(target.validity.valid ? '' : target.validationMessage);
+      }}
+      onInput={(e) => {
+        const target = control(e);
+        if (checked && target?.validity.valid) setChecked('');
+      }}
+    >
+      <span>
+        {text}
+        {required && (
+          <>
+            <span aria-hidden="true" className="required-mark">
+              {' *'}
+            </span>
+            <span className="sr-only"> (obligatorio)</span>
+          </>
+        )}
+      </span>
+      {Children.map(children, describe)}
+      {message && (
+        <small id={id} className="field-error" role="status">
+          {message}
+        </small>
+      )}
     </label>
   );
 }
