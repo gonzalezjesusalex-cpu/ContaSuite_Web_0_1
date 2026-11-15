@@ -120,10 +120,12 @@ def test_contador_operates_its_companies_but_not_the_system(office):
     for denied in [
         c.get('/api/auth/audit'),
         c.post('/api/fiscal-control/catalog', json={'label': 'Nueva', 'periodicity': 'monthly'}),
-        c.post('/api/jobs', json={'company_id': a, 'agent_id': 'x'}),
         c.put('/api/receipts/settings', json={'receiver': 'X', 'place': 'Y'}),
     ]:
         assert denied.status_code == 403
+    # Bloque 4: the accountant may analyze its company's folder (here it stops at the missing folder path).
+    no_folder = c.post('/api/jobs', json={'company_id': a, 'kind': 'scan_folder'})
+    assert no_folder.status_code == 422 and 'carpeta' in no_folder.json()['detail']
 
 
 def test_contador_registers_a_company_and_gets_write_access_without_becoming_responsible(office):

@@ -34,6 +34,8 @@ with tempfile.TemporaryDirectory() as folder:
         'SEED_DEMO': 'false',
         'APP_TOKEN': 'local-integration-app-token-only',
         'AGENT_TOKEN': 'local-integration-agent-token-only',
+        # Bloque 4: this check drives the real agent in the former shared-token mode (transition flag).
+        'CS_ALLOW_SHARED_AGENT_TOKEN': '1',
         'CS_STORAGE_ALLOWED_ROOTS': '[]',
         'CS_STORAGE_SMB_ALLOWED_ROOTS': '[]',
         'PYTHONPATH': str(root / 'backend'),

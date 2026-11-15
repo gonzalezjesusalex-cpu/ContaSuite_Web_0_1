@@ -13,6 +13,8 @@ os.environ['DATABASE_URL'] = 'sqlite:///' + str(Path(TEMP.name) / 'test.db')
 os.environ['DATA_DIR'] = str(Path(TEMP.name) / 'data')
 os.environ['APP_TOKEN'] = 'test-app-token-for-contasuite-only'
 os.environ['AGENT_TOKEN'] = 'test-agent-token-for-contasuite-only'
+# Bloque 4: the former shared agent token only works with this transition flag; these tests use it.
+os.environ['CS_ALLOW_SHARED_AGENT_TOKEN'] = '1'
 os.environ['SEED_DEMO'] = 'false'
 os.environ['PYTHON_DOTENV_DISABLED'] = '1'
 os.environ['CS_STORAGE_ALLOWED_ROOTS'] = '[]'
