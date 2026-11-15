@@ -2357,9 +2357,6 @@ dd {
     box-shadow: 0 2px 5px #0b1c3012;
   }
 }
-.stitch-live-module .stitch-button:active:not(:disabled) {
-  transform: scale(0.985);
-}
 .stitch-live-module .stitch-button.primary {
   background: #2563eb;
   color: #eeefff;
@@ -3583,4 +3580,31 @@ dd {
 .agent-admin .agent-line small {
   display: block;
   color: var(--muted);
+}
+
+/* Bloque 6 (A6): one press state for every control, 0.97 with a short transform transition. */
+.btn,
+.tabs button,
+.segmented a,
+.icon-button,
+.stitch-live-module .stitch-button {
+  transition-property: background-color, border-color, box-shadow, color, transform;
+  transition-duration: var(--motion-fast, 140ms);
+  transition-timing-function: var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+.btn:active:not(:disabled),
+.tabs button:active,
+.segmented a:active,
+.icon-button:active:not(:disabled),
+.stitch-live-module .stitch-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled),
+  .tabs button:active,
+  .segmented a:active,
+  .icon-button:active:not(:disabled),
+  .stitch-live-module .stitch-button:active:not(:disabled) {
+    transform: none;
+  }
 }
