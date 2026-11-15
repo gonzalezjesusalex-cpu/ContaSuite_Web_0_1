@@ -3680,3 +3680,24 @@ select:user-invalid,
 textarea:user-invalid {
   border-color: var(--danger);
 }
+
+/* Bloque 6 (B6): tabs and sub-tabs share one style; the active view is marked by weight and an underline that
+   stays visible in high contrast, and view buttons (aria-pressed) look like the selected button. */
+.tabs button.active,
+.tabs button[aria-selected='true'] {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 600;
+}
+[data-theme='contrast'] .tabs button.active,
+[data-theme='contrast'] .tabs button[aria-selected='true'] {
+  border-bottom-width: 3px;
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.btn[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--blue-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
