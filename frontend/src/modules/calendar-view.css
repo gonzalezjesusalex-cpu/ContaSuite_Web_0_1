@@ -5,7 +5,7 @@
   margin-top: 1rem;
 }
 .calendar-day {
-  border: 1px solid var(--border, #ccd3df);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.5rem;
   min-height: 110px;
@@ -15,11 +15,11 @@
   font-size: var(--fs-sm);
 }
 .calendar-event {
-  border-left: 3px solid #305990;
+  border-left: 3px solid var(--event-line);
   border-radius: 6px;
   padding: 0.4rem;
   margin: 0.4rem 0;
-  background: var(--surface-soft, rgba(50, 90, 145, 0.08));
+  background: var(--event-bg);
   overflow-wrap: anywhere;
 }
 .calendar-event small {
@@ -27,7 +27,7 @@
   font-size: var(--fs-xs);
 }
 .calendar-urgent {
-  border-left-color: #bd3a40;
+  border-left-color: var(--event-urgent);
 }
 @media (max-width: 850px) {
   .calendar-grid {
@@ -84,11 +84,11 @@ button.calendar-day {
   text-transform: capitalize;
 }
 .calendar-day.today time {
-  color: var(--primary, #004ac6);
+  color: var(--primary);
 }
 .calendar-day.selected {
-  border-color: var(--primary, #004ac6);
-  box-shadow: 0 0 0 1px var(--primary, #004ac6);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 .calendar-day .calendar-event {
   display: block;
@@ -100,10 +100,10 @@ button.calendar-day {
 }
 .calendar-day small {
   font-size: var(--fs-xs);
-  color: var(--muted, #555);
+  color: var(--muted);
 }
 .calendar-agenda {
-  border: 1px solid var(--border, #ccd3df);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.75rem;
   display: grid;
@@ -129,19 +129,19 @@ button.calendar-day {
   gap: 0.5rem;
 }
 .calendar-agenda li {
-  border-left: 3px solid #305990;
+  border-left: 3px solid var(--event-line);
   padding-left: 0.5rem;
   display: grid;
   gap: 2px;
   overflow-wrap: anywhere;
 }
 .calendar-agenda li.calendar-urgent {
-  border-left-color: #bd3a40;
+  border-left-color: var(--event-urgent);
 }
 .calendar-agenda time,
 .calendar-agenda small {
   font-size: var(--fs-xs);
-  color: var(--muted, #555);
+  color: var(--muted);
 }
 .calendar-manage-toggle {
   margin-bottom: 16px;

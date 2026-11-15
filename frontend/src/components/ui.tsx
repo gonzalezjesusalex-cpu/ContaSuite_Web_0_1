@@ -1,6 +1,7 @@
 import { confirmDiscard } from '../dirtyForms';
 import {
   Children,
+  Fragment,
   cloneElement,
   isValidElement,
   useEffect,
@@ -165,13 +166,20 @@ export function Field({
     e.target instanceof HTMLTextAreaElement
       ? e.target
       : null;
-  const describe = (node: ReactNode): ReactNode =>
-    isValidElement(node) && typeof node.type === 'string' && ['input', 'select', 'textarea'].includes(node.type)
+  // The control may come wrapped in a fragment (for example with its «De la constancia» mark).
+  const describe = (node: ReactNode): ReactNode => {
+    if (!isValidElement(node)) return node;
+    if (node.type === Fragment)
+      return cloneElement(node as ReactElement<{ children?: ReactNode }>, {
+        children: Children.map((node.props as { children?: ReactNode }).children, describe),
+      });
+    return typeof node.type === 'string' && ['input', 'select', 'textarea'].includes(node.type)
       ? cloneElement(node as ReactElement<Record<string, unknown>>, {
           'aria-describedby': message ? id : undefined,
           'aria-invalid': message ? true : undefined,
         })
       : node;
+  };
   return (
     <label
       className={(wide ? 'field wide' : 'field') + (message ? ' invalid' : '')}
