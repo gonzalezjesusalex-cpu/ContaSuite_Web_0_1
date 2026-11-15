@@ -50,16 +50,11 @@ def configure(portable=False):
     (root / 'data').mkdir(exist_ok=True)
     example = root / 'agent' / 'config.json'
     if not example.exists():
+        # Bloque 4: linked mode, no token. The agent pairs when a user signs in on this computer and reads only
+        # the folders authorized in Configuración › Agentes locales. An existing file is never rewritten.
+        origins = [f'http://127.0.0.1:{port}', f'http://localhost:{port}']
         example.write_text(
-            json.dumps(
-                {
-                    'api_url': f'http://127.0.0.1:{port}',
-                    'agent_id': 'oficina-windows',
-                    'allowed_roots': [str(root / 'data' / 'empresas')],
-                    'token': values['AGENT_TOKEN'],
-                },
-                indent=2,
-            ),
+            json.dumps({'api_url': origins[0], 'local_port': 47865, 'app_origins': origins}, indent=2),
             encoding='utf-8',
         )
     (root / 'data' / 'empresas').mkdir(exist_ok=True)
