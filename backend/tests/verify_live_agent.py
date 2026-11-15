@@ -3,7 +3,8 @@
 Runs in its own interpreter (directly, or from pytest through tests/test_isolated_suites.py with the
 `slow` marker): applies the schema explicitly to a temporary SQLite database, starts the API on
 127.0.0.1:8129 without reading .env, creates a synthetic administrator and checks
-heartbeat -> queue -> claim -> scan -> result.
+heartbeat -> queue -> claim -> scan -> result, first with the former shared token (transition flag) and then in
+linked mode (Bloque 4): one-time code handed by the app origin, job of its own user, link ended at sign-out.
 """
 
 import json
@@ -123,6 +124,75 @@ with tempfile.TemporaryDirectory() as folder:
             print(
                 'PASS: heartbeat -> queue -> claim -> scan -> result; source files unchanged; '
                 'private key neither listed nor transmitted.'
+            )
+            worker.terminate()
+            worker.wait(timeout=5)
+
+            # Bloque 4, linked mode (no token): the browser gives the agent a one-time code at sign-in.
+            local_port = 47911
+            local = 'http://127.0.0.1:' + str(local_port)
+            config.write_text(
+                json.dumps(
+                    {'api_url': base, 'agent_id': 'linked-worker', 'local_port': local_port, 'app_origins': [base]}
+                )
+            )
+            linked = subprocess.Popen(
+                [sys.executable, str(root / 'agent/agent.py'), '--config', str(config)],
+                env={k: v for k, v in env.items() if k != 'AGENT_TOKEN'},
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            worker = linked
+            with httpx.Client(base_url=local, trust_env=False, timeout=3) as agent_http:
+                for _ in range(100):
+                    try:
+                        status = agent_http.get('/status', headers={'Origin': base})
+                        break
+                    except httpx.HTTPError:
+                        time.sleep(0.2)
+                else:
+                    raise AssertionError('El agente vinculado no abrió su puerto local')
+                assert status.json()['paired'] is False
+                # Another site cannot read the agent nor hand it a code.
+                assert agent_http.get('/status', headers={'Origin': 'https://example.invalid'}).status_code == 403
+                assert (
+                    agent_http.post(
+                        '/pair', json={'code': 'x' * 20}, headers={'Origin': 'https://example.invalid'}
+                    ).status_code
+                    == 403
+                )
+                code = client.post('/api/agent-links/code').json()['code']
+                paired = agent_http.post('/pair', json={'code': code}, headers={'Origin': base})
+                assert paired.status_code == 200 and paired.json()['user'] == 'Live Agent', paired.text
+            client.put('/api/agent-links/roots', json={'paths': [str(allowed)]}).raise_for_status()
+            for _ in range(100):
+                if (client.get('/api/state').json().get('agent_link') or {}).get('state') == 'online':
+                    break
+                time.sleep(0.2)
+            else:
+                raise AssertionError('El agente vinculado no se conectó')
+            job = client.post('/api/jobs', json={'company_id': company.json()['id'], 'kind': 'scan_folder'})
+            job.raise_for_status()
+            assert job.json()['agent_id'] == 'linked-worker'
+            jobid = job.json()['id']
+            for _ in range(100):
+                result = next(j for j in client.get('/api/state').json()['jobs'] if j['id'] == jobid)
+                if result['status'] in ['completed', 'failed']:
+                    break
+                time.sleep(0.2)
+            assert result['status'] == 'completed', result
+            assert {f['name'] for f in result['result']['files']} == {'example.xml'}, result['result']
+            # Signing out ends the link: the agent stops working for that user.
+            client.post('/api/auth/logout').raise_for_status()
+            with httpx.Client(base_url=local, trust_env=False, timeout=3) as agent_http:
+                for _ in range(60):
+                    if not agent_http.get('/status', headers={'Origin': base}).json()['paired']:
+                        break
+                    time.sleep(0.5)
+                else:
+                    raise AssertionError('El agente siguió vinculado después de cerrar sesión')
+            print(
+                'PASS: linked agent: one-time code from the app origin only, job by its own user, link ends on sign-out.'
             )
     finally:
         if worker:
