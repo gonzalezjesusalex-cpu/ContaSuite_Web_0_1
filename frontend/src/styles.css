@@ -17,6 +17,36 @@
   --sidebar: #213145;
   --blue-soft: #e5eeff;
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.045);
+  /* Bloque 6 (A3): semantic tokens with the values already in use; the visible palette does not change.
+     `--ok`, `--warn`, `--danger` are the state colors of text on the page and change per theme; the `-strong`
+     variants are the text on their own light `-bg` (badges, banners) and stay the same in every theme. */
+  --ok: #007d55;
+  --ok-strong: #006242;
+  --ok-bg: #ecfdf5;
+  --ok-border: #bdedda;
+  --warn: #a16207;
+  --warn-strong: #92400e;
+  --warn-bg: #fffbeb;
+  --warn-border: #fde6ac;
+  --danger: #ba1a1a;
+  --danger-strong: #ba1a1a;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --info: var(--primary);
+  --info-strong: #004ac6;
+  --info-bg: #eff4ff;
+  --info-border: #dbe1ff;
+  --on-primary: #fff;
+  --elev-1: var(--shadow);
+  --elev-2: 0 8px 24px rgb(15 23 42 / 0.14);
+  /* Bloque 6 (A1, O1): one type scale; 12 px floor for metadata, 13 px for data, buttons and tabs. */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+  --fs-3xl: 28px;
 }
 * {
   box-sizing: border-box;
@@ -101,10 +131,10 @@ strong {
   color: var(--muted);
 }
 .green-text {
-  color: #007d55;
+  color: var(--ok);
 }
 .red-text {
-  color: #ba1a1a;
+  color: var(--danger);
 }
 .rfc {
   font-family: ui-monospace, monospace;
@@ -516,16 +546,16 @@ strong {
 }
 .kpi.green > span,
 .kpi.green small {
-  color: #007d55;
+  color: var(--ok);
 }
 .kpi.amber > span,
 .kpi.amber small {
-  color: #a16207;
+  color: var(--warn);
 }
 .kpi.red > span,
 .kpi.red strong,
 .kpi.red small {
-  color: #ba1a1a;
+  color: var(--danger);
 }
 .kpi.blue > span,
 .kpi.blue small {
@@ -572,24 +602,24 @@ strong {
   border: 1px solid #dbe2f8;
 }
 .badge.green {
-  background: #ecfdf5;
-  color: #006242;
-  border-color: #bdedda;
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+  border-color: var(--ok-border);
 }
 .badge.amber {
-  background: #fffbeb;
-  color: #92400e;
-  border-color: #fde6ac;
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+  border-color: var(--warn-border);
 }
 .badge.red {
-  background: #fef2f2;
-  color: #ba1a1a;
-  border-color: #fecaca;
+  background: var(--danger-bg);
+  color: var(--danger-strong);
+  border-color: var(--danger-border);
 }
 .badge.blue {
-  background: #eff4ff;
-  color: #004ac6;
-  border-color: #dbe1ff;
+  background: var(--info-bg);
+  color: var(--info-strong);
+  border-color: var(--info-border);
 }
 .stacked-bar {
   height: 6px;
@@ -1415,9 +1445,9 @@ dd {
   align-items: center;
   gap: 15px;
   flex-wrap: wrap;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #ba1a1a;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-strong);
   padding: 13px 18px;
   margin-bottom: 20px;
   border-radius: 7px;
@@ -1444,6 +1474,9 @@ dd {
   --primary: #80aaff;
   --sidebar: #152133;
   --blue-soft: #283e61;
+  --ok: #4edea3;
+  --warn: #fcd34d;
+  --danger: #ffaaa4;
   color: var(--text);
   background: var(--canvas);
 }
@@ -1458,30 +1491,6 @@ dd {
 [data-theme='dark'] .compliance-cells small {
   color: var(--muted);
 }
-[data-theme='dark'] .green-text,
-[data-theme='dark'] .kpi.green span,
-[data-theme='dark'] .kpi.green small,
-[data-theme='contrast'] .green-text,
-[data-theme='contrast'] .kpi.green span,
-[data-theme='contrast'] .kpi.green small {
-  color: #4edea3;
-}
-[data-theme='dark'] .red-text,
-[data-theme='dark'] .kpi.red span,
-[data-theme='dark'] .kpi.red small,
-[data-theme='dark'] .kpi.red strong,
-[data-theme='contrast'] .red-text,
-[data-theme='contrast'] .kpi.red span,
-[data-theme='contrast'] .kpi.red small,
-[data-theme='contrast'] .kpi.red strong {
-  color: #ffaaa4;
-}
-[data-theme='dark'] .kpi.amber span,
-[data-theme='dark'] .kpi.amber small,
-[data-theme='contrast'] .kpi.amber span,
-[data-theme='contrast'] .kpi.amber small {
-  color: #fcd34d;
-}
 [data-theme='dark'] .login-page {
   background: var(--canvas);
 }
@@ -1495,6 +1504,9 @@ dd {
   --primary: #7eb3ff;
   --sidebar: #000;
   --blue-soft: #173c71;
+  --ok: #4edea3;
+  --warn: #fcd34d;
+  --danger: #ffaaa4;
   color: #fff;
   background: #000;
 }
@@ -3431,7 +3443,7 @@ dd {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 8px;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 0.14);
+  box-shadow: var(--elev-2);
 }
 .more-menu-list > * {
   display: flex;
