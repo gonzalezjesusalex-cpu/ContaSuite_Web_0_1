@@ -16,6 +16,10 @@ function focused(page: Page) {
     const rect = el.getBoundingClientRect();
     const outline = style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0;
     const ring = style.boxShadow !== 'none' && el.matches(':focus-visible');
+    // A field whose ring is drawn on its immediate container (the global search, A4 / P3).
+    const host = el.parentElement ? getComputedStyle(el.parentElement) : null;
+    const hostRing =
+      !!host && el.matches(':focus-visible') && host.outlineStyle !== 'none' && parseFloat(host.outlineWidth) > 0;
     // Date-like inputs: the second Tab stop is the browser's own calendar button inside the input's
     // shadow root (the input itself is then not :focus). Chromium draws its focus ring there
     // (checked visually); page styles cannot reach it, so it counts as the browser's indicator.
@@ -29,7 +33,7 @@ function focused(page: Page) {
         .trim()
         .slice(0, 40),
       visible: rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden',
-      indicator: outline || ring || pickerButton,
+      indicator: outline || ring || hostRing || pickerButton,
       inDialog: !!el.closest('dialog[open]'),
     };
   });
