@@ -2519,8 +2519,23 @@ dd {
     background: var(--hover);
   }
 }
+/* Bloque 6 (C3): the toast enters and leaves through the same edge with a transition, so a new message
+   or a quick dismissal retargets instead of restarting a keyframe. */
 .toast {
-  animation: stitch-enter 0.24s ease-out both;
+  transition:
+    opacity 220ms var(--ease-out),
+    transform 220ms var(--ease-out);
+}
+@starting-style {
+  .toast {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.toast[data-leaving] {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
 }
 [data-theme='dark'] .stitch-live-module .stitch-card,
 [data-theme='dark'] .stitch-live-module .stitch-button {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense, Component, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, Component, type ReactNode } from 'react';
 import { agentLabel, pairLocalAgent } from './agentPairing';
 import { can, canAnywhere, canRegisterCompanies, type Action } from './permissions';
 import { NavLink, Link, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
@@ -164,7 +164,22 @@ export default function App() {
   const [name, setName] = useState(localStorage.getItem('contasuite-name') || '');
   const [theme, setTheme] = useState(localStorage.getItem('contasuite-theme') || 'light');
   const location = useLocation();
-  const notify = useCallback((m: string) => setMessage(m), []);
+  // Bloque 6 (C3): the toast stays mounted while it leaves, then the message is cleared.
+  const [leaving, setLeaving] = useState(false);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const notify = useCallback((m: string) => {
+    clearTimeout(leaveTimer.current);
+    setLeaving(false);
+    setMessage(m);
+  }, []);
+  const dismiss = useCallback(() => {
+    setLeaving(true);
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(() => {
+      setMessage('');
+      setLeaving(false);
+    }, 220);
+  }, []);
   const refresh = useCallback(async () => {
     const s = await api<State>('/state');
     updateArchiveWarnings(s.companies);
@@ -214,10 +229,10 @@ export default function App() {
   }, [token, refresh]);
   useEffect(() => {
     if (message) {
-      const timer = setTimeout(() => setMessage(''), 6500);
+      const timer = setTimeout(dismiss, 6500);
       return () => clearTimeout(timer);
     }
-  }, [message]);
+  }, [message, dismiss]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('contasuite-theme', theme);
@@ -602,10 +617,10 @@ export default function App() {
         )}
       </main>
       {message && (
-        <div className="toast" role="status">
+        <div className="toast" role="status" data-leaving={leaving || undefined}>
           <CheckCircle2 size={18} />
           <span>{message}</span>
-          <button aria-label="Cerrar mensaje" onClick={() => setMessage('')}>
+          <button aria-label="Cerrar mensaje" onClick={dismiss}>
             <X size={16} />
           </button>
         </div>
