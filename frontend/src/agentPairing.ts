@@ -19,6 +19,27 @@ async function local<T>(path: string, init?: RequestInit): Promise<T> {
   }
 }
 
+// On Windows a closed local port takes ~2 s to refuse; without an agent, do not ask again on every page load.
+const ABSENT_KEY = 'contasuite-agent-absent';
+const ABSENT_FOR = 2 * 60 * 1000;
+
+function recentlyAbsent() {
+  try {
+    return Date.now() - Number(sessionStorage.getItem(ABSENT_KEY) || 0) < ABSENT_FOR;
+  } catch {
+    return false;
+  }
+}
+
+function rememberAbsent(absent: boolean) {
+  try {
+    if (absent) sessionStorage.setItem(ABSENT_KEY, String(Date.now()));
+    else sessionStorage.removeItem(ABSENT_KEY);
+  } catch {
+    // Storage blocked: the agent is simply asked again next time.
+  }
+}
+
 /**
  * Pairs the local agent with the signed-in user when it is not already paired to them.
  * Returns what happened, never throws: no agent on this computer is a normal situation.
@@ -27,12 +48,15 @@ export async function pairLocalAgent(
   status: AgentLinkStatus | null | undefined,
   displayName: string,
 ): Promise<'paired' | 'already' | 'absent' | 'failed'> {
+  if (recentlyAbsent()) return 'absent';
   let current: LocalStatus;
   try {
     current = await local<LocalStatus>('/status');
   } catch {
+    rememberAbsent(true);
     return 'absent';
   }
+  rememberAbsent(false);
   // Already working for this user through a live link: nothing to do.
   if (current.paired && current.user === displayName && status?.state !== 'unlinked') return 'already';
   try {
