@@ -50,10 +50,17 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   const ref = useRef<HTMLDialogElement>(null);
   const leaving = useRef(false);
   const keeping = useRef(false);
+  const [closing, setClosing] = useState(false);
   const close = () => {
+    if (leaving.current) return;
     if (confirmDiscard()) {
       leaving.current = true;
-      onClose();
+      // Bloque 6 (C4): a short exit before unmounting, unless the user prefers reduced motion.
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) onClose();
+      else {
+        setClosing(true);
+        setTimeout(onClose, 140);
+      }
       return;
     }
     // The user kept their changes. Chromium may still close the <dialog> after an Escape whose
@@ -80,6 +87,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     <dialog
       aria-labelledby={titleId}
       ref={ref}
+      data-closing={closing || undefined}
       onCancel={(e) => {
         e.preventDefault();
         close();

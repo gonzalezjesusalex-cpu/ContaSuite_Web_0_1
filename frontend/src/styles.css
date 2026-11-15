@@ -2501,11 +2501,19 @@ dd {
 .stitch-live-module .receipt-results {
   animation: stitch-enter var(--motion-slow) var(--ease-out) both;
 }
-.stitch-live-module dialog[open] {
-  animation: stitch-dialog 0.2s ease-out both;
+/* Bloque 6 (C4): every dialog keeps its entrance and gets a faster exit (140 ms) when the user closes
+   it; modals are not anchored to a trigger, so they stay centered. */
+dialog[open] {
+  animation: stitch-dialog var(--motion-slow) var(--ease-out) both;
 }
-.stitch-live-module dialog::backdrop {
-  animation: stitch-backdrop 0.18s ease-out;
+dialog[open]::backdrop {
+  animation: stitch-backdrop var(--motion-base) var(--ease-out);
+}
+dialog[data-closing] {
+  animation: stitch-dialog-out 140ms var(--ease-out) both;
+}
+dialog[data-closing]::backdrop {
+  animation: stitch-backdrop-out 140ms var(--ease-out) both;
 }
 .stitch-live-module .receipt-month-checkboxes label,
 .stitch-live-module .receipt-months label {
@@ -2581,6 +2589,17 @@ dd {
   }
   to {
     opacity: 1;
+  }
+}
+@keyframes stitch-dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+@keyframes stitch-backdrop-out {
+  to {
+    opacity: 0;
   }
 }
 @keyframes stitch-row {
