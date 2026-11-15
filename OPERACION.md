@@ -23,6 +23,18 @@ Para este equipo como servidor definitivo, seguir paso a paso [docs/INSTALACION_
 
 Instalador `INSTALAR_CONTASUITE.cmd` del paquete local: Python/PostgreSQL privados, base nueva, puerto sugerido 8072, sin servicio ni LAN. Detalle en `docs/LOCAL_INSTALLER.txt`.
 
+### Prueba manual con datos sintéticos
+
+`INICIAR_PRUEBA_MANUAL.bat` prepara el `.venv` si hace falta y abre una instancia aparte de todas las reales: SQLite de prueba en `%LOCALAPPDATA%\ContaSuite\prueba-manual` (no lee el `.env` ni `data\` de esta carpeta, que son de la instancia 8000 archivada), API en el primer puerto libre de 8090–8099 y agente local vinculado con su icono. La consola muestra la clave para crear el primer administrador y la carpeta de ejemplo que se autoriza en Configuración › Agentes locales. `INICIAR_PRUEBA_MANUAL.bat --reset` conserva la prueba anterior renombrada y empieza otra.
+
+### Verificar las migraciones en PostgreSQL
+
+```bash
+python scripts/verify_postgres.py --bin <carpeta bin de PostgreSQL> --work <carpeta nueva vacía>
+```
+
+Crea un clúster propio y desechable (nunca toca una instancia real): instalación nueva, actualización desde `cs_0006` con datos (rechazada sin respaldo, idempotente), restauración del respaldo y la aplicación sobre PostgreSQL con el agente vinculado.
+
 ### Base nueva desde el código fuente
 
 ```bash

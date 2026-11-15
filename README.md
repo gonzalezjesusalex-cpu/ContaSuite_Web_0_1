@@ -53,6 +53,7 @@ Servidor de desarrollo: configurar un `.env` propio (ver `.env.example`, nunca u
 | Servicio empaquetado (`service_runtime`, `windows_service`, `service_admin`) | 8062 |
 | Desarrollo (`npm run dev`: API y proxy de Vite) | 8090 |
 | `INICIAR_CONTASUITE.bat` / `INICIAR_PRUEBA.bat` (instancia antigua de esta carpeta) | 8000, hasta decidir su destino |
+| `INICIAR_PRUEBA_MANUAL.bat` (datos sintéticos en `%LOCALAPPDATA%\ContaSuite\prueba-manual`, no usa `.env`) | primer libre de 8090–8099 |
 | Instalador local de pruebas | 8072 (elegido en el asistente) |
 
 El arranque de la API **no migra ni siembra datos**: sólo verifica que el esquema sea compatible. Una base nueva se prepara con `scripts/schema_admin.py` (ver [OPERACION.md](OPERACION.md)).
