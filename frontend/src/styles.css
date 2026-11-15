@@ -469,6 +469,15 @@ strong {
 .btn.primary:hover {
   background: #0053db;
 }
+/* Variants of the single button (A2): primary, danger and icon; .stitch-button stays an alias. */
+.btn.danger {
+  color: var(--danger-strong);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+.btn.icon-only {
+  padding: 9px;
+}
 .btn.selected {
   border-color: #2563eb;
   background: var(--blue-soft);
@@ -2307,13 +2316,13 @@ dd {
   padding: 6px 14px;
   min-height: 34px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--panel);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 16px;
   font-weight: 500;
-  box-shadow: 0 1px 2px #0b1c300d;
+  box-shadow: var(--elev-control);
   transition:
     background-color 0.18s,
     color 0.18s,
@@ -2352,8 +2361,8 @@ dd {
 .stitch-live-module .stitch-card {
   background: var(--panel);
   border: 0;
-  border-radius: 12px;
-  box-shadow: 0 1px 2px #0b1c300d;
+  border-radius: var(--radius-card);
+  box-shadow: var(--elev-control);
   transition: box-shadow 0.2s;
 }
 .stitch-live-module .stitch-card:hover {
@@ -3428,9 +3437,6 @@ dd {
 }
 .more-menu {
   position: relative;
-}
-.btn.icon-only {
-  padding: 9px;
 }
 .more-menu-list {
   position: absolute;

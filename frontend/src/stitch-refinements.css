@@ -2,6 +2,10 @@
    Semantic theme variables preserve dark/high-contrast modes and real operational states. */
 :root {
   --stitch-radius: 12px;
+  /* Bloque 6 (A2, O2): one button and one card, with .stitch-button (8 px) as reference. */
+  --radius-control: 8px;
+  --radius-card: var(--stitch-radius);
+  --elev-control: 0 1px 2px #0b1c300d;
   --stitch-focus: #0053db;
   --stitch-duration: 160ms;
 }
@@ -32,7 +36,8 @@
   font-size: 13px;
   line-height: 16px;
   padding: 9px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
+  box-shadow: var(--elev-control);
   transition:
     background-color var(--stitch-duration),
     box-shadow var(--stitch-duration),
