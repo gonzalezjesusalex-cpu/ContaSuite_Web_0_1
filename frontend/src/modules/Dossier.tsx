@@ -67,16 +67,20 @@ export default function Dossier({
   const [assigning, setAssigning] = useState(false);
   const me = state.current_user;
   const responsible = state.responsibles?.find((r) => r.id === c.accountant_id) || null;
-  const [agentId, setAgentId] = useState('');
   const jobs = state.jobs.filter((j) => j.company_id === c.id);
-  // Why «Analizar carpeta» cannot run now, in plain words (Bloque 3). The authorized folders live in the
-  // agent's configuration, so a folder outside them is only known from the failed analysis it returns.
-  const scanAgent = state.agents.find((a) => a.online && a.capabilities.includes('scan_folder'));
+  // Why «Analizar carpeta» cannot run now, in plain words (Bloques 3 and 4): it uses the user's own linked agent;
+  // the server also checks the folders the administrator authorizes and explains a refusal.
+  const link = state.agent_link;
+  const canScan = can(me, 'carpeta.analizar', c.id);
   const scanBlocked = !c.folder
     ? 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.'
-    : !scanAgent
-      ? 'El agente local está desconectado: inícialo en el equipo Windows con las carpetas autorizadas.'
-      : null;
+    : link?.state === 'offline'
+      ? 'Tu agente local está vinculado pero sin conexión' + (link.machine ? ' en ' + link.machine : '') + '.'
+      : link?.state !== 'online'
+        ? 'Tu agente local no está vinculado: abre ContaSuite en el equipo Windows donde se ejecuta el agente.'
+        : link.roots === 0
+          ? 'No hay carpetas autorizadas para el agente: las define la administración en Configuración.'
+          : null;
   const lastFailure = jobs[0]?.status === 'failed' ? jobs[0].result.error || 'sin detalle' : null;
   async function archiveCompany() {
     if (
@@ -112,13 +116,10 @@ export default function Dossier({
   async function scan() {
     setBusy(true);
     try {
-      const agent =
-        state.agents.find((a) => a.id === agentId) ||
-        state.agents.find((a) => a.online && a.capabilities.includes('scan_folder'));
-      if (!agent) throw new Error('Inicia el agente Windows para analizar carpetas');
-      await api('/jobs', 'POST', { company_id: c.id, agent_id: agent.id, kind: 'scan_folder' });
+      // The server uses the requester's own linked agent and explains any refusal (Bloque 4).
+      await api('/jobs', 'POST', { company_id: c.id, kind: 'scan_folder' });
       await refresh();
-      notify('Análisis enviado al agente ' + agent.id);
+      notify('Análisis enviado a tu agente' + (link?.machine ? ' en ' + link.machine : '') + '.');
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -163,8 +164,7 @@ export default function Dossier({
                   Emitir recibo
                 </Link>
               )}
-              {/* Folder analysis still runs through the administrator's agent until Bloque 4. */}
-              {me.admin && (
+              {canScan && (
                 <button
                   className="btn primary"
                   disabled={busy || !!scanBlocked}
@@ -208,7 +208,7 @@ export default function Dossier({
           }
         />
       </div>
-      {me.admin && (scanBlocked || lastFailure) && (
+      {canScan && (scanBlocked || lastFailure) && (
         <p className="action-reason" id="scan-reason" role="status">
           {scanBlocked || 'El último análisis falló: ' + lastFailure}{' '}
           <Link to="/configuracion#agentes">Instrucciones del agente</Link>
@@ -397,18 +397,12 @@ export default function Dossier({
                 El agente lista nombres y tamaños de PDF, XML y CER públicos en las rutas autorizadas. Excluye claves y
                 secretos. Este análisis no importa por sí solo el catálogo documental.
               </p>
-              <label className="field">
-                <span>Agente de procesamiento</span>
-                <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-                  <option value="">Seleccionar automáticamente</option>
-                  {state.agents.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.id} · {a.online ? 'Conectado' : 'Desconectado'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button className="btn" disabled={busy || !c.folder} onClick={scan}>
+              <p className="muted">
+                {link?.state === 'online'
+                  ? 'Se usará tu agente' + (link.machine ? ' en ' + link.machine : '') + ', con tus permisos.'
+                  : 'Se usará tu agente vinculado cuando esté en línea.'}
+              </p>
+              <button className="btn" disabled={busy || !canScan || !!scanBlocked} onClick={scan}>
                 <FolderSearch size={16} />
                 Analizar expediente
               </button>

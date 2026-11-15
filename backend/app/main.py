@@ -236,7 +236,8 @@ CONTENT_SECURITY_POLICY = '; '.join(
         "style-src 'self'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
-        "connect-src 'self'",
+        # Bloque 4: the page hands the pairing code to the agent on this computer (agent/agent.py).
+        "connect-src 'self' http://127.0.0.1:47865",
         "frame-src 'self' blob:",
         "object-src 'none'",
         "base-uri 'self'",
@@ -397,7 +398,17 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
         'agents': [
             {'id': a.id, 'online': online(a), 'capabilities': a.capabilities, 'last_seen': a.last_seen} for a in agents
         ],
-        'jobs': db.scalars(select(Job).order_by(Job.created_at.desc()).limit(50)).all() if principal.admin else [],
+        # Bloque 4: users see the analyses of their companies (administrators, all of them). The payload carries
+        # the folder path, which only administrators see, like the company folder above.
+        'jobs': [
+            {c.name: getattr(j, c.name) for c in Job.__table__.columns if principal.admin or c.name != 'payload'}
+            for j in db.scalars(
+                select(Job)
+                .where(True if principal.admin else Job.company_id.in_(principal.company_ids))
+                .order_by(Job.created_at.desc())
+                .limit(50)
+            )
+        ],
         'database': 'PostgreSQL' if engine.dialect.name == 'postgresql' else 'SQLite (modo de prueba)',
         # OCR: local reading of scanned constancias (Bloque 1), only when the engine is installed.
         'integrations': {'sat': False, 'ocr': ocr_available(), 'printing': False},

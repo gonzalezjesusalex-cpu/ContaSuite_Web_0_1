@@ -95,6 +95,16 @@ export interface Job {
   };
   created_at: string;
 }
+/** The signed-in user's local agent (Bloque 4). */
+export interface AgentLinkStatus {
+  state: 'online' | 'offline' | 'unlinked';
+  roots: number;
+  id?: string;
+  agent_id?: string;
+  machine?: string;
+  user?: string | null;
+  last_seen?: string | null;
+}
 export interface State {
   archive_available?: boolean;
   current_user: CurrentUser;
@@ -108,6 +118,7 @@ export interface State {
   document_total: number;
   audit: { id: string; company_id: string; action: string; created_at: string }[];
   agents: Agent[];
+  agent_link?: AgentLinkStatus | null;
   jobs: Job[];
   database: string;
   integrations: { sat: boolean; ocr: boolean; printing: boolean };

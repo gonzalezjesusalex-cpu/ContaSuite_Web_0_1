@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense, Component, type ReactNode } from 'react';
+import { agentLabel, pairLocalAgent } from './agentPairing';
 import { can, canAnywhere, canRegisterCompanies, type Action } from './permissions';
 import { NavLink, Link, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import {
@@ -38,6 +39,7 @@ const Receipts = lazy(() => import('./modules/Receipts'));
 const Recopila = lazy(() => import('./modules/Recopila'));
 const Organizador = lazy(() => import('./modules/Organizador'));
 const Declara = lazy(() => import('./modules/Declara'));
+const AgentAdmin = lazy(() => import('./modules/AgentAdmin'));
 const AccountSecurity = lazy(() => import('./modules/AccountSecurity'));
 const StorageConnector = lazy(() => import('./modules/StorageConnector'));
 function ModuleLoading() {
@@ -185,6 +187,24 @@ export default function App() {
       document.removeEventListener('visibilitychange', visible);
     };
   }, [token, refresh]);
+  // Bloque 4: pair the agent of this computer with the signed-in user (silently; no agent is normal).
+  const [localAgent, setLocalAgent] = useState('');
+  const linkState = state?.agent_link?.state;
+  const displayName = state?.current_user.display_name || '';
+  useEffect(() => {
+    if (!token || !linkState || linkState === 'online' || state?.current_user.bootstrap) return;
+    let alive = true;
+    void pairLocalAgent(state?.agent_link, displayName).then((result) => {
+      if (!alive) return;
+      setLocalAgent(result);
+      if (result === 'paired') setTimeout(() => void refresh().catch(() => undefined), 6000);
+    });
+    return () => {
+      alive = false;
+    };
+    // Re-evaluated when the link state changes, not on every refresh of the same state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, linkState, displayName]);
   useEffect(() => {
     const changed = () => {
       if (token) void refresh().catch((e) => setError(e.message));
@@ -267,7 +287,7 @@ export default function App() {
   if (!token) return <Login onAuthenticated={authenticated} />;
   const active = nav.flatMap((g) => g.items).find((i) => i.path !== '/' && location.pathname.startsWith(i.path));
   const shared = state ? { state, refresh, notify } : null;
-  const online = state?.agents.some((a) => a.online);
+  const agentOnline = state?.agent_link?.state === 'online';
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -364,8 +384,8 @@ export default function App() {
           )}
         </div>
         <div className="system-indicator">
-          <span className={'dot ' + (online ? 'green' : 'neutral')} />
-          <span>Agente {online ? 'conectado' : 'desconectado'}</span>
+          <span className={'dot ' + (agentOnline ? 'green' : 'neutral')} />
+          <span>{agentLabel(state?.agent_link, localAgent)}</span>
         </div>
         <button
           className="icon-button"
@@ -548,19 +568,12 @@ export default function App() {
                             </div>
                           </dl>
                           <h3 id="agentes">Agentes locales</h3>
-                          {state?.agents.length ? (
-                            state.agents.map((a) => (
-                              <div className="agent-line" key={a.id}>
-                                <strong>{a.id}</strong>
-                                <Badge tone={a.online ? 'green' : 'neutral'}>
-                                  {a.online ? 'Conectado' : 'Desconectado'}
-                                </Badge>
-                              </div>
-                            ))
+                          {identity?.admin && !identity.bootstrap ? (
+                            <AgentAdmin notify={notify} />
                           ) : (
                             <p className="muted">
-                              El agente Windows se inicia junto con ContaSuite. Autoriza sus carpetas con
-                              CONFIGURAR_CARPETAS en la instalación local.
+                              {agentLabel(state?.agent_link, localAgent)}. El agente de tu equipo se vincula al iniciar
+                              sesión; analiza sólo carpetas autorizadas de tus empresas.
                             </p>
                           )}
                         </section>

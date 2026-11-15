@@ -3509,3 +3509,22 @@ dd {
   font-size: 11px;
   color: var(--muted);
 }
+/* Bloque 4: linked agents in Configuración. */
+.agent-admin {
+  display: grid;
+  gap: 10px;
+}
+.agent-admin .agent-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.agent-admin .agent-line > div {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.agent-admin .agent-line small {
+  display: block;
+  color: var(--muted);
+}
