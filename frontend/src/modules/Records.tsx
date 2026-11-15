@@ -1,7 +1,7 @@
 import { confirmDiscard } from '../dirtyForms';
 import { can, type Action } from '../permissions';
 import { useState, type FormEvent } from 'react';
-import { Plus, Pencil, CheckCircle2, Download, Search } from 'lucide-react';
+import { Plus, Pencil, CheckCircle2, ClipboardList, Download, ListChecks, Search } from 'lucide-react';
 import { api, csv, dateLabel, today } from '../api';
 import { Badge, Empty, Field, Kpi, Modal } from '../components/ui';
 import type { State, Task, Obligation } from '../types';
@@ -203,7 +203,17 @@ export function Records({
           </div>
         ) : (
           <Empty
+            icon={isTask ? ListChecks : ClipboardList}
             title={all.length ? 'No hay coincidencias' : isTask ? 'Aún no hay tareas' : 'Sin obligaciones registradas'}
+            action={
+              !all.length &&
+              state.companies.some((c) => can(state.current_user, writeAction(isTask), c.id)) && (
+                <button className="btn primary" onClick={() => setEdit(true)}>
+                  <Plus size={16} />
+                  {isTask ? 'Agregar tarea' : 'Agregar obligación'}
+                </button>
+              )
+            }
           >
             {state.companies.length
               ? 'Agrega un registro para comenzar el seguimiento.'

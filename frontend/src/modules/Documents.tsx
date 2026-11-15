@@ -2,7 +2,7 @@ import { confirmDiscard } from '../dirtyForms';
 import DocumentReconciliation from './DocumentReconciliation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Eye, FolderOpen, RefreshCw, Search, Upload, X } from 'lucide-react';
+import { Download, Eye, FileSearch, FileText, FolderOpen, RefreshCw, Search, Upload, X } from 'lucide-react';
 import { api, dateLabel, getToken } from '../api';
 import { Badge, Empty, Field, MiddleText, Modal } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
@@ -540,6 +540,7 @@ export default function Documents({
               ) : (
                 !catalog?.items.length && (
                   <Empty
+                    icon={FileText}
                     title={
                       filters.pending ? 'Sin documentos pendientes de clasificar' : 'Sin documentos para estos filtros'
                     }
@@ -693,7 +694,7 @@ export default function Documents({
                 )}
               </>
             ) : (
-              <Empty title="Selecciona un documento">
+              <Empty icon={FileSearch} title="Selecciona un documento">
                 Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.
               </Empty>
             )}

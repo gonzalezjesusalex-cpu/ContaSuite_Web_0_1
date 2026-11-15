@@ -7,6 +7,7 @@ import {
   useRef,
   useId,
   useState,
+  type ComponentType,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -22,12 +23,24 @@ export function Logo({ large = false, sidebar = false }: { large?: boolean; side
 export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: string }) {
   return <span className={'badge ' + tone}>{children}</span>;
 }
-export function Empty({ title, children }: { title: string; children?: ReactNode }) {
+/** Empty state (Bloque 6, B5): an icon that matches the content and, when it helps, the next action. */
+export function Empty({
+  title,
+  children,
+  icon: Icon = Building2,
+  action,
+}: {
+  title: string;
+  children?: ReactNode;
+  icon?: ComponentType<{ size?: number; 'aria-hidden'?: boolean }>;
+  action?: ReactNode;
+}) {
   return (
     <div className="empty">
-      <Building2 size={32} />
+      <Icon size={32} aria-hidden />
       <h3>{title}</h3>
       <div className="empty-description">{children || 'Los registros aparecerán aquí cuando los agregues.'}</div>
+      {action && <div className="actions centered">{action}</div>}
     </div>
   );
 }
