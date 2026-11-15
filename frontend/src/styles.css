@@ -2473,14 +2473,10 @@ dd {
   font-size: var(--fs-xs);
   letter-spacing: 0.04em;
 }
-.stitch-live-module .page-heading {
-  animation: stitch-enter 0.28s ease-out both;
-}
-.stitch-live-module .stitch-card {
-  animation: stitch-enter 0.3s ease-out both;
-}
+/* Bloque 6 (C2, O3): headings and cards no longer slide in on every screen change (dozens of times a
+   day); only results that appear after an action keep a short entrance. */
 .stitch-live-module .receipt-preview {
-  animation-delay: 0.06s;
+  animation: stitch-enter var(--motion-slow) var(--ease-out) both;
 }
 .stitch-live-module .receipt-tabs > button {
   transition:
