@@ -7,7 +7,15 @@
   --radius-card: var(--stitch-radius);
   --elev-control: 0 1px 2px #0b1c300d;
   --stitch-focus: #0053db;
-  --stitch-duration: 160ms;
+  --stitch-duration: var(--motion-base);
+  /* Bloque 6 (C1): motion tokens. Strong ease-out for entering/leaving UI, the drawer curve for the
+     mobile sidebar; 120 / 160 / 200 ms (toasts and dialogs may use up to 250 ms). */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-fast: 120ms;
+  --motion-base: 160ms;
+  --motion-slow: 200ms;
 }
 .skip-link {
   position: fixed;
@@ -38,10 +46,10 @@
   padding: 9px 14px;
   border-radius: var(--radius-control);
   box-shadow: var(--elev-control);
-  transition:
-    background-color var(--stitch-duration),
-    box-shadow var(--stitch-duration),
-    border-color var(--stitch-duration);
+  /* Same properties as the shared press rule (A6), so this does not drop the transform transition. */
+  transition-property: background-color, border-color, box-shadow, color, transform;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-out);
 }
 /* Bloque 6 (A4): the one focus rule for every interactive control, with the theme's --stitch-focus. */
 :where(button, a, input, select, textarea, summary, [tabindex], [role='switch']):focus-visible {
