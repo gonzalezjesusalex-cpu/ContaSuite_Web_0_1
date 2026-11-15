@@ -44,9 +44,11 @@ test('primer acceso, sesión, empresas, expediente y documentos', async ({ page 
     // Bloque 1: the form opens on the Constancia card; this flow captures by hand.
     await expect(page.getByLabel('Constancia de Situación Fiscal en PDF')).toBeAttached();
     await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-    await page.getByLabel('RFC (obligatorio)').fill(company.rfc);
-    await page.getByLabel('idCIF (obligatorio)').fill('12345678');
-    await page.getByLabel('Razón social / Nombre completo (obligatorio)').fill(company.name);
+    await page.getByRole('textbox', { name: 'RFC (obligatorio)', exact: true }).fill(company.rfc);
+    await page.getByRole('textbox', { name: 'idCIF (obligatorio)', exact: true }).fill('12345678');
+    await page
+      .getByRole('textbox', { name: 'Razón social / Nombre completo (obligatorio)', exact: true })
+      .fill(company.name);
     await page.getByRole('button', { name: 'Siguiente →' }).click();
     await page.getByRole('button', { name: 'Siguiente →' }).click();
     await page.getByRole('button', { name: 'Guardar y dar de alta' }).click();

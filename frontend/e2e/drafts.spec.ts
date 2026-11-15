@@ -11,7 +11,7 @@ test('enlace del menú con un formulario de alta modificado', async ({ page }) =
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
   await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-  const name = page.getByLabel('Razón social / Nombre completo (obligatorio)');
+  const name = page.getByRole('textbox', { name: 'Razón social / Nombre completo (obligatorio)', exact: true });
   await name.fill('Borrador sin guardar');
 
   const asked = answerNextConfirm(page, false);
@@ -34,7 +34,7 @@ test('botón Atrás del navegador', async ({ page }) => {
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
   await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-  const rfc = page.getByLabel('RFC (obligatorio)');
+  const rfc = page.getByRole('textbox', { name: 'RFC (obligatorio)', exact: true });
   await rfc.fill('BOR010101AB1');
 
   const asked = answerNextConfirm(page, false);
@@ -51,20 +51,21 @@ test('botón Atrás del navegador', async ({ page }) => {
 
 test('cambio de sección con un formulario fijo modificado', async ({ page }) => {
   await sidebar(page, 'Tareas y vencimientos');
-  await page.getByRole('button', { name: 'Calendario fiscal' }).click();
-  // The manual-date form appears once an authorized company is chosen.
+  await page.getByRole('tab', { name: 'Calendario fiscal' }).click();
+  // The manual-date form (Bloque 5: inside «Gestionar fechas») appears once an authorized company is chosen.
+  await page.getByText('Gestionar fechas (manuales y reglas revisadas)').click();
   await page.getByLabel('Empresa autorizada').selectOption({ label: company.name });
   const title = page.getByRole('textbox', { name: 'Título' }).first();
   await title.fill('Fecha manual sin guardar');
 
   const asked = answerNextConfirm(page, false);
-  await page.getByRole('button', { name: 'Tareas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Tareas', exact: true }).click();
   await expect.poll(() => asked.length).toBe(1);
   await expect(page).toHaveURL(/tab=calendario/);
   await expect(title).toHaveValue('Fecha manual sin guardar');
 
   const accepted = answerNextConfirm(page, true);
-  await page.getByRole('button', { name: 'Tareas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Tareas', exact: true }).click();
   await expect.poll(() => accepted.length).toBe(1);
   await expect(page).toHaveURL(/tab=tareas/);
 });
@@ -104,7 +105,9 @@ test('recargar o cerrar la página con cambios pide confirmación del navegador'
   await sidebar(page, 'Empresas');
   await page.getByRole('link', { name: 'Registrar empresa' }).first().click();
   await page.getByRole('button', { name: 'Prefiero capturar manualmente' }).click();
-  await page.getByLabel('Razón social / Nombre completo (obligatorio)').fill('Borrador antes de cerrar');
+  await page
+    .getByRole('textbox', { name: 'Razón social / Nombre completo (obligatorio)', exact: true })
+    .fill('Borrador antes de cerrar');
   const types: string[] = [];
   page.on('dialog', async (dialog) => {
     types.push(dialog.type());
