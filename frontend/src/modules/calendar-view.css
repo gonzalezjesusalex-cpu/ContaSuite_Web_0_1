@@ -12,7 +12,7 @@
   min-width: 0;
 }
 .calendar-day h3 {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
 }
 .calendar-event {
   border-left: 3px solid #305990;
@@ -24,7 +24,7 @@
 }
 .calendar-event small {
   display: block;
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 .calendar-urgent {
   border-left-color: #bd3a40;
@@ -79,7 +79,7 @@ button.calendar-day {
   cursor: pointer;
 }
 .calendar-day time {
-  font-size: 0.8rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: capitalize;
 }
@@ -93,13 +93,13 @@ button.calendar-day {
 .calendar-day .calendar-event {
   display: block;
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .calendar-day small {
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
   color: var(--muted, #555);
 }
 .calendar-agenda {
@@ -117,7 +117,7 @@ button.calendar-day {
   gap: 8px;
 }
 .calendar-agenda h3 {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   margin: 0;
   text-transform: capitalize;
 }
@@ -140,7 +140,7 @@ button.calendar-day {
 }
 .calendar-agenda time,
 .calendar-agenda small {
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   color: var(--muted, #555);
 }
 .calendar-manage-toggle {
