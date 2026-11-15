@@ -1704,7 +1704,8 @@ dd {
   .sidebar {
     transform: translateX(-100%);
     width: 256px;
-    transition: transform 0.2s;
+    /* Bloque 6 (C5): the drawer curve at 250 ms. */
+    transition: transform 250ms var(--ease-drawer);
   }
   .sidebar.open {
     transform: translateX(0);
