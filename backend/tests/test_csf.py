@@ -183,6 +183,59 @@ def test_scanned_individual_constancia_mixed_with_other_documents_uses_local_ocr
     assert 'FICTICIO' not in repr(result) and 'XXXX000000' not in repr(result)
 
 
+def two_page_scan():
+    """Like real scans: the title is repeated on every page, regimes are on page 2, and the issue date is split by
+    the other column («…, A 15 DE» / «NOMBRE, DENOMINACIÓN O RAZÓN» / «SOCIAL» / «NOVIEMBRE DE 2025»)."""
+    month = MONTHS[ISSUED.month - 1]
+    first = text_page(
+        [
+            'CÉDULA DE IDENTIFICACIÓN FISCAL',
+            'idCIF: 19080123456',
+            'LUGAR Y FECHA DE EMISIÓN',
+            'ZAPOPAN, JALISCO A ' + str(ISSUED.day) + ' DE',
+            'NOMBRE, DENOMINACIÓN O RAZÓN',
+            'SOCIAL',
+            month + ' DE ' + str(ISSUED.year),
+            'RFC: SINT850101AB3',
+            'CURP: SINT850101HJCRRN09',
+            'Nombre (s): JUAN CARLOS',
+            'Primer Apellido: PÉREZ',
+            'Estatus en el padrón: ACTIVO',
+            'Código Postal: 44100',
+            'Página [1] de [2]',
+        ],
+        title='CONSTANCIA DE SITUACIÓN FISCAL',
+    )
+    second = text_page(
+        [
+            'Regímenes:',
+            'Régimen de Sueldos y Salarios e Ingresos Asimilados a Salarios 01/03/2010',
+            'Cadena Original Sello: ||sintetica||',
+            'Página [2] de [2]',
+        ],
+        title='CONSTANCIA DE SITUACIÓN FISCAL',
+    )
+    pages = [scanned(p, i + 7) for i, p in enumerate([first, second])]
+    out = io.BytesIO()
+    pages[0].save(out, format='PDF', save_all=True, append_images=pages[1:], resolution=150)
+    return out.getvalue()
+
+
+@pytest.mark.skipif(not csf_extract.ocr_available(), reason='OCR local no instalado')
+def test_scan_with_the_title_on_every_page_reads_all_its_pages_and_the_split_issue_date():
+    result = csf_extract.analyze(two_page_scan())
+    f = result['fields']
+    assert result['source'] == 'ocr' and result['pages'] == [1, 2]
+    assert 'regime' in f and 'csf_issued_on' in f, (sorted(f), result['warnings'])
+    assert f['regime'].startswith('605 ') and f['csf_issued_on'] == ISSUED
+
+
+def test_issue_date_split_by_the_other_column_in_text():
+    text = 'Lugar y Fecha de Emisión\nZAPOPAN, JALISCO A 5 DE\nNOMBRE, DENOMINACIÓN O RAZÓN\nSOCIAL\nMARZO DE 2026\n'
+    assert csf_extract.issued_near_label(text) == date(2026, 3, 5)
+    assert csf_extract.issued_near_label('Lugar y Fecha de Emisión\nsin fecha legible') is None
+
+
 def test_notices_and_errors_never_guess_or_leak_data():
     bad_regime = csf_extract.analyze(
         moral_pdf(status='SUSPENDIDO', regime='Régimen Inventado de Prueba', issued=date.today() - timedelta(days=200))

@@ -22,6 +22,8 @@ MAX_PAGES = 30
 MAX_CSF_PAGES = 5
 LOW_CONFIDENCE = 0.93
 TITLE = 'CONSTANCIA DE SITUACION FISCAL'
+# OCR reads the accented i of «Regímenes» as l or 1 now and then.
+REGIMENES = re.compile(r'REG[IL1|]MENES')
 MONTHS = {
     m: i + 1
     for i, m in enumerate(
@@ -197,16 +199,30 @@ def page_image(page):
 # ---------------------------------------------------------------- parsing
 
 
+def printed_total(text):
+    """n from «Página [1] de [n]» on the constancia's first page, or None."""
+    m = re.search(r'PAGINA\s*\[?\s*1\s*\]?\s*DE\s*\[?\s*(\d)', fold(text or ''))
+    return min(int(m.group(1)), MAX_CSF_PAGES) if m else None
+
+
+def continues(text):
+    """A following page that continues the constancia. Its header may repeat the title (real scans do), so the
+    title alone only ends the constancia when the page does not say it is page 2 or later."""
+    folded = fold(text or '')
+    later = re.search(r'PAGINA\s*\[?\s*[2-9]\s*\]?\s*DE', folded)
+    if TITLE in folded and not later:
+        return False
+    return bool(later or REGIMENES.search(folded)) or any(k in folded for k in ('OBLIGACIONES', 'CADENA ORIGINAL'))
+
+
 def csf_page_span(texts, start):
     """Pages of the constancia from its first page: «Página [1] de [n]» when printed, else following pages
     that clearly continue it (regimes, obligations, seal)."""
-    m = re.search(r'PAGINA\s*\[?\s*1\s*\]?\s*DE\s*\[?\s*(\d)', fold(texts[start] or ''))
-    total = min(int(m.group(1)), MAX_CSF_PAGES) if m else 1
-    pages = list(range(start, min(start + total, len(texts))))
-    if not m:
+    total = printed_total(texts[start])
+    pages = list(range(start, min(start + (total or 1), len(texts))))
+    if not total:
         for i in range(start + 1, min(start + MAX_CSF_PAGES, len(texts))):
-            folded = fold(texts[i] or '')
-            if TITLE in folded or not any(k in folded for k in ('REGIMENES', 'OBLIGACIONES', 'CADENA ORIGINAL')):
+            if not continues(texts[i]):
                 break
             pages.append(i)
     return pages
@@ -247,7 +263,9 @@ def section(text, start_label, end_labels):
 
 
 def regimes_from(text):
-    body = section(text, r'REGIMENES\s*:', [r'OBLIGACIONES\s*:', r'SUS DATOS PERSONALES', r'CADENA ORIGINAL'])
+    body = section(
+        text, REGIMENES.pattern + r'\s*:', [r'OBLIGACIONES\s*:', r'SUS DATOS PERSONALES', r'CADENA ORIGINAL']
+    )
     found = []
     for m in re.finditer(r'([A-Za-zÁÉÍÓÚÜÑáéíóúüñ ,.()]{6,}?)\s*(\d{2}/\d{2}/\d{4})(?:\s+(\d{2}/\d{2}/\d{4}))?', body):
         printed = re.sub(r'\s+', ' ', m.group(1)).strip(' ,.')
@@ -268,6 +286,22 @@ def obligations_from(text):
         if description:
             items.append({'description': description[:300], 'start_date': spanish_date(m.group(2))})
     return items[:50]
+
+
+def issued_near_label(text):
+    """Issue date when a scan interleaves the other column inside it («…, A 15 DE» / label / «NOVIEMBRE DE 2025»):
+    «A <day> DE … <month> DE <year>» shortly after «Lugar y Fecha de Emisión»."""
+    folded = fold(text)
+    m = re.search(r'LUGAR\s*Y\s*FECHA\s*DE\s*EMISION', folded)
+    if not m:
+        return None
+    window = folded[m.end() : m.end() + 300]
+    months = '|'.join(MONTHS)
+    d = re.search(r'\bA\s*(\d{1,2})\s*DE\b.{0,160}?\b(' + months + r')\s*DE\s*(\d{4})', window, re.S)
+    try:
+        return date(int(d.group(3)), MONTHS[d.group(2)], int(d.group(1))) if d else None
+    except ValueError:
+        return None
 
 
 def build(values, text, source):
@@ -302,7 +336,7 @@ def build(values, text, source):
     municipality, state = take('tax_municipality'), take('tax_state')
     between = ' y '.join(v for v in (take('between_1'), take('between_2')) if v) or None
     status = take('padron_status')
-    issued = spanish_date(values.get('issued', ('', 1))[0])
+    issued = spanish_date(values.get('issued', ('', 1))[0]) or issued_near_label(text)
     form = {
         'person_type': person_type,
         'rfc': rfc,
@@ -440,13 +474,13 @@ def analyze_scanned(pages):
     lines_by_page = {start: ocr_lines(prepared[start])}
     texts = [''] * len(pages)
     texts[start] = '\n'.join(t for t, _ in lines_by_page[start])
-    # Following pages only while they continue the constancia (regimes, obligations, seal).
-    for i in range(start + 1, min(start + MAX_CSF_PAGES, len(pages))):
+    # Following pages: as many as «Página [1] de [n]» says, else only while they continue the constancia.
+    total = printed_total(texts[start])
+    for i in range(start + 1, min(start + (total or MAX_CSF_PAGES), len(pages))):
         if prepared[i] is None:
             break
         lines = ocr_lines(prepared[i])
-        folded = fold(' '.join(t for t, _ in lines))
-        if TITLE in folded or not any(k in folded for k in ('REGIMENES', 'OBLIGACIONES', 'CADENA ORIGINAL')):
+        if not total and not continues(' '.join(t for t, _ in lines)):
             break
         lines_by_page[i] = lines
         texts[i] = '\n'.join(t for t, _ in lines)
