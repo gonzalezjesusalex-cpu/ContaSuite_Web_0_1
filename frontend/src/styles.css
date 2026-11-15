@@ -3655,10 +3655,15 @@ dialog[data-closing]::backdrop {
 .fiscal-strip dd {
   margin: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  gap: 2px 8px;
+  /* Not the key/value list of the global dd rule: figures never break and the detail wraps by words. */
+  text-align: left;
+  overflow-wrap: normal;
 }
 .fiscal-strip dd strong {
+  white-space: nowrap;
   font-size: 20px;
   line-height: 1.2;
 }

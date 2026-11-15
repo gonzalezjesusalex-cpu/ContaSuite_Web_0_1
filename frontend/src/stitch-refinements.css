@@ -52,9 +52,14 @@
   transition-timing-function: var(--ease-out);
 }
 /* Bloque 6 (A4): the one focus rule for every interactive control, with the theme's --stitch-focus. */
-:where(button, a, input, select, textarea, summary, [tabindex], [role='switch']):focus-visible {
+:where(button, a, input, select, textarea, summary, [tabindex]:not([tabindex='-1']), [role='switch']):focus-visible {
   outline: 2px solid var(--stitch-focus);
   outline-offset: 3px;
+}
+/* Headings and the main region receive focus by script on navigation (tabindex=-1) so screen readers announce
+   them; they are not controls and show no ring. */
+[tabindex='-1']:focus {
+  outline: none;
 }
 .btn:disabled {
   opacity: 0.55;
