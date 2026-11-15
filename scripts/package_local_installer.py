@@ -52,6 +52,7 @@ def main():
         ):
             extra['app/scripts/' + name + '.py'] = ROOT / 'scripts' / (name + '.py')
         extra['app/agent/agent.py'] = ROOT / 'agent/agent.py'
+        extra['app/agent/tray.py'] = ROOT / 'agent/tray.py'  # notification-area icon (optional pystray)
         for name in (
             'INSTALAR_CONTASUITE',
             'ABRIR_CONTASUITE',
