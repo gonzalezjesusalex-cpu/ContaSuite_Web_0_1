@@ -783,13 +783,26 @@ textarea:focus {
   padding: 7px 2px !important;
   outline-offset: 0;
 }
-.toolbar select {
+/* Bloque 6 (B2): toolbar groups — a label sits next to its control, controls keep the 13 px scale, and the
+   switches (role=switch) of the company header and calendar line up with them. */
+.toolbar > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
   font-size: var(--fs-xs);
-  max-width: 200px;
+  min-width: 0;
+}
+.toolbar select {
+  font-size: var(--fs-sm);
+  max-width: 220px;
 }
 .toolbar .btn {
-  font-size: var(--fs-xs);
-  padding: 6px 9px;
+  font-size: var(--fs-sm);
+  padding: 6px 10px;
+}
+.toolbar .switch {
+  border-left: 0;
 }
 .table-wrap {
   overflow-x: auto;
