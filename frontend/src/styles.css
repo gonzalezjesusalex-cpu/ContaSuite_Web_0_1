@@ -309,6 +309,11 @@ strong {
   flex: 1;
   color: var(--muted);
 }
+/* The search field draws no outline of its own; its container shows the focus ring (A4, P3). */
+.global-search:focus-within {
+  outline: 2px solid var(--stitch-focus);
+  outline-offset: 2px;
+}
 .global-search input {
   background: none !important;
   border: 0 !important;
@@ -746,11 +751,12 @@ textarea {
   min-width: 0;
   line-height: 18px;
 }
+/* The focus ring is the single :focus-visible rule of stitch-refinements.css (A4); a focused field
+   also marks its border. */
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid #2563eb25;
-  border-color: #2563eb;
+  border-color: var(--primary);
 }
 .search-field {
   display: flex;
@@ -2335,10 +2341,6 @@ dd {
 }
 .stitch-live-module .stitch-button:active:not(:disabled) {
   transform: scale(0.985);
-}
-.stitch-live-module .stitch-button:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
 }
 .stitch-live-module .stitch-button.primary {
   background: #2563eb;

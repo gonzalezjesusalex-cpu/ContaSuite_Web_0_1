@@ -43,13 +43,8 @@
     box-shadow var(--stitch-duration),
     border-color var(--stitch-duration);
 }
-.btn:focus-visible,
-.tabs button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-summary:focus-visible {
+/* Bloque 6 (A4): the one focus rule for every interactive control, with the theme's --stitch-focus. */
+:where(button, a, input, select, textarea, summary, [tabindex], [role='switch']):focus-visible {
   outline: 2px solid var(--stitch-focus);
   outline-offset: 3px;
 }
