@@ -2610,12 +2610,38 @@ dialog[data-closing]::backdrop {
     background: var(--hover);
   }
 }
+/* Bloque 6 (C7): with reduced motion, nothing moves or scales; fades and color changes that help
+   comprehension stay. */
+@keyframes stitch-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes stitch-fade-out {
+  to {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .stitch-live-module *,
+  .stitch-live-module .receipt-results,
+  .stitch-live-module .receipt-preview,
+  dialog[open] {
+    animation-name: stitch-fade;
+  }
+  dialog[data-closing] {
+    animation-name: stitch-fade-out;
+  }
   .toast,
-  .stitch-live-module dialog::backdrop {
-    animation: none !important;
-    transition: none !important;
+  .toast[data-leaving] {
+    transform: none;
+  }
+  @starting-style {
+    .toast {
+      transform: none;
+    }
+  }
+  .stitch-live-module .icon-button:active:not(:disabled) {
+    transform: none;
   }
 }
 

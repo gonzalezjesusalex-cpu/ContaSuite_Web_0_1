@@ -174,14 +174,8 @@
     white-space: nowrap;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .btn,
-  .tabs button,
-  .card {
-    animation: none !important;
-    transition: none !important;
-  }
-}
+/* Bloque 6 (C7): buttons, tabs and cards only change color here, which helps and stays; their press
+   scale is removed in styles.css. */
 
 [data-theme='dark'] {
   --stitch-focus: #b4c5ff;
