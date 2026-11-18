@@ -28,8 +28,12 @@ def request(url, token, path, data):
         return json.load(response)
 
 
-def safe_inventory(folder, allowed_roots, rfc=''):
-    """Use the same path/link checks and secret exclusions as CS-Storage; metadata only."""
+def safe_inventory(folder, allowed_roots, rfc='', with_index=False):
+    """Use the same path/link checks and secret exclusions as CS-Storage; metadata only.
+
+    With `with_index` the result also carries `_index` (one row per file, with its SHA-256) and `_complete` for the
+    persistent virtual index; the caller sends them in batches and removes them before delivering the result.
+    """
     import sys
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
@@ -60,8 +64,11 @@ def safe_inventory(folder, allowed_roots, rfc=''):
             break
         files.append(row)
         size += cost
-    summary, summary_warnings, summary_truncated, sections = classify_folder(folder, allowed_roots, rfc)
+    scan = scan_tree(folder, allowed_roots, rfc)
+    summary, summary_warnings, summary_truncated, sections = inventory_from_scan(scan)
+    extra = {'_index': index_rows(scan), '_complete': not scan.truncated} if with_index else {}
     return {
+        **extra,
         'files': files,
         'summary': summary,
         **sections,  # one entry per virtual group with its own structure: cfdi, impuestos…
@@ -113,7 +120,9 @@ def read_report(provider, entry, reconcile):
             rows = read_rows(handle.read(MAX_REPORT_BYTES))
     except (StorageError, ValueError):
         return False
-    reconcile.add_report('E' if match.group(1).lower() == 'emitid' else 'R', int(match.group(2)), int(match.group(3)), rows)
+    reconcile.add_report(
+        'E' if match.group(1).lower() == 'emitid' else 'R', int(match.group(2)), int(match.group(3)), rows
+    )
     return True
 
 
@@ -140,7 +149,7 @@ def scan_tree(folder, allowed_roots, rfc=''):
     from types import SimpleNamespace
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
-    from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
+    from app.folder_groups import CfdiIndex, Summary
     from app.storage.local import LocalFolderProvider
     from app.storage.providers import ScanIssue, StorageError
     from app.cert_groups import CertIndex
@@ -170,7 +179,7 @@ def scan_tree(folder, allowed_roots, rfc=''):
         'trabajadores': (workers.add,),
     }
     reconcile, ppd, certs = SatReconcile(), PpdIndex(), CertIndex(rfc)
-    warnings, truncated, heads, unreadable, entries = [], False, 0, 0, []
+    warnings, truncated, heads, unreadable, entries, mtimes = [], False, 0, 0, [], {}
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
             warnings.append('Incidencia de recorrido: ' + entry.code)
@@ -193,6 +202,7 @@ def scan_tree(folder, allowed_roots, rfc=''):
                 index.add_xml(entry.key, None)  # unreadable or too large: reviewed by a person
         group = summary.add(entry.key, entry.size, tipo)
         entries.append((entry.key, entry.size, group))
+        mtimes[entry.key] = entry.mtime_ns
         if group == 'cfdi_xml' and tipo == 'N':
             payroll.add_xml(entry.key)
         elif group == 'nomina' and lower.endswith('.pdf'):
@@ -207,6 +217,7 @@ def scan_tree(folder, allowed_roots, rfc=''):
     return SimpleNamespace(
         provider=provider,
         entries=entries,
+        mtimes=mtimes,
         summary=summary,
         warnings=warnings,
         truncated=truncated,
@@ -227,15 +238,21 @@ def scan_tree(folder, allowed_roots, rfc=''):
 
 def classify_folder(folder, allowed_roots, rfc=''):
     """Group every file by type and build the inventory of each document group (see `scan_tree`)."""
+    return inventory_from_scan(scan_tree(folder, allowed_roots, rfc))
+
+
+def inventory_from_scan(scan):
+    """(summary, warnings, truncated, sections) of a finished scan."""
     from app.folder_groups import GROUPS
 
-    scan = scan_tree(folder, allowed_roots, rfc)
     result = scan.summary.result()
     result['xml_headers_read'] = scan.heads
     warnings = list(scan.warnings)
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
-        warnings.append(f'{sensitive} archivos de credenciales o contraseñas: sólo se leyó la vigencia de los .cer públicos.')
+        warnings.append(
+            f'{sensitive} archivos de credenciales o contraseñas: sólo se leyó la vigencia de los .cer públicos.'
+        )
     if scan.unreadable:
         warnings.append(f'{scan.unreadable} reportes .xls del SAT no se pudieron leer.')
     sections = {
@@ -251,6 +268,78 @@ def classify_folder(folder, allowed_roots, rfc=''):
         'trabajadores': scan.workers.result(),
     }
     return result, warnings, scan.truncated, sections
+
+
+def virtual_maps(scan):
+    """Where each group's index places its files. Later placements win: payroll XML belong to Nómina, not CFDI."""
+    return [
+        scan.index.virtual(),
+        scan.taxes.virtual(),
+        scan.imss.virtual(),
+        scan.expediente.virtual(),
+        scan.finance.virtual(),
+        scan.workers.virtual(),
+        scan.payroll.virtual(),
+    ]
+
+
+def sha256_of(provider, key):
+    """SHA-256 of a file read through the provider; None when it cannot be read (too large, changed, no access)."""
+    import hashlib
+
+    from app.storage.providers import StorageError
+
+    try:
+        digest = hashlib.sha256()
+        with provider.open_read(key) as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b''):
+                digest.update(block)
+        return digest.hexdigest()
+    except StorageError:
+        return None
+
+
+def index_rows(scan):
+    """One row per file for the persistent virtual index. Credentials, password notes and system files are not in
+    it (they are only counted); every other file is read once to get its SHA-256, which lets the server follow moves."""
+    from app.export_plan import SECTIONS, build_plan
+
+    groups = {key: group for key, _, group in scan.entries}
+    plan = build_plan(scan.entries, virtual_maps(scan), list(SECTIONS), 0)
+    return [
+        {
+            'p': item.key,
+            's': item.size,
+            'm': scan.mtimes.get(item.key),
+            'h': sha256_of(scan.provider, item.key),
+            'g': groups[item.key],
+            'sec': item.section,
+            'v': '/'.join((*item.parts, item.name)),
+            'st': 'revisar' if 'Por revisar' in item.parts else 'ok',
+        }
+        for item in plan['items']
+    ]
+
+
+INDEX_BATCH = 400
+
+
+def send_index(send, job_id, agent_id, result):
+    """Send the scan's files to the server in batches and remove them from the result. The last batch closes the scan;
+    a walk that hit its limit says so, so the server does not treat the rest as missing."""
+    rows = result.pop('_index', None)
+    complete = result.pop('_complete', True)
+    if rows is None:
+        return
+    batches = [rows[i : i + INDEX_BATCH] for i in range(0, len(rows), INDEX_BATCH)] or [[]]
+    try:
+        for n, batch in enumerate(batches):
+            send(
+                '/agent/jobs/' + job_id + '/index',
+                {'agent_id': agent_id, 'seq': n, 'rows': batch, 'last': n == len(batches) - 1, 'complete': complete},
+            )
+    except Exception:  # noqa: BLE001 - the analysis is delivered even if the index could not be stored
+        logging.warning('No se pudo guardar el índice virtual; el análisis se entrega igual.')
 
 
 def export_virtual(payload, allowed_roots):
@@ -285,17 +374,7 @@ def export_virtual(payload, allowed_roots):
     if target.exists() and (not target.is_dir() or any(target.iterdir())):
         raise StorageError('destino_no_vacio')
     scan = scan_tree(folder, allowed_roots, payload.get('rfc', ''))
-    # Later placements win: payroll XML belong to Nómina even though they are also CFDI.
-    maps = [
-        scan.index.virtual(),
-        scan.taxes.virtual(),
-        scan.imss.virtual(),
-        scan.expediente.virtual(),
-        scan.finance.virtual(),
-        scan.workers.virtual(),
-        scan.payroll.virtual(),
-    ]
-    plan = build_plan(scan.entries, maps, payload.get('include'), len(destination))
+    plan = build_plan(scan.entries, virtual_maps(scan), payload.get('include'), len(destination))
     if not payload.get('apply'):
         result = preview(plan, destination, shutil.disk_usage(anchor).free)
         result['truncated'] = scan.truncated
@@ -310,7 +389,7 @@ def run_job(job, roots):
     try:
         payload = job['payload']
         if job['kind'] == 'scan_folder':
-            return 'completed', safe_inventory(payload['folder'], roots, payload.get('rfc', ''))
+            return 'completed', safe_inventory(payload['folder'], roots, payload.get('rfc', ''), with_index=True)
         if job['kind'] == 'export_virtual':
             return 'completed', export_virtual(payload, roots)
         raise ValueError('Operación no admitida')
@@ -352,6 +431,7 @@ def run(config, stop_event=None, request_fn=request):
             if job:
                 logging.info('Procesando trabajo %s', job['id'])
                 status, result = run_job(job, roots)
+                send_index(lambda path, data: request_fn(url, token, path, data), job['id'], agent_id, result)
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})
                 continue
         except (URLError, TimeoutError, OSError, ValueError):
@@ -381,7 +461,10 @@ def reason(exc):
     from app.export_plan import REASONS as EXPORT_REASONS
 
     code = getattr(exc, 'code', None) or (exc.args[0] if exc.args and isinstance(exc.args[0], str) else '')
-    return {'error': {**REASONS, **EXPORT_REASONS}.get(code, 'No se pudo completar la operación.'), 'error_code': code or 'unknown'}
+    return {
+        'error': {**REASONS, **EXPORT_REASONS}.get(code, 'No se pudo completar la operación.'),
+        'error_code': code or 'unknown',
+    }
 
 
 def default_agent_id():
@@ -492,6 +575,12 @@ class LinkedAgent:
                 if job:
                     logging.info('Procesando trabajo %s', job['id'])
                     status, result = self.run_alive(job, token)
+                    send_index(
+                        lambda path, data, token=token: self.post(self.url, path, data, token),
+                        job['id'],
+                        self.agent_id,
+                        result,
+                    )
                     pending = (job['id'], {'agent_id': self.agent_id, 'status': status, 'result': result})
                     continue
             except HTTPError as error:

@@ -38,7 +38,7 @@ from .agent_links import agent_caller
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
-from .schemas import CompanyIn, TaskIn, ObligationIn, Heartbeat, JobIn, JobResult
+from .schemas import CompanyIn, TaskIn, ObligationIn, Heartbeat, IndexBatch, JobIn, JobResult
 
 
 from .security import auth, admin_auth, Principal
@@ -964,6 +964,34 @@ def audit_text(kind, status):
     return 'Análisis local ' + ('completado' if done else 'fallido')
 
 
+@app.post('/api/agent/jobs/{id}/index')
+def index_batch(id: str, data: IndexBatch, db: Session = Depends(session), caller=Depends(agent_caller)):
+    """A slice of a folder scan for the persistent virtual index. Sent while the job is still running."""
+    from .virtual_index import ingest_batch
+
+    job = get(db, Job, id)
+    if job.agent_id != data.agent_id or job.status != 'running' or job.kind != 'scan_folder':
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    if caller is not None and (data.agent_id != caller.link.agent_id or job.requested_by != caller.link.user_id):
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    scan = ingest_batch(db, job, data)
+    if data.last:
+        record(
+            db,
+            'Índice virtual actualizado'
+            + (
+                f': {scan.added} nuevos, {scan.changed} cambiados, {scan.moved} movidos, {scan.restored} restaurados, '
+                f'{scan.missing} ya no están'
+                if scan.complete
+                else ' (recorrido incompleto: no se comparó lo que falta)'
+            ),
+            job.company_id,
+            job.requested_by or 'agent:' + job.agent_id,
+        )
+    save(db)
+    return {'ok': True, 'scan_id': scan.id, 'total': scan.total}
+
+
 @app.post('/api/agent/jobs/{id}/result')
 def result(id: str, data: JobResult, db: Session = Depends(session), caller=Depends(agent_caller)):
     job = get(db, Job, id)
@@ -1091,6 +1119,11 @@ app.include_router(responsible_router)
 from .agent_links import router as agent_links_router
 
 app.include_router(agent_links_router)
+
+
+from .virtual_index import router as virtual_index_router
+
+app.include_router(virtual_index_router)
 
 
 from .fiscal_control import router as fiscal_control_router

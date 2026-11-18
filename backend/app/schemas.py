@@ -177,6 +177,29 @@ class JobIn(CleanModel):
         return self
 
 
+class IndexRow(CleanModel):
+    """One file of the scan for the persistent virtual index. Secrets are never sent (the agent only counts them)."""
+
+    p: str = Field(min_length=1, max_length=1000)  # original relative path
+    s: int = Field(ge=0)  # size in bytes
+    m: int | None = None  # modification time (ns), only to explain a change
+    h: str | None = Field(default=None, pattern=r'^[0-9a-f]{64}$')  # SHA-256 when the file could be read
+    g: str = Field(min_length=1, max_length=30)  # classification group
+    sec: str = Field(min_length=1, max_length=30)  # virtual section
+    v: str = Field(min_length=1, max_length=1200)  # virtual path
+    st: Literal['ok', 'revisar'] = 'ok'
+
+
+class IndexBatch(CleanModel):
+    """A slice of a scan's files. `last` closes the scan; `complete` is false if the walk hit its limit."""
+
+    agent_id: str
+    seq: int = Field(ge=0)
+    rows: list[IndexRow] = Field(max_length=400)
+    last: bool = False
+    complete: bool = True
+
+
 class JobResult(CleanModel):
     agent_id: str
     status: Literal['completed', 'failed']

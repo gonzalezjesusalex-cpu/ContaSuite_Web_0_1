@@ -195,6 +195,56 @@ class AgentRoot(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class VirtualScan(Base):
+    """One folder scan recorded in the persistent virtual index (cs_0014). Counts compare it with the previous one."""
+
+    __tablename__ = 'virtual_scans'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    company_id: Mapped[str] = mapped_column(ForeignKey('companies.id', ondelete='CASCADE'), index=True)
+    job_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    requested_by: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # False when the walk hit its limit: such a scan never marks files as missing or moved.
+    complete: Mapped[bool] = mapped_column(Boolean, default=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    added: Mapped[int] = mapped_column(Integer, default=0)
+    changed: Mapped[int] = mapped_column(Integer, default=0)
+    moved: Mapped[int] = mapped_column(Integer, default=0)
+    restored: Mapped[int] = mapped_column(Integer, default=0)
+    missing: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class VirtualFile(Base):
+    """A file of a company's folder with its place in the virtual order. The originals are never changed.
+
+    `path` is the original relative path; `virtual_path` is where the export would put it. Credentials, password
+    notes and system files are never stored here (they are only counted by the scan).
+    """
+
+    __tablename__ = 'virtual_files'
+    __table_args__ = (UniqueConstraint('company_id', 'path', name='uq_virtual_files_company_path'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    company_id: Mapped[str] = mapped_column(ForeignKey('companies.id', ondelete='CASCADE'), index=True)
+    path: Mapped[str] = mapped_column(String(1000))
+    name: Mapped[str] = mapped_column(String(255))
+    size: Mapped[int] = mapped_column(BigInteger, default=0)
+    mtime_ns: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    group_key: Mapped[str] = mapped_column(String(30))
+    section: Mapped[str] = mapped_column(String(30), index=True)
+    virtual_path: Mapped[str] = mapped_column(String(1200))
+    state: Mapped[str] = mapped_column(String(12), default='ok')
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    scan_id: Mapped[str] = mapped_column(String(36), index=True)
+    missing_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # What the last scan that changed this row found: added, changed, moved or restored (and which scan).
+    last_change: Mapped[str] = mapped_column(String(10), default='')
+    last_change_scan: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    moved_from: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
 class Setting(Base):
     __tablename__ = "settings"
     key: Mapped[str] = mapped_column(String(80), primary_key=True)
