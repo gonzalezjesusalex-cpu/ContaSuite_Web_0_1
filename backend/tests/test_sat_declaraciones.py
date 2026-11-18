@@ -212,3 +212,42 @@ def test_progress_is_shown_and_renews_the_claim_while_the_person_signs_in(office
     extra = {'agent_id': 'pc-ana', 'fase': 'abriendo', 'url': 'https://x'}
     assert c.post(url, headers=bearer(token), json=extra).status_code == 422
     assert c.post(url, headers=bearer(token), json={'agent_id': 'otro', 'fase': 'abriendo'}).status_code == 409
+
+
+def test_analysis_is_created_once_from_the_received_pdfs(office):  # noqa: F811
+    c, companies, _ = office
+    login(c, 'ana')
+    _, token = pair(c)
+    heartbeat(c, token)
+    start(c, companies['a'])
+    claimed = c.post('/api/agent/pc-ana/claim', headers=bearer(token)).json()
+    c.put(
+        f'/api/agent/jobs/{claimed["id"]}/sat/{sha(PDF)}',
+        params={'agent_id': 'pc-ana'},
+        headers=bearer(token),
+        content=PDF,
+    )
+    ask = {'job_id': claimed['id'], 'short_name': 'ACME'}
+    # Not yet finished: nothing to analyze.
+    assert c.post('/api/declara/runs/from-sat', json=ask).status_code == 404
+    archivos = [{'nombre': '../DECLARACION 1', 'sha256': sha(PDF)}, {'nombre': 'falta.pdf', 'sha256': sha(b'x')}]
+    done = c.post(
+        f'/api/agent/jobs/{claimed["id"]}/result',
+        headers=bearer(token),
+        json={'agent_id': 'pc-ana', 'status': 'completed', 'result': {'archivos': archivos, 'entregados': 1}},
+    )
+    assert done.status_code == 200
+
+    created = c.post('/api/declara/runs/from-sat', json=ask)
+    assert created.status_code == 202, created.text
+    run = created.json()
+    assert run['company_id'] == companies['a'] and run['short_name'] == 'ACME' and run['name'] == 'SAT · 1 PDF'
+    # The file keeps a safe name inside the analysis and the reception area is emptied.
+    assert (DATA / 'declara' / run['id'] / 'input' / 'DECLARACION 1.pdf').read_bytes() == PDF
+    assert not (DATA / 'declara_sat' / claimed['id']).exists()
+    # The same download never creates a second analysis.
+    again = c.post('/api/declara/runs/from-sat', json=ask)
+    assert again.status_code == 202 and again.json()['id'] == run['id']
+    shown = next(j for j in c.get('/api/state').json()['jobs'] if j['id'] == claimed['id'])
+    assert shown['result']['analisis_id'] == run['id']
+    assert c.post('/api/declara/runs/from-sat', json={'job_id': 'no-existe', 'short_name': 'X'}).status_code == 404

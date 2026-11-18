@@ -439,7 +439,17 @@ export default function Declara({
                 ))}
               </select>
             </Field>
-            <SatAccess state={state} company={company} notify={notify} refresh={refresh} />
+            <SatAccess
+              state={state}
+              company={company}
+              shortName={shortName}
+              onRun={(runId) => {
+                setReload((n) => n + 1);
+                openRun(runId);
+              }}
+              notify={notify}
+              refresh={refresh}
+            />
           </div>
         </div>
       </section>

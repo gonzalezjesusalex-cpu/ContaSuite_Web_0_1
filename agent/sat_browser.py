@@ -64,6 +64,12 @@ def row_entry(cells, columns):
     return operation, pick('tipo'), pick('periodo')
 
 
+def row_year(cells, columns):
+    """Ejercicio de una fila (texto), o '' si la tabla no tiene esa columna."""
+    index = columns.get('ejercicio')
+    return re.sub(r'\s+', ' ', cells[index]).strip() if index is not None and index < len(cells) else ''
+
+
 def is_pdf_file(path):
     try:
         with Path(path).open('rb') as handle:
@@ -104,7 +110,8 @@ def find_pdf_control(row):
 def download_all(options, staging, on_progress=None, should_stop=None):
     """Abre el navegador, espera a que el usuario llegue a la consulta y descarga cada PDF en `staging`.
 
-    `options`: base_url (obligatoria), profile_dir, browsers_dir, headless (sólo pruebas), login_timeout (s).
+    `options`: base_url (obligatoria), profile_dir, browsers_dir, headless (sólo pruebas), login_timeout (s),
+    guided (entrada guiada al portal), ejercicio (sólo las filas de ese año).
     Devuelve {'detectadas', 'guardadas', 'fallidas': [{'fila', 'motivo'}], 'archivos': [...]}.
     Nunca hace clics a ciegas: si no identifica ningún control PDF, termina con `sat_sin_controles`.
     """
@@ -128,6 +135,7 @@ def download_all(options, staging, on_progress=None, should_stop=None):
     profile = Path(options.get('profile_dir') or (staging.parent / 'sat-profile'))
     profile.mkdir(parents=True, exist_ok=True)
     login_timeout = float(options.get('login_timeout', 600))
+    wanted_year = str(options['ejercicio']) if options.get('ejercicio') else ''
     files, errors = [], []
     with sync_playwright() as p, tempfile.TemporaryDirectory(prefix='contasuite_sat_') as temp:
         notify({'fase': 'abriendo'})
@@ -150,6 +158,8 @@ def download_all(options, staging, on_progress=None, should_stop=None):
         try:
             page = context.pages[0] if context.pages else context.new_page()
             page.goto(base_url, wait_until='domcontentloaded', timeout=90_000)
+            if options.get('guided'):
+                guided_entry(page)
             notify({'fase': 'esperando_sesion'})
             consulta = _wait_consulta(context, login_timeout, stop, notify)
             if consulta is None:
@@ -166,7 +176,12 @@ def download_all(options, staging, on_progress=None, should_stop=None):
                 cells = row.locator('td')
                 if cells.count() < 2:
                     continue
-                parsed = row_entry([cells.nth(j).inner_text(timeout=800) for j in range(cells.count())], columns)
+                texts = [cells.nth(j).inner_text(timeout=800) for j in range(cells.count())]
+                parsed = row_entry(texts, columns)
+                year = row_year(texts, columns)
+                # With a fiscal year requested, only its rows; a table without that column is not filtered.
+                if wanted_year and year and year != wanted_year:
+                    continue
                 if parsed and find_pdf_control(row) is not None:
                     entries.append((i, *parsed))
             if not entries:
@@ -183,6 +198,43 @@ def download_all(options, staging, on_progress=None, should_stop=None):
             return {'detectadas': len(entries), 'guardadas': len(files), 'fallidas': errors, 'archivos': files}
         finally:
             context.close()
+
+
+def guided_entry(page):
+    """Recorrido del original hasta la consulta: pestaña «Declara» y enlace «Pagos provisionales del ISR».
+
+    Devuelve si llegó a pulsar el enlace. Nunca falla ni fuerza URLs: la persona puede seguir a mano.
+    """
+    tab = (
+        lambda: page.get_by_text(sel.GUIDE_TAB_TEXT, exact=True).first,
+        lambda: page.locator(
+            sel.GUIDE_TAB_CONTROLS, has_text=re.compile(rf'^\s*{sel.GUIDE_TAB_TEXT}\s*$', re.IGNORECASE)
+        ).first,
+    )
+    for find in tab:
+        try:
+            target = find()
+            target.wait_for(state='visible', timeout=sel.GUIDE_WAIT_MS)
+            target.click(timeout=sel.GUIDE_WAIT_MS)
+            page.wait_for_timeout(700)
+            break
+        except Exception:  # noqa: BLE001 - the next way of finding the tab, or the person, continues
+            continue
+    pattern = re.compile(sel.GUIDE_LINK_PATTERN, re.IGNORECASE)
+    links = (
+        lambda: page.get_by_role('link', name=pattern).first,
+        lambda: page.locator('a', has_text=pattern).first,
+    )
+    for find in links:
+        try:
+            link = find()
+            link.wait_for(state='visible', timeout=sel.GUIDE_WAIT_MS)
+            link.click(timeout=sel.GUIDE_WAIT_MS)
+            page.wait_for_timeout(1200)
+            return True
+        except Exception:  # noqa: BLE001
+            continue
+    return False
 
 
 def _wait_consulta(context, timeout, stop, notify):

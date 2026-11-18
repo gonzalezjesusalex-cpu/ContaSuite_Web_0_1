@@ -483,6 +483,8 @@ def sat_download(payload, options, notify=None):
     import sat_browser
 
     sat = dict(options.get('sat') or {})
+    if payload.get('ejercicio'):
+        sat['ejercicio'] = payload['ejercicio']
     base = Path(os.getenv('LOCALAPPDATA') or Path.home()) / 'ContaSuite' / 'agent'
     sat.setdefault('profile_dir', base / 'sat-profile')
     sat.setdefault('browsers_dir', base / 'playwright-browsers')

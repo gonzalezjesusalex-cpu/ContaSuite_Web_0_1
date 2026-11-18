@@ -257,6 +257,88 @@ async def start(
             await file.close()
 
 
+class FromSatIn(BaseModel):
+    job_id: str = PydanticField(min_length=1, max_length=36)
+    short_name: str = PydanticField(min_length=1, max_length=80)
+
+
+@router.post('/runs/from-sat', status_code=202)
+def start_from_sat(
+    data: FromSatIn,
+    background: BackgroundTasks,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    """Analysis of the PDFs a finished SAT download delivered. Same pipeline as an upload; created once per download."""
+    from .models import Job
+    from .sat_declaraciones import KIND, staging
+
+    job = db.get(Job, data.job_id)
+    if (
+        not job
+        or job.kind != KIND
+        or job.status != 'completed'
+        or not (principal.admin or job.requested_by == principal.subject)
+    ):
+        raise HTTPException(404, 'Descarga no encontrada')
+    DECLARA.require_company(principal, job.company_id)
+    existing = (job.result or {}).get('analisis_id')
+    if existing and (run := db.get(DeclaraRun, existing)):
+        return run
+    company = db.get(Company, job.company_id)
+    short_name = motor.sanitize_company_name(data.short_name)
+    if not company or not short_name:
+        raise HTTPException(422, 'Escribe un nombre corto de empresa de hasta 80 caracteres.')
+    received = staging(job.id)
+    ident = str(uuid4())
+    root = folder(ident)
+    (root / 'input').mkdir(parents=True)
+    count = 0
+    try:
+        for item in (job.result or {}).get('archivos', []):
+            source = received / (str(item.get('sha256', '')) + '.pdf')
+            if not source.is_file():
+                continue
+            try:
+                name = safe_path(Path(str(item.get('nombre') or '').replace('\\', '/')).name).name
+            except ValueError:
+                name = 'declaracion.pdf'  # the agent's name is never trusted: any odd one gets a plain name
+            if Path(name).suffix.lower() != '.pdf':
+                name += '.pdf'
+            target = root / 'input' / name
+            n = 2
+            while target.exists():
+                target = root / 'input' / f'{Path(name).stem} ({n}).pdf'
+                n += 1
+            shutil.copyfile(source, target)
+            count += 1
+        if not count:
+            raise ValueError('La descarga no entregó PDF para analizar.')
+        run = DeclaraRun(
+            id=ident,
+            created_by=principal.subject,
+            company_id=company.id,
+            expected_rfc=company.rfc,
+            short_name=short_name,
+            name=f'SAT · {count} PDF',
+            message='Preparando PDF.',
+        )
+        db.add(run)
+        job.result = {**(job.result or {}), 'analisis_id': ident}
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        shutil.rmtree(root, ignore_errors=True)
+        raise HTTPException(422, str(exc)) from exc
+    except Exception:
+        db.rollback()
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+    shutil.rmtree(received, ignore_errors=True)  # the analysis keeps its own copy
+    background.add_task(analyze, ident)
+    return run
+
+
 @router.get('/runs')
 def runs(company_id: str = '', db: Session = Depends(session), principal: Principal = Depends(auth)):
     query = select(DeclaraRun).where(DECLARA.scope(principal, DeclaraRun))

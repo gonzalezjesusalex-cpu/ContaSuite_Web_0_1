@@ -20,7 +20,13 @@ PAGE = """<html><body><h1>Consulta de declaraciones (simulada)</h1>
 <tr><td><a href="/pdf/2"><img src="/i.png" alt="PDF"></a></td><td>2026000022</td><td>Normal</td><td>2026</td><td>Febrero</td></tr>
 <tr><td><a href="/pdf/3"><img src="/i.png" alt="PDF"></a></td><td>2026000033</td><td>Complementaria</td><td>2026</td><td>Enero</td></tr>
 <tr><td>sin icono</td><td>2026000044</td><td>Normal</td><td>2026</td><td>Marzo</td></tr>
+<tr><td><a href="/pdf/5"><img src="/i.png" alt="PDF"></a></td><td>2025000055</td><td>Normal</td><td>2025</td><td>Diciembre</td></tr>
 </tbody></table></body></html>"""
+
+
+HOME = """<html><body><h1>Portal (simulado)</h1>
+<div role="tab" id="tab" onclick="document.getElementById('panel').style.display='block'">Declara</div>
+<div id="panel" style="display:none"><a href="/consulta">Pagos provisionales del ISR</a></div></body></html>"""
 
 
 class FakeSat(BaseHTTPRequestHandler):
@@ -28,7 +34,9 @@ class FakeSat(BaseHTTPRequestHandler):
         return
 
     def do_GET(self):  # noqa: N802
-        if self.path == '/consulta':
+        if self.path == '/':
+            body, kind, extra = HOME.encode(), 'text/html; charset=utf-8', {}
+        elif self.path == '/consulta':
             body, kind, extra = PAGE.encode(), 'text/html; charset=utf-8', {}
         elif self.path == '/pdf/2':  # a session-expired page served as if it were the PDF
             body, kind = b'<html>sesion expirada</html>', 'application/pdf'
@@ -51,14 +59,14 @@ class FakeSat(BaseHTTPRequestHandler):
 def fake_sat():
     server = ThreadingHTTPServer(('127.0.0.1', 0), FakeSat)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    yield f'http://127.0.0.1:{server.server_address[1]}/consulta'
+    yield f'http://127.0.0.1:{server.server_address[1]}'
     server.shutdown()
 
 
 def test_columns_are_found_by_header_with_the_original_index_as_fallback():
     heads = ['PDF', 'No. de operación', 'Tipo de declaración', 'Ejercicio', 'Periodo']
     columns = sb.column_map(heads)
-    assert columns == {'operacion': 1, 'tipo': 2, 'periodo': 4}
+    assert columns == {'operacion': 1, 'tipo': 2, 'periodo': 4, 'ejercicio': 3}
     assert sb.column_map([])['periodo'] == 6  # no headers: the original layout
     assert sb.row_entry(['', '2026000011', 'Normal', '2026', 'Enero'], columns) == ('2026000011', 'Normal', 'Enero')
     assert sb.row_entry(['solo una celda'], columns) is None
@@ -86,12 +94,12 @@ def test_without_a_configured_address_nothing_is_opened(tmp_path):
     assert caught.value.code == 'sat_no_habilitado'
 
 
-def test_download_from_the_simulated_portal(fake_sat, tmp_path):
+def run_download(base, tmp_path, **options):
     pytest.importorskip('playwright')
     progress = []
     try:
         result = sb.download_all(
-            {'base_url': fake_sat, 'headless': True, 'profile_dir': tmp_path / 'profile', 'login_timeout': 20},
+            {'base_url': base, 'headless': True, 'profile_dir': tmp_path / 'profile', 'login_timeout': 20, **options},
             tmp_path / 'staging',
             on_progress=progress.append,
         )
@@ -99,12 +107,33 @@ def test_download_from_the_simulated_portal(fake_sat, tmp_path):
         if exc.code in ('sat_navegador_no_disponible', 'sat_sin_playwright'):
             pytest.skip('Firefox de Playwright no está instalado en este equipo.')
         raise
-    # Three rows have a PDF control; the fourth has none and is never clicked.
-    assert result['detectadas'] == 3 and result['guardadas'] == 2
+    return result, progress
+
+
+def test_download_from_the_simulated_portal(fake_sat, tmp_path):
+    result, progress = run_download(fake_sat + '/consulta', tmp_path)
+    # Four rows have a PDF control; the fifth has none and is never clicked. The second is not a real PDF.
+    assert result['detectadas'] == 4 and result['guardadas'] == 3
     assert result['fallidas'] == [{'fila': 2, 'motivo': 'no_es_pdf'}]
     names = sorted(f['nombre'] for f in result['archivos'])
-    assert names == ['declaracion1.pdf', 'declaracion3.pdf']
-    assert {f['periodo'] for f in result['archivos']} == {'Enero'}
+    assert names == ['declaracion1.pdf', 'declaracion3.pdf', 'declaracion5.pdf']
+    assert {f['periodo'] for f in result['archivos']} == {'Enero', 'Diciembre'}
     assert {f['tipo'] for f in result['archivos']} == {'Normal', 'Complementaria'}
     assert all(sb.is_pdf_file(tmp_path / 'staging' / n) for n in names)
-    assert [e['fase'] for e in progress[:2]] == ['abriendo', 'esperando_sesion'] and progress[-1]['hechas'] == 3
+    assert [e['fase'] for e in progress[:2]] == ['abriendo', 'esperando_sesion'] and progress[-1]['hechas'] == 4
+
+
+def test_only_the_requested_fiscal_year_is_downloaded(fake_sat, tmp_path):
+    result, _ = run_download(fake_sat + '/consulta', tmp_path, ejercicio=2025)
+    assert result['detectadas'] == 1 and result['guardadas'] == 1 and result['fallidas'] == []
+    assert [f['nombre'] for f in result['archivos']] == ['declaracion5.pdf']
+
+
+def test_a_table_without_a_year_column_is_not_filtered():
+    assert sb.row_year(['a', 'b'], {'tipo': 1}) == ''
+    assert sb.row_year(['a', ' 2026 '], {'ejercicio': 1}) == '2026'
+
+
+def test_guided_entry_follows_the_original_route_to_the_query(fake_sat, tmp_path):
+    result, _ = run_download(fake_sat + '/', tmp_path, guided=True, ejercicio=2026)
+    assert result['detectadas'] == 3 and result['guardadas'] == 2

@@ -12,6 +12,7 @@ COLUMNS = {
     'operacion': ('NO. DE OPERACION',),
     'tipo': ('TIPO DE DECLARACION',),
     'periodo': ('PERIODO',),
+    'ejercicio': ('EJERCICIO',),
 }
 FALLBACK_INDEX = {'tipo': 2, 'periodo': 6}
 
@@ -33,3 +34,10 @@ FIRST_CELL_CONTROLS = "a, button, input[type='image'], [role='button']"
 # Ritmo: una descarga a la vez, con espera máxima por fila y pausa entre filas.
 DOWNLOAD_TIMEOUT_MS = 25_000
 ROW_PAUSE_MS = 350
+
+# Entrada guiada (como el original): pestaña «Declara» y luego «Pagos provisionales del ISR». Nunca se fuerza la URL
+# del inicio de sesión: si algo no aparece, la persona sigue a mano.
+GUIDE_TAB_TEXT = 'Declara'
+GUIDE_TAB_CONTROLS = "button, a, [role='button'], [role='tab'], div"
+GUIDE_LINK_PATTERN = r'Pagos\s+provisionales\s+del\s+ISR'
+GUIDE_WAIT_MS = 15_000

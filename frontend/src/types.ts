@@ -265,6 +265,7 @@ export interface Job {
       guardadas?: number;
     };
     detectadas?: number;
+    analisis_id?: string;
     guardadas?: number;
     entregados?: number;
     no_entregados?: number;
