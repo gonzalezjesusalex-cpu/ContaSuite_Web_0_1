@@ -3822,3 +3822,94 @@ textarea:user-invalid {
     animation: none;
   }
 }
+
+/* Inventario CFDI del Centro documental */
+.cfdi-grid {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 10px;
+}
+@media (max-width: 760px) {
+  .cfdi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cfdi-tree {
+  background: var(--hover);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: var(--fs-xs);
+  max-height: 520px;
+  overflow: auto;
+}
+.cfdi-tree button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cfdi-tree button.sub {
+  padding-left: 22px;
+  color: var(--muted);
+}
+.cfdi-tree button:hover,
+.cfdi-tree button.on {
+  background: var(--blue-soft);
+  color: var(--primary);
+}
+.cfdi-tree button.warn {
+  color: var(--warn-strong);
+}
+.cfdi-tree summary {
+  cursor: pointer;
+  padding: 5px 8px;
+  font-weight: 600;
+}
+.cfdi-files {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+.cfdi-files li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding: 6px 0;
+  font-size: var(--fs-xs);
+}
+.cfdi-name {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cfdi-name small {
+  display: block;
+  color: var(--muted);
+}
+.cfdi-files .chip {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.cfdi-files .chip.warn,
+.cfdi-why {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-strong);
+}
+.cfdi-why {
+  flex-basis: 100%;
+  border-radius: 6px;
+  padding: 3px 8px;
+}

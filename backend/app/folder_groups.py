@@ -52,7 +52,7 @@ def classify(relative_path, size=0, tipo=None):
 
     if re.search(r'CONTRASE|PASSWORD|CONTRA_\d', name) or (in_credentials and ext in {'.txt', '.doc', '.docx'}):
         return 'contrasenas', None
-    if ext in CREDENTIAL_EXTENSIONS or (ext in {'.zip', '.rar', '.7z'} and (in_credentials or re.search(r'FIEL|E-?FIRMA|CSD|SELLO', name))):
+    if ext in CREDENTIAL_EXTENSIONS or (ext in {'.zip', '.rar', '.7z'} and (in_credentials or re.search(r'FIEL|E-?FIRMA|\bCSD\b|SELLO', name))):
         return 'credenciales', None
     if name.lower() in NOISE_NAMES or ext in NOISE_EXTENSIONS or name.startswith('~$'):
         return 'ruido', None
@@ -97,6 +97,101 @@ def cfdi_tipo(head):
         return ''
     tipo = re.search(r'TipoDeComprobante\s*=\s*"(\w)"', match.group(0), re.I)
     return tipo.group(1).upper() if tipo else None
+
+
+MONTHS = ('ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE')
+MONTH_NAME = re.compile(r'(' + '|'.join(MONTHS) + r')')
+KIND_FOLDER = re.compile(r'^(EMITID|RECIBID)[OA]S?$')
+REASONS = {
+    'mes_distinto': 'El mes de la carpeta no coincide con la fecha del XML.',
+    'tipo_distinto': 'La carpeta (emitidos/recibidos) no coincide con los RFC del XML.',
+    'rfc_ajeno': 'Ni el emisor ni el receptor son el RFC de la empresa.',
+    'rfc_ambiguo': 'El emisor y el receptor son el RFC de la empresa.',
+    'sin_ubicacion': 'No se pudo determinar el mes o si es emitido/recibido.',
+    'xml_ilegible': 'No se pudo leer el encabezado del XML.',
+}
+
+
+def month_of_folder(name):
+    """(year or None, month) from folder names such as '07.- JULIO', '09- SEPTIEMBRE', '1.- ENERO', '2026-01'."""
+    text = fold(name).strip()
+    iso = re.fullmatch(r'(20\d{2})[-_ ](0[1-9]|1[0-2])', text)
+    if iso:
+        return int(iso.group(1)), int(iso.group(2))
+    named = MONTH_NAME.search(text)
+    if not named:
+        return None, None
+    month = MONTHS.index(named.group(1)) + 1
+    number = re.match(r'\s*(\d{1,2})\s*[.\-)]', text)
+    if number and int(number.group(1)) != month:
+        return None, None  # the number and the name disagree: not trusted
+    return None, month
+
+
+def folder_context(relative_path):
+    """Year, month and kind ('E'/'R') suggested by the folders of a path, nearest folder first; None when absent."""
+    year = month = kind = None
+    for part in reversed(PurePosixPath(relative_path.replace('\\', '/')).parts[:-1]):
+        folded = fold(part).strip()
+        if kind is None and KIND_FOLDER.match(folded):
+            kind = 'E' if folded.startswith('EMITID') else 'R'
+        if year is None:
+            found = re.search(r'EJERCICIO\s*(20\d{2})', folded)
+            year = int(found.group(1)) if found else None
+        if month is None:
+            y, m = month_of_folder(part)
+            month = m
+            year = year or y
+    return year, month, kind
+
+
+def cfdi_info(head):
+    """Fecha (YYYY-MM), tipo, emisor and receptor RFC from the first bytes of a CFDI; None when it is not one."""
+    text = head.decode('utf-8', errors='ignore') if isinstance(head, (bytes, bytearray)) else str(head)
+    root = SAT_ENTITY.search(text)
+    if not root or 'sat.gob.mx/cfd' not in text:
+        return None
+    attrs = root.group(0)
+    date = re.search(r'\bFecha\s*=\s*"(\d{4})-(\d{2})-\d{2}', attrs)
+    tipo = re.search(r'TipoDeComprobante\s*=\s*"(\w)"', attrs, re.I)
+    side = lambda tag: (  # noqa: E731
+        lambda m: m.group(1).upper() if m else ''
+    )(re.search(r'<(?:\w+:)?' + tag + r'\b[^>]*?\bRfc\s*=\s*"([^"]+)"', text, re.S))
+    return {
+        'month': (int(date.group(1)), int(date.group(2))) if date else None,
+        'tipo': tipo.group(1).upper() if tipo else '',
+        'emisor': side('Emisor'),
+        'receptor': side('Receptor'),
+    }
+
+
+def place_cfdi(relative_path, info, rfc):
+    """Virtual place of one CFDI XML: evidence of the XML first, the folders as a cross-check.
+
+    Returns {'y', 'm', 'k', 's' (ok|revisar), 'why', 'src'}. Nothing here changes a file.
+    """
+    year, month, kind = folder_context(relative_path)
+    own = ''.join((rfc or '').split()).upper()
+    if info is None:
+        return {'y': year, 'm': month, 'k': kind, 's': 'revisar', 'why': 'xml_ilegible', 'src': 'carpeta'}
+    xml_month = info['month']
+    role = None
+    if own:
+        issuer, receiver = info['emisor'] == own, info['receptor'] == own
+        role = 'E' if issuer and not receiver else 'R' if receiver and not issuer else None
+        why = 'rfc_ambiguo' if issuer and receiver else 'rfc_ajeno' if not issuer and not receiver else ''
+    else:
+        why = ''
+    y, m = (xml_month if xml_month else (year, month))
+    k = role or kind
+    if not why:
+        if xml_month and month and xml_month[1] != month or (xml_month and year and xml_month[0] != year):
+            why = 'mes_distinto'
+        elif role and kind and role != kind:
+            why = 'tipo_distinto'
+        elif not (m and k):
+            why = 'sin_ubicacion'
+    return {'y': y, 'm': m, 'k': k, 's': 'revisar' if why else 'ok', 'why': why, 'src': 'xml' if xml_month else 'carpeta'}
 
 
 class Summary:
@@ -149,3 +244,50 @@ class Summary:
             'groups': groups,
             'extensions': dict(sorted(self.extensions.items(), key=lambda kv: -kv[1])[:40]),
         }
+
+
+MAX_CFDI_ROWS = 6000
+REPORT_NAME = re.compile(r'^(emitid|recibid)[a-z]*-[a-z0-9&]{12,13}-(20\d{2})(0[1-9]|1[0-2])', re.I)
+
+
+class CfdiIndex:
+    """Virtual placement of every CFDI file: XML (by its own content), PDF (inherits its XML's place when the file name
+    is the same in the same folder; otherwise the folders decide) and SAT reports (by their name). Metadata only.
+    """
+
+    def __init__(self, rfc=''):
+        self.rfc = rfc
+        self.xml, self.pdf, self.reports, self.dropped = {}, [], [], 0
+
+    def add_xml(self, path, info):
+        place = place_cfdi(path, info, self.rfc)
+        place['t'] = (info or {}).get('tipo', '')
+        self.xml[PurePosixPath(path).with_suffix('').as_posix().casefold()] = (path, place)
+
+    def add_pdf(self, path):
+        self.pdf.append(path)
+
+    def add_report(self, path):
+        match = REPORT_NAME.match(PurePosixPath(path).name)
+        if match:
+            kind = 'E' if match.group(1).lower() == 'emitid' else 'R'
+            self.reports.append((path, int(match.group(2)), int(match.group(3)), kind))
+
+    def result(self):
+        rows = [dict(p=path, g='xml', **place) for path, place in self.xml.values()]
+        for path in self.pdf:
+            twin = self.xml.get(PurePosixPath(path).with_suffix('').as_posix().casefold())
+            if twin:
+                place = {k: v for k, v in twin[1].items() if k != 'src'}
+                rows.append(dict(p=path, g='pdf', src='xml', **place))
+                continue
+            year, month, kind = folder_context(path)
+            why = '' if month and kind else 'sin_ubicacion'
+            rows.append(dict(p=path, g='pdf', y=year, m=month, k=kind, t='', s='revisar' if why else 'ok', why=why, src='carpeta'))
+        for path, year, month, kind in self.reports:
+            rows.append(dict(p=path, g='reporte', y=year, m=month, k=kind, t='', s='ok', why='', src='nombre'))
+        self.dropped = max(0, len(rows) - MAX_CFDI_ROWS)
+        counts = defaultdict(int)
+        for row in rows:
+            counts[row['s']] += 1
+        return {'rows': rows[:MAX_CFDI_ROWS], 'total': len(rows), 'ok': counts['ok'], 'revisar': counts['revisar'], 'dropped': self.dropped}

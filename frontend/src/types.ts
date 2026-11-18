@@ -81,6 +81,18 @@ export interface Agent {
   capabilities: string[];
   last_seen: string;
 }
+/** One CFDI file placed in the virtual CFDI / month / emitidos-recibidos structure. */
+export interface CfdiRow {
+  p: string;
+  g: 'xml' | 'pdf' | 'reporte';
+  y: number | null;
+  m: number | null;
+  k: 'E' | 'R' | null;
+  t: string;
+  s: 'ok' | 'revisar';
+  why: string;
+  src: string;
+}
 export interface Job {
   id: string;
   company_id: string;
@@ -103,6 +115,13 @@ export interface Job {
         examples: string[];
       }[];
       extensions: Record<string, number>;
+    };
+    cfdi?: {
+      rows: CfdiRow[];
+      total: number;
+      ok: number;
+      revisar: number;
+      dropped: number;
     };
     truncated?: boolean;
     error?: string;

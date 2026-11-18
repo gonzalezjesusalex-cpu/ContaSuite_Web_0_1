@@ -27,7 +27,7 @@ def request(url, token, path, data):
         return json.load(response)
 
 
-def safe_inventory(folder, allowed_roots):
+def safe_inventory(folder, allowed_roots, rfc=''):
     """Use the same path/link checks and secret exclusions as CS-Storage; metadata only."""
     import sys
 
@@ -59,10 +59,11 @@ def safe_inventory(folder, allowed_roots):
             break
         files.append(row)
         size += cost
-    summary, summary_warnings, summary_truncated = classify_folder(folder, allowed_roots)
+    summary, summary_warnings, summary_truncated, cfdi = classify_folder(folder, allowed_roots, rfc)
     return {
         'files': files,
         'summary': summary,
+        'cfdi': cfdi,
         'truncated': truncated or summary_truncated,
         'warnings': list(dict.fromkeys(warnings + summary_warnings))[:10],
         'catalog_imported': False,
@@ -71,11 +72,11 @@ def safe_inventory(folder, allowed_roots):
     }
 
 
-XML_HEAD_BYTES = 8192
+XML_HEAD_BYTES = 16384
 MAX_XML_HEADS = 20000
 
 
-def classify_folder(folder, allowed_roots):
+def classify_folder(folder, allowed_roots, rfc=''):
     """Group EVERY file by type (any extension) with the same path/link checks as the inventory.
 
     Only names, sizes and extensions are used, plus the first 8 KB of each XML to tell a CFDI's type (ingreso, egreso,
@@ -84,7 +85,7 @@ def classify_folder(folder, allowed_roots):
     import sys
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
-    from app.folder_groups import GROUPS, Summary, cfdi_tipo
+    from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
     from app.storage.local import LocalFolderProvider
     from app.storage.providers import ScanIssue, StorageError
 
@@ -93,7 +94,7 @@ def classify_folder(folder, allowed_roots):
             return True
 
     provider = AllFiles(Path(folder), tuple(Path(p) for p in allowed_roots), max_seconds=120, max_entries=60000)
-    summary = Summary()
+    summary, index = Summary(), CfdiIndex(rfc)
     warnings, truncated, heads = [], False, 0
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
@@ -105,16 +106,23 @@ def classify_folder(folder, allowed_roots):
             heads += 1
             try:
                 with provider.open_read(entry.key) as handle:
-                    tipo = cfdi_tipo(handle.read(XML_HEAD_BYTES))
+                    info = cfdi_info(handle.read(XML_HEAD_BYTES))
+                tipo = info['tipo'] if info else ''
+                if info:
+                    index.add_xml(entry.key, info)
             except StorageError:
-                tipo = None  # unreadable or too large: stays "XML" without a type
-        summary.add(entry.key, entry.size, tipo)
+                index.add_xml(entry.key, None)  # unreadable or too large: reviewed by a person
+        group = summary.add(entry.key, entry.size, tipo)
+        if group == 'cfdi_pdf':
+            index.add_pdf(entry.key)
+        elif group == 'sat_reportes':
+            index.add_report(entry.key)
     result = summary.result()
     result['xml_headers_read'] = heads
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
         warnings.append(f'{sensitive} archivos de credenciales o contraseñas se contaron sin abrirse.')
-    return result, warnings, truncated
+    return result, warnings, truncated, index.result()
 
 
 def run(config, stop_event=None, request_fn=request):
@@ -152,7 +160,7 @@ def run(config, stop_event=None, request_fn=request):
                 try:
                     if job['kind'] != 'scan_folder':
                         raise ValueError('Operación no admitida')
-                    result = safe_inventory(job['payload']['folder'], roots)
+                    result = safe_inventory(job['payload']['folder'], roots, job['payload'].get('rfc', ''))
                     status = 'completed'
                 except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
                     logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])
@@ -280,7 +288,7 @@ class LinkedAgent:
                     try:
                         if job['kind'] != 'scan_folder':
                             raise ValueError('Operación no admitida')
-                        result = safe_inventory(job['payload']['folder'], job['payload'].get('roots') or [])
+                        result = safe_inventory(job['payload']['folder'], job['payload'].get('roots') or [], job['payload'].get('rfc', ''))
                         status = 'completed'
                     except Exception as exc:  # noqa: BLE001 - every failure ends the job with its data-free reason
                         logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])

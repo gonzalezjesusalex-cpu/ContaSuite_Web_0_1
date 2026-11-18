@@ -3,6 +3,8 @@ import { api } from '../api';
 import { Field, Modal } from '../components/ui';
 import { stitchCard, stitchButton, stitchPrimary } from '../components/stitch';
 import Documents from './Documents';
+import CfdiInventory from './CfdiInventory';
+import type { Job } from '../types';
 type Item = {
   id: string;
   name: string;
@@ -21,13 +23,15 @@ export default function VirtualExplorer({
   admin,
   notify,
   refresh,
+  job,
 }: {
+  job?: Job;
   companyId: string;
   admin: boolean;
   notify: (s: string) => void;
   refresh: () => Promise<void>;
 }) {
-  const [view, setView] = useState('Organizada'),
+  const [view, setView] = useState('Inventario'),
     [data, setData] = useState<{
       documents: Item[];
       categories: { id: string; label: string }[];
@@ -56,6 +60,7 @@ export default function VirtualExplorer({
     [obligation, setObligation] = useState(''),
     [certificate, setCertificate] = useState('');
   useEffect(() => {
+    if (view === 'Inventario') return;
     const abort = new AbortController();
     setLoading(true);
     setError('');
@@ -190,7 +195,7 @@ export default function VirtualExplorer({
       <h2>Explorador documental virtual</h2>
       <p>Ambas vistas usan los mismos documentos registrados. Clasificar no mueve archivos ni acredita cumplimiento.</p>
       <div className="tabs">
-        {['Organizada', 'Estructura original'].map((v) => (
+        {['Inventario', 'Organizada', 'Estructura original'].map((v) => (
           <button
             key={v}
             className={view === v ? 'active' : ''}
@@ -203,7 +208,8 @@ export default function VirtualExplorer({
           </button>
         ))}
       </div>
-      <div className="toolbar" style={{ flexWrap: 'wrap' }}>
+      {view === 'Inventario' && <CfdiInventory job={job} />}
+      <div className="toolbar" style={{ flexWrap: 'wrap', display: view === 'Inventario' ? 'none' : undefined }}>
         <input
           aria-label="Buscar documentos virtuales"
           value={query}
@@ -249,7 +255,7 @@ export default function VirtualExplorer({
         </p>
       )}
       {loading && <p role="status">Consultando inventario…</p>}
-      {view === 'Organizada' ? (
+      {view === 'Inventario' ? null : view === 'Organizada' ? (
         <>
           {[...new Set(list.map((d) => d.classification?.category_id || 'category-16'))].map((key) => (
             <section className="card padded" key={key}>
@@ -301,10 +307,10 @@ export default function VirtualExplorer({
           ))}
         </>
       )}
-      {data && !list.length && (
+      {view !== 'Inventario' && data && !list.length && (
         <p>Sin documentos en esta página o filtros. Esto no indica disponibilidad del servidor.</p>
       )}
-      <div className="pagination">
+      <div className="pagination" style={{ display: view === 'Inventario' ? 'none' : undefined }}>
         <button className={stitchButton} disabled={offset === 0} onClick={() => setOffset((n) => Math.max(0, n - 100))}>
           Anterior
         </button>

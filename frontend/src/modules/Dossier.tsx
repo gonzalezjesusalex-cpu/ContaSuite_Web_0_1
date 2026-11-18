@@ -303,7 +303,13 @@ export default function Dossier({
         ))}
       </div>
       {tab === 'Explorador documental' ? (
-        <VirtualExplorer companyId={c.id} admin={state.current_user.admin} notify={notify} refresh={refresh} />
+        <VirtualExplorer
+          companyId={c.id}
+          admin={state.current_user.admin}
+          notify={notify}
+          refresh={refresh}
+          job={jobs.find((j) => j.status === 'completed' && j.result.cfdi)}
+        />
       ) : tab === 'Credenciales y Certificados' ? (
         <Credentials state={state} companyId={c.id} />
       ) : tab === 'Declaraciones' && can(me, 'declara.usar', c.id) ? (
