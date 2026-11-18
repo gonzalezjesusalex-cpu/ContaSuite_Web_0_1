@@ -3755,3 +3755,70 @@ textarea:user-invalid {
   color: var(--primary);
   font-weight: 600;
 }
+
+/* Clasificación de la carpeta (Analizar carpeta) */
+.folder-analysis {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 12px 0;
+  font-size: var(--fs-xs);
+}
+.folder-analysis header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.folder-analysis h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.folder-groups {
+  margin-top: 10px;
+}
+.folder-group {
+  border-top: 1px solid var(--border);
+  padding: 7px 0;
+}
+.folder-group summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+.folder-group summary span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.folder-group.sensitive summary strong {
+  color: var(--warn-strong);
+}
+.folder-group ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.folder-group li {
+  padding: 3px 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.folder-analysis .spin {
+  animation: folder-spin 1s linear infinite;
+  vertical-align: -3px;
+}
+@keyframes folder-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .folder-analysis .spin {
+    animation: none;
+  }
+}

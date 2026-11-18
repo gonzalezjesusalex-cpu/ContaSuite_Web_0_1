@@ -59,14 +59,62 @@ def safe_inventory(folder, allowed_roots):
             break
         files.append(row)
         size += cost
+    summary, summary_warnings, summary_truncated = classify_folder(folder, allowed_roots)
     return {
         'files': files,
-        'truncated': truncated,
-        'warnings': list(dict.fromkeys(warnings))[:10],
+        'summary': summary,
+        'truncated': truncated or summary_truncated,
+        'warnings': list(dict.fromkeys(warnings + summary_warnings))[:10],
         'catalog_imported': False,
         'content_analyzed': False,
         'read_only': True,
     }
+
+
+XML_HEAD_BYTES = 8192
+MAX_XML_HEADS = 20000
+
+
+def classify_folder(folder, allowed_roots):
+    """Group EVERY file by type (any extension) with the same path/link checks as the inventory.
+
+    Only names, sizes and extensions are used, plus the first 8 KB of each XML to tell a CFDI's type (ingreso, egreso,
+    pago, nómina). e.firma/CSD material and password notes are counted but never opened and never named.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+    from app.folder_groups import GROUPS, Summary, cfdi_tipo
+    from app.storage.local import LocalFolderProvider
+    from app.storage.providers import ScanIssue, StorageError
+
+    class AllFiles(LocalFolderProvider):
+        def _supported(self, key):  # every extension is counted; nothing here is returned as content
+            return True
+
+    provider = AllFiles(Path(folder), tuple(Path(p) for p in allowed_roots), max_seconds=120, max_entries=60000)
+    summary = Summary()
+    warnings, truncated, heads = [], False, 0
+    for entry in provider.enumerate():
+        if isinstance(entry, ScanIssue):
+            warnings.append('Incidencia de recorrido: ' + entry.code)
+            truncated = truncated or entry.code == 'scan_limit'
+            continue
+        tipo = None
+        if entry.key.lower().endswith('.xml') and heads < MAX_XML_HEADS:
+            heads += 1
+            try:
+                with provider.open_read(entry.key) as handle:
+                    tipo = cfdi_tipo(handle.read(XML_HEAD_BYTES))
+            except StorageError:
+                tipo = None  # unreadable or too large: stays "XML" without a type
+        summary.add(entry.key, entry.size, tipo)
+    result = summary.result()
+    result['xml_headers_read'] = heads
+    sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
+    if sensitive:
+        warnings.append(f'{sensitive} archivos de credenciales o contraseñas se contaron sin abrirse.')
+    return result, warnings, truncated
 
 
 def run(config, stop_event=None, request_fn=request):

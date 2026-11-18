@@ -18,6 +18,7 @@ import type { Company, State } from '../types';
 import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../companyNavigation';
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
+import FolderAnalysis from './FolderAnalysis';
 import { CompanySwitcher, CompanyViews, MoreMenu } from './CompanyHeader';
 export default function Dossier({
   company: c,
@@ -113,6 +114,13 @@ export default function Dossier({
   useEffect(() => {
     document.querySelector<HTMLElement>('.dossier-heading h1')?.focus();
   }, [c.id]);
+  // While an analysis is queued or running, check every 3 s instead of waiting for the 60 s refresh.
+  const scanning = jobs.some((j) => j.status === 'queued' || j.status === 'running');
+  useEffect(() => {
+    if (!scanning) return;
+    const timer = setInterval(() => void refresh().catch(() => undefined), 3000);
+    return () => clearInterval(timer);
+  }, [scanning, refresh]);
   async function scan() {
     setBusy(true);
     try {
@@ -167,12 +175,12 @@ export default function Dossier({
               {canScan && (
                 <button
                   className="btn primary"
-                  disabled={busy || !!scanBlocked}
+                  disabled={busy || scanning || !!scanBlocked}
                   aria-describedby={scanBlocked ? 'scan-reason' : undefined}
                   onClick={scan}
                 >
                   <FolderSearch size={17} />
-                  Analizar carpeta
+                  {scanning ? 'Analizando…' : 'Analizar carpeta'}
                 </button>
               )}
               {(can(me, 'recopila.usar', c.id) ||
@@ -214,6 +222,7 @@ export default function Dossier({
           <Link to="/configuracion#agentes">Instrucciones del agente</Link>
         </p>
       )}
+      <FolderAnalysis job={jobs[0]} />
       <div className="dossier-meta">
         {c.is_demo && <Badge tone="blue">EMPRESA DEMO</Badge>}
         <Badge>Control fiscal por periodo</Badge>
@@ -426,20 +435,11 @@ export default function Dossier({
                       <small>{dateLabel(j.created_at)}</small>
                     </div>
                     {j.result.error && <p className="red-text">{j.result.error}</p>}
-                    {j.result.files && (
-                      <>
-                        <p>
-                          {j.result.files.length} archivos detectados{' '}
-                          {j.result.truncated && '· Se alcanzó el límite de escaneo'}
-                        </p>
-                        <ul>
-                          {j.result.files.slice(0, 12).map((f, i) => (
-                            <li key={i} title={f.relative_path}>
-                              {f.name} <small>{(f.size / 1024).toFixed(1)} KB</small>
-                            </li>
-                          ))}
-                        </ul>
-                      </>
+                    {(j.result.summary || j.result.files) && (
+                      <p>
+                        {(j.result.summary?.total ?? j.result.files?.length ?? 0).toLocaleString('es-MX')} archivos
+                        clasificados{j.result.truncated && ' · Se alcanzó el límite de escaneo'}
+                      </p>
                     )}
                     {j.result.warnings?.map((w, i) => (
                       <p className="muted" key={i}>

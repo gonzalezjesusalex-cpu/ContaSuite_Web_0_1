@@ -89,6 +89,21 @@ export interface Job {
   status: string;
   result: {
     files?: { name: string; relative_path: string; extension: string; size: number }[];
+    summary?: {
+      total: number;
+      bytes: number;
+      groups: {
+        key: string;
+        label: string;
+        sensitive: boolean;
+        count: number;
+        bytes: number;
+        extensions: Record<string, number>;
+        subgroups: Record<string, number>;
+        examples: string[];
+      }[];
+      extensions: Record<string, number>;
+    };
     truncated?: boolean;
     error?: string;
     warnings?: string[];
