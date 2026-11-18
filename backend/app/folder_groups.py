@@ -66,7 +66,11 @@ def classify(relative_path, size=0, tipo=None):
     if ext in {'.xls', '.xlsx', '.csv'} and SAT_REPORT.match(path.name):
         return 'sat_reportes', None
 
-    if ext in {'.sua', '.log'} or re.search(r'IDSE|SIPARE|\bEMA\b|\bEBA\b|_EMA_|_EBA_|CEDULA|CONFRONTA|LIQUIDACION|DIFERENCIAS', name):
+    if (
+        ext in {'.sua', '.log'}
+        or re.search(r'IDSE|SIPARE|SIAPRE|\bEMA\b|\bEBA\b|_EMA_|_EBA_|CEDULA|CONFRONTA|CONSFRONTA|LIQUIDACION|DIFERENCIAS', name)
+        or re.search(r'(^| / )(IMSS|EMISIONES IMSS)( / |$)', where)  # everything filed in the IMSS folders
+    ):
         return 'imss', None
     if re.fullmatch(r'(AFIL|ASEG|MOVT)\.TXT', name):
         return 'imss', None

@@ -88,6 +88,7 @@ def classify_folder(folder, allowed_roots, rfc=''):
     from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
     from app.storage.local import LocalFolderProvider
     from app.storage.providers import ScanIssue, StorageError
+    from app.imss_groups import ImssIndex
     from app.tax_groups import TaxIndex
 
     class AllFiles(LocalFolderProvider):
@@ -95,7 +96,7 @@ def classify_folder(folder, allowed_roots, rfc=''):
             return True
 
     provider = AllFiles(Path(folder), tuple(Path(p) for p in allowed_roots), max_seconds=120, max_entries=60000)
-    summary, index, taxes = Summary(), CfdiIndex(rfc), TaxIndex()
+    summary, index, taxes, imss = Summary(), CfdiIndex(rfc), TaxIndex(), ImssIndex()
     warnings, truncated, heads = [], False, 0
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
@@ -120,12 +121,14 @@ def classify_folder(folder, allowed_roots, rfc=''):
             index.add_report(entry.key)
         elif group == 'impuestos':
             taxes.add(entry.key)
+        elif group == 'imss':
+            imss.add(entry.key)
     result = summary.result()
     result['xml_headers_read'] = heads
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
         warnings.append(f'{sensitive} archivos de credenciales o contraseñas se contaron sin abrirse.')
-    return result, warnings, truncated, {'cfdi': index.result(), 'impuestos': taxes.result()}
+    return result, warnings, truncated, {'cfdi': index.result(), 'impuestos': taxes.result(), 'imss': imss.result()}
 
 
 def run(config, stop_event=None, request_fn=request):

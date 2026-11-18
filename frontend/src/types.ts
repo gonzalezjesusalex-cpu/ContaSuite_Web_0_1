@@ -106,6 +106,25 @@ export interface TaxRow {
   s: 'ok' | 'faltante' | 'revisar';
   why: string;
 }
+/** An IMSS file placed in its monthly package; `fo` is the «Folio_…» folder when it is the SUA's copy. */
+export interface ImssRow {
+  p: string;
+  c: string;
+  y: number | null;
+  m: number | null;
+  fo: string;
+  s: 'ok' | 'revisar';
+  why: string;
+}
+export interface ImssMonth {
+  y: number;
+  m: number;
+  have: string[];
+  faltan: string[];
+  sin_emision: string[];
+  notas: string[];
+  s: 'completo' | 'faltante' | 'parcial' | 'revisar';
+}
 export interface Job {
   id: string;
   company_id: string;
@@ -135,6 +154,16 @@ export interface Job {
       ok: number;
       revisar: number;
       dropped: number;
+    };
+    imss?: {
+      rows: ImssRow[];
+      months: ImssMonth[];
+      total: number;
+      generales: number;
+      completos: number;
+      faltantes: number;
+      revisar: number;
+      registros: number;
     };
     impuestos?: {
       rows: TaxRow[];

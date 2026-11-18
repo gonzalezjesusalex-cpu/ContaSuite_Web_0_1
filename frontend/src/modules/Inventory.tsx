@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CfdiInventory from './CfdiInventory';
 import TaxInventory from './TaxInventory';
+import ImssInventory from './ImssInventory';
 import type { Job } from '../types';
 
 /** Virtual inventory of the last folder analysis, one section per document group. */
@@ -13,6 +14,12 @@ export default function Inventory({ job }: { job?: Job }) {
       label: 'Declaraciones y acuses',
       count: job?.result.impuestos?.total,
       alert: (job?.result.impuestos?.faltantes ?? 0) + (job?.result.impuestos?.revisar ?? 0),
+    },
+    {
+      key: 'imss',
+      label: 'IMSS',
+      count: job?.result.imss?.total,
+      alert: (job?.result.imss?.faltantes ?? 0) + (job?.result.imss?.revisar ?? 0),
     },
   ];
   return (
@@ -32,7 +39,9 @@ export default function Inventory({ job }: { job?: Job }) {
           </button>
         ))}
       </div>
-      {section === 'cfdi' ? <CfdiInventory job={job} /> : <TaxInventory job={job} />}
+      {section === 'cfdi' && <CfdiInventory job={job} />}
+      {section === 'impuestos' && <TaxInventory job={job} />}
+      {section === 'imss' && <ImssInventory job={job} />}
     </>
   );
 }
