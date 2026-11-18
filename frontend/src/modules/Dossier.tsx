@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Archive, ArrowLeft, Pencil, FolderSearch, FileText, ShieldCheck, KeyRound } from 'lucide-react';
+import { Archive, ArrowLeft, Pencil, FolderOutput, FolderSearch, FileText, ShieldCheck, KeyRound } from 'lucide-react';
 import { api, dateLabel, today } from '../api';
 import { Badge, Kpi, Heading } from '../components/ui';
 import { Records } from './Records';
@@ -19,6 +19,7 @@ import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../co
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
 import FolderAnalysis from './FolderAnalysis';
+import ExportDialog from './ExportDialog';
 import { CompanySwitcher, CompanyViews, MoreMenu } from './CompanyHeader';
 export default function Dossier({
   company: c,
@@ -68,7 +69,10 @@ export default function Dossier({
   const [assigning, setAssigning] = useState(false);
   const me = state.current_user;
   const responsible = state.responsibles?.find((r) => r.id === c.accountant_id) || null;
-  const jobs = state.jobs.filter((j) => j.company_id === c.id);
+  const allJobs = state.jobs.filter((j) => j.company_id === c.id);
+  // Folder analyses (the inventory) and exports are different jobs: each view reads its own kind.
+  const jobs = allJobs.filter((j) => j.kind === 'scan_folder');
+  const [exporting, setExporting] = useState(false);
   // Why «Analizar carpeta» cannot run now, in plain words (Bloques 3 and 4): it uses the user's own linked agent;
   // the server also checks the folders the administrator authorizes and explains a refusal.
   const link = state.agent_link;
@@ -115,7 +119,7 @@ export default function Dossier({
     document.querySelector<HTMLElement>('.dossier-heading h1')?.focus();
   }, [c.id]);
   // While an analysis is queued or running, check every 3 s instead of waiting for the 60 s refresh.
-  const scanning = jobs.some((j) => j.status === 'queued' || j.status === 'running');
+  const scanning = allJobs.some((j) => j.status === 'queued' || j.status === 'running');
   useEffect(() => {
     if (!scanning) return;
     const timer = setInterval(() => void refresh().catch(() => undefined), 3000);
@@ -184,6 +188,7 @@ export default function Dossier({
                 </button>
               )}
               {(can(me, 'recopila.usar', c.id) ||
+                can(me, 'carpeta.exportar', c.id) ||
                 can(me, 'empresa.editar', c.id) ||
                 can(me, 'empresa.archivar', c.id)) && (
                 <MoreMenu label="Más acciones de la empresa">
@@ -192,6 +197,12 @@ export default function Dossier({
                       <FolderSearch size={16} />
                       Recopila
                     </Link>
+                  )}
+                  {can(me, 'carpeta.exportar', c.id) && (
+                    <button role="menuitem" type="button" onClick={() => setExporting(true)}>
+                      <FolderOutput size={16} />
+                      Exportar copia ordenada
+                    </button>
                   )}
                   {can(me, 'empresa.editar', c.id) && (
                     <Link role="menuitem" to={'/empresas/' + c.id + '/editar?' + params}>
@@ -223,6 +234,17 @@ export default function Dossier({
         </p>
       )}
       <FolderAnalysis job={jobs[0]} />
+      {exporting && (
+        <ExportDialog
+          company={c}
+          jobs={allJobs}
+          agentReady={!scanBlocked}
+          blockedReason={scanBlocked}
+          refresh={refresh}
+          notify={notify}
+          onClose={() => setExporting(false)}
+        />
+      )}
       <div className="dossier-meta">
         {c.is_demo && <Badge tone="blue">EMPRESA DEMO</Badge>}
         <Badge>Control fiscal por periodo</Badge>

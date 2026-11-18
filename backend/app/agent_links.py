@@ -85,8 +85,8 @@ def online(link):
     return bool(link.last_seen and utc(link.last_seen) + ONLINE > now())
 
 
-def user_can_analyze(db, user, company_id):
-    """The linked user's right to analyze this company's folder, from its stored role and grants."""
+def user_can_analyze(db, user, company_id, action='carpeta.analizar'):
+    """The linked user's right to run `action` (analyze or export) on this company's folder, by role and grants."""
     if not user or not user.enabled:
         return False
     if user.role == 'admin':
@@ -102,7 +102,7 @@ def user_can_analyze(db, user, company_id):
             )
         ).all()
         explicit = set(rows) if rows else None
-    return 'carpeta.analizar' in company_actions(user.role, grant.access == 'write', explicit)
+    return action in company_actions(user.role, grant.access == 'write', explicit)
 
 
 def end_link(db, link, reason):

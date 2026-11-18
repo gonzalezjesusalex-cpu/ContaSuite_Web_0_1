@@ -9,7 +9,7 @@ import re
 from collections import defaultdict
 from pathlib import PurePosixPath
 
-from .folder_groups import MONTH_NAME, MONTHS, folder_context, fold
+from .folder_groups import MONTH_NAME, MONTHS, folder_context, fold, month_dir
 
 REASONS = {
     'acuse_sin_declaracion': 'Hay acuse, pero no hay una declaración con el mismo periodo y calificativo.',
@@ -75,6 +75,26 @@ class TaxIndex:
                 'dir': pure.parent.as_posix().casefold(),
             }
         )
+
+    def virtual(self):
+        """{path: folders} for every file: Impuestos / Federales|Estatales|Anuales / year / period."""
+        self.result()  # pairing and review flags first
+        scopes = {'federal': 'Federales', 'estatal': 'Estatales', 'anual': 'Anuales'}
+        out = {}
+        for i in self.items:
+            top = ('Impuestos', scopes[i['a']])
+            if i['why'] == 'sin_periodo':
+                out[i['p']] = ('Impuestos', 'Por revisar')
+                continue
+            year = str(i['y']) if i['y'] else 'Sin ejercicio'
+            if i['a'] == 'anual':
+                period = 'Declaración anual'
+            elif i['n'] is None:
+                period = 'Sin periodo'
+            else:
+                period = f'Bimestre {i["n"]}' if i['a'] == 'estatal' else month_dir(i['n'])
+            out[i['p']] = top + (year, period)
+        return out
 
     def result(self):
         groups = defaultdict(list)

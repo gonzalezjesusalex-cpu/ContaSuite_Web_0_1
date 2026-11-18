@@ -161,7 +161,20 @@ class JobIn(CleanModel):
     company_id: str
     # Bloque 4: the server uses the requester's linked agent; an id is only read for the legacy shared token.
     agent_id: str | None = None
-    kind: Literal['scan_folder'] = 'scan_folder'
+    kind: Literal['scan_folder', 'export_virtual'] = 'scan_folder'
+    # Only for `export_virtual`: where the copy goes (a new folder inside an authorized root), whether to write it
+    # (false = preview only) and which sections to include (none = the default set, without workers' personal data).
+    destination: str | None = Field(default=None, max_length=400)
+    apply: bool = False
+    include: list[str] | None = Field(default=None, max_length=12)
+
+    @model_validator(mode='after')
+    def _export_needs_destination(self):
+        if self.kind == 'export_virtual' and not self.destination:
+            raise ValueError('La exportación necesita una carpeta de destino.')
+        if self.kind == 'scan_folder' and (self.destination or self.apply or self.include):
+            raise ValueError('Esos datos sólo aplican a la exportación.')
+        return self
 
 
 class JobResult(CleanModel):

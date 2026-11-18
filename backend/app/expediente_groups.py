@@ -62,6 +62,17 @@ class ExpedienteIndex:
             }
         )
 
+    def virtual(self):
+        """{path: folders}: Expediente de la empresa / document type (a person's folder goes under Personas)."""
+        out = {}
+        for i in self.items:
+            if PERSON_FOLDER.match(i['o']):
+                person = re.sub(r'^\d{1,2}\s*\.-?\s*', '', i['o']).strip() or i['o']
+                out[i['p']] = ('Expediente de la empresa', 'Personas', person)
+            else:
+                out[i['p']] = ('Expediente de la empresa', LABELS.get(i['t'], 'Otro documento'))
+        return out
+
     def result(self):
         # Only company-level documents count toward the checklist: a person's folder is not the company's file.
         company = [i for i in self.items if i['s'] == 'ok' and not PERSON_FOLDER.match(i['o'])]

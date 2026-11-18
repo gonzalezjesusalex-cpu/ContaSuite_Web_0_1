@@ -47,6 +47,18 @@ class PayrollIndex:
     def add_pdf(self, path):
         self.pdf.append(path)
 
+    def virtual(self):
+        """{path: folders} for every payroll XML and recibo: Nómina / year / «13.- 1ERA QNA JULIO»."""
+        out = {}
+        for path in [*self.xml.values(), *self.pdf]:
+            found = QUINCENAL.search(PurePosixPath(path.replace('\\', '/')).name)
+            if found:
+                year, number = int(found.group(1)), int(found.group(2))
+                month = (number + 1) // 2
+                label = f'{number}.- {"1ERA" if number % 2 else "2DA"} QNA {MONTHS[month - 1] if 1 <= month <= 12 else ""}'
+                out[path] = ('Nómina', str(year), label.strip())
+        return out
+
     def result(self):
         quincenas = defaultdict(lambda: {'xml': [], 'pdf': [], 'paired': 0})
         pdf_stems = set()
@@ -118,6 +130,14 @@ class WorkersIndex:
                 break
         who = re.sub(r'^\d{1,2}\s*(?:\.-?)?\s*', '', who).strip()
         self.workers[who].append({'p': path, 't': worker_doc(parts[-1])})
+
+    def virtual(self):
+        """{path: folders}: Trabajadores / person. Personal data: the export leaves it out unless asked."""
+        return {
+            item['p']: ('Trabajadores', who or 'Sin carpeta individual')
+            for who, items in self.workers.items()
+            for item in items
+        }
 
     def result(self):
         rows = []

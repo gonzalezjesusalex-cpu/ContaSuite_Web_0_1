@@ -21,6 +21,7 @@ WRITE_ACTIONS = frozenset(
         'declara.usar',
         'recibos.usar',
         'carpeta.analizar',
+        'carpeta.exportar',
     }
 )
 ACTIONS = READ_ACTIONS | WRITE_ACTIONS
@@ -31,7 +32,7 @@ LEGACY_WRITE_ACTIONS = frozenset({'documentos.subir', 'obligaciones.editar', 'ca
 
 
 # Quick templates for an auxiliar's actions in one company (always on top of the `.ver` actions).
-# `carpeta.analizar` is never part of a template; it can only be chosen explicitly.
+# `carpeta.analizar` and `carpeta.exportar` are never part of a template; they can only be chosen explicitly.
 TEMPLATES = {
     'consulta': {'label': 'Solo consulta', 'actions': frozenset()},
     'captura': {'label': 'Captura de documentos', 'actions': frozenset({'documentos.subir', 'tareas.editar'})},
@@ -63,6 +64,7 @@ LABELS = {
     'declara.usar': 'Usar Declara',
     'recibos.usar': 'Usar Recibos',
     'carpeta.analizar': 'Analizar carpeta con el agente',
+    'carpeta.exportar': 'Exportar una copia ordenada de la carpeta (escribe en tu equipo)',
 }
 
 

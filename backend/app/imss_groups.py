@@ -8,7 +8,7 @@ import re
 from collections import defaultdict
 from pathlib import PurePosixPath
 
-from .folder_groups import folder_context, fold
+from .folder_groups import folder_context, fold, month_dir
 
 COMPONENTS = {
     'sua': 'SUA',
@@ -115,6 +115,21 @@ class ImssIndex:
                 'why': why,
             }
         )
+
+    def virtual(self):
+        """{path: folders} for every file: IMSS / year / «NN.- MES» (+ Folios / Emisiones); IMSS / General otherwise."""
+        out = {}
+        for i in self.items:
+            if not i['m']:
+                out[i['p']] = ('IMSS', 'General')
+                continue
+            parts = ('IMSS', str(i['y'] or 'Sin ejercicio'), month_dir(i['m']))
+            if i['fo']:
+                parts += ('Folios', i['fo'])
+            elif i['c'] in {'ema', 'eba', 'excel'}:
+                parts += ('Emisiones',)
+            out[i['p']] = parts
+        return out
 
     def result(self):
         months = defaultdict(list)

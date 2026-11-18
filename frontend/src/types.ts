@@ -202,6 +202,24 @@ export interface Job {
   kind: string;
   status: string;
   result: {
+    // Export (kind export_virtual): preview first (mode «preview»), then the copy (mode «apply»).
+    mode?: 'preview' | 'apply';
+    destination?: string;
+    include?: string[];
+    total?: number;
+    bytes?: number;
+    free_bytes?: number | null;
+    enough_space?: boolean | null;
+    collisions?: number;
+    sections?: Record<string, { files: number; bytes: number; folders: number; sample: string[] }>;
+    excluded?: Record<string, number>;
+    omitted?: Record<string, number>;
+    copiados?: number;
+    duplicados?: number;
+    errores?: number;
+    omitidos?: number;
+    manifiesto?: string;
+    detalle_errores?: { p: string; motivo: string }[];
     files?: { name: string; relative_path: string; extension: string; size: number }[];
     summary?: {
       total: number;

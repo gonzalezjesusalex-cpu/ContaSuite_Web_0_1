@@ -815,14 +815,24 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
     """Folder analysis through the requesting user's own linked agent (Bloque 4)."""
     from .agent_links import active_link_for, inside_roots, online as link_online, roots, shared_token_allowed
 
-    principal.require('carpeta.analizar', data.company_id)
+    exporting = data.kind == 'export_virtual'
+    # Writing a copy to the person's computer is its own permission: it is never part of a template.
+    principal.require('carpeta.exportar' if exporting else 'carpeta.analizar', data.company_id)
     company = get(db, Company, data.company_id)
     expire_stale_jobs(db)
     if not company.folder:
         raise HTTPException(422, 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.')
     allowed = roots(db)
+    if exporting:
+        from .export_plan import REASONS as EXPORT_REASONS, SECTIONS, destination_problem
+
+        problem = destination_problem(data.destination, company.folder, allowed)
+        if problem:
+            raise HTTPException(422, EXPORT_REASONS[problem])
+        if data.include is not None and not set(data.include) <= set(SECTIONS):
+            raise HTTPException(422, 'Hay secciones desconocidas en la exportación.')
     link = active_link_for(db, principal.subject)
-    if link is None and data.agent_id and principal.admin and shared_token_allowed():
+    if link is None and data.agent_id and principal.admin and shared_token_allowed() and not exporting:
         # Transition only: an agent with the former shared token, chosen by an administrator.
         agent = get(db, Agent, data.agent_id)
         if not online(agent) or data.kind not in agent.capabilities:
@@ -846,11 +856,14 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
         if not inside_roots(company.folder, allowed):
             raise HTTPException(409, 'La ruta de la empresa está fuera de las carpetas autorizadas para el agente.')
         agent_id, link_id, machine = link.agent_id, link.id, link.machine
+    payload = {'folder': company.folder, 'rfc': company.rfc}
+    if exporting:
+        payload.update(destination=data.destination, apply=data.apply, include=data.include)
     job = Job(
         company_id=company.id,
         agent_id=agent_id,
         kind=data.kind,
-        payload={'folder': company.folder, 'rfc': company.rfc},
+        payload=payload,
         requested_by=principal.subject,
         link_id=link_id,
         machine=machine,
@@ -858,7 +871,9 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
     db.add(job)
     record(
         db,
-        'Análisis de carpeta solicitado',
+        ('Exportación ordenada solicitada (' + ('copia' if data.apply else 'vista previa') + ')')
+        if exporting
+        else 'Análisis de carpeta solicitado',
         company.id,
         principal.subject,
         {'agente': {'after': agent_id}, 'equipo': {'after': machine}} if link_id else None,
@@ -914,7 +929,9 @@ def claim(
         query = query.where(Job.created_at >= not_before)
     expire_stale_jobs(db)
     for job in db.scalars(query.order_by(Job.created_at).limit(50)).all():
-        if caller is not None and not user_can_analyze(db, caller.user, job.company_id):
+        if caller is not None and not user_can_analyze(
+            db, caller.user, job.company_id, 'carpeta.exportar' if job.kind == 'export_virtual' else 'carpeta.analizar'
+        ):
             db.execute(
                 update(Job)
                 .where(Job.id == job.id, Job.status == 'queued')
@@ -939,6 +956,14 @@ def claim(
     return None
 
 
+def audit_text(kind, status):
+    """History line for a job the agent finished."""
+    done = status == 'completed'
+    if kind == 'export_virtual':
+        return 'Exportación ordenada ' + ('completada' if done else 'fallida')
+    return 'Análisis local ' + ('completado' if done else 'fallido')
+
+
 @app.post('/api/agent/jobs/{id}/result')
 def result(id: str, data: JobResult, db: Session = Depends(session), caller=Depends(agent_caller)):
     job = get(db, Job, id)
@@ -952,7 +977,7 @@ def result(id: str, data: JobResult, db: Session = Depends(session), caller=Depe
     job.result = data.result
     record(
         db,
-        'Análisis local ' + ('completado' if data.status == 'completed' else 'fallido'),
+        audit_text(job.kind, data.status),
         job.company_id,
         job.requested_by or 'agent:' + job.agent_id,
         {'agente': {'after': job.agent_id}, 'equipo': {'after': job.machine}} if job.requested_by else None,

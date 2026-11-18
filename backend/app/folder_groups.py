@@ -119,6 +119,11 @@ REASONS = {
 }
 
 
+def month_dir(month):
+    """Folder name of a month in the layout the CFDI module already produces: «07.- JULIO»."""
+    return f'{month:02d}.- {MONTHS[month - 1]}'
+
+
 def month_of_folder(name):
     """(year or None, month) from folder names such as '07.- JULIO', '09- SEPTIEMBRE', '1.- ENERO', '2026-01'."""
     text = fold(name).strip()
@@ -285,7 +290,27 @@ class CfdiIndex:
             kind = 'E' if match.group(1).lower() == 'emitid' else 'R'
             self.reports.append((path, int(match.group(2)), int(match.group(3)), kind))
 
+    def virtual(self):
+        """{path: (folders)} for EVERY CFDI file (no display cap): CFDI / year / «NN.- MES» / EMITIDOS|RECIBIDOS."""
+        out = {}
+        for row in self._rows():
+            if row['s'] != 'ok' or not (row['y'] and row['m']):
+                out[row['p']] = ('CFDI', 'Por revisar')
+            elif row['g'] == 'reporte':
+                out[row['p']] = ('CFDI', str(row['y']), month_dir(row['m']))
+            else:
+                out[row['p']] = ('CFDI', str(row['y']), month_dir(row['m']), 'EMITIDOS' if row['k'] == 'E' else 'RECIBIDOS')
+        return out
+
     def result(self):
+        rows = self._rows()
+        self.dropped = max(0, len(rows) - MAX_CFDI_ROWS)
+        counts = defaultdict(int)
+        for row in rows:
+            counts[row['s']] += 1
+        return {'rows': rows[:MAX_CFDI_ROWS], 'total': len(rows), 'ok': counts['ok'], 'revisar': counts['revisar'], 'dropped': self.dropped}
+
+    def _rows(self):
         rows = [dict(p=path, g='xml', **place) for path, place in self.xml.values()]
         for path in self.pdf:
             twin = self.xml.get(PurePosixPath(path).with_suffix('').as_posix().casefold())
@@ -298,8 +323,4 @@ class CfdiIndex:
             rows.append(dict(p=path, g='pdf', y=year, m=month, k=kind, t='', s='revisar' if why else 'ok', why=why, src='carpeta'))
         for path, year, month, kind in self.reports:
             rows.append(dict(p=path, g='reporte', y=year, m=month, k=kind, t='', s='ok', why='', src='nombre'))
-        self.dropped = max(0, len(rows) - MAX_CFDI_ROWS)
-        counts = defaultdict(int)
-        for row in rows:
-            counts[row['s']] += 1
-        return {'rows': rows[:MAX_CFDI_ROWS], 'total': len(rows), 'ok': counts['ok'], 'revisar': counts['revisar'], 'dropped': self.dropped}
+        return rows

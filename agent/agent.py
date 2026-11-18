@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import threading
 
 MAX_FILES = 3000
+CAPABILITIES = ['scan_folder', 'export_virtual']
 
 
 def request(url, token, path, data):
@@ -128,13 +129,15 @@ def read_certificate(provider, entry, certs):
     certs.add(entry.key, data)
 
 
-def classify_folder(folder, allowed_roots, rfc=''):
-    """Group EVERY file by type (any extension) with the same path/link checks as the inventory.
+def scan_tree(folder, allowed_roots, rfc=''):
+    """Walk EVERY file of a company folder (any extension) with the same path/link checks as the inventory.
 
-    Only names, sizes and extensions are used, plus the first 8 KB of each XML to tell a CFDI's type (ingreso, egreso,
-    pago, nómina). e.firma/CSD material and password notes are counted but never opened and never named.
+    Returns what the walk learned: the files with their group and one index per document group. Only names, sizes and
+    extensions are used, plus the beginning of each CFDI XML (type, date, RFCs, UUID), the SAT monthly reports and the
+    PUBLIC .cer certificates. Private keys and password notes are never opened.
     """
     import sys
+    from types import SimpleNamespace
 
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
     from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
@@ -167,7 +170,7 @@ def classify_folder(folder, allowed_roots, rfc=''):
         'trabajadores': (workers.add,),
     }
     reconcile, ppd, certs = SatReconcile(), PpdIndex(), CertIndex(rfc)
-    warnings, truncated, heads, unreadable = [], False, 0, 0
+    warnings, truncated, heads, unreadable, entries = [], False, 0, 0, []
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
             warnings.append('Incidencia de recorrido: ' + entry.code)
@@ -189,6 +192,7 @@ def classify_folder(folder, allowed_roots, rfc=''):
             except StorageError:
                 index.add_xml(entry.key, None)  # unreadable or too large: reviewed by a person
         group = summary.add(entry.key, entry.size, tipo)
+        entries.append((entry.key, entry.size, group))
         if group == 'cfdi_xml' and tipo == 'N':
             payroll.add_xml(entry.key)
         elif group == 'nomina' and lower.endswith('.pdf'):
@@ -200,26 +204,119 @@ def classify_folder(folder, allowed_roots, rfc=''):
             read_certificate(provider, entry, certs)
         for target in routes.get(group, ()):
             target(entry.key)
-    result = summary.result()
-    result['xml_headers_read'] = heads
+    return SimpleNamespace(
+        provider=provider,
+        entries=entries,
+        summary=summary,
+        warnings=warnings,
+        truncated=truncated,
+        heads=heads,
+        unreadable=unreadable,
+        index=index,
+        taxes=taxes,
+        imss=imss,
+        expediente=expediente,
+        finance=finance,
+        payroll=payroll,
+        workers=workers,
+        reconcile=reconcile,
+        ppd=ppd,
+        certs=certs,
+    )
+
+
+def classify_folder(folder, allowed_roots, rfc=''):
+    """Group every file by type and build the inventory of each document group (see `scan_tree`)."""
+    from app.folder_groups import GROUPS
+
+    scan = scan_tree(folder, allowed_roots, rfc)
+    result = scan.summary.result()
+    result['xml_headers_read'] = scan.heads
+    warnings = list(scan.warnings)
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
         warnings.append(f'{sensitive} archivos de credenciales o contraseñas: sólo se leyó la vigencia de los .cer públicos.')
-    if unreadable:
-        warnings.append(f'{unreadable} reportes .xls del SAT no se pudieron leer.')
+    if scan.unreadable:
+        warnings.append(f'{scan.unreadable} reportes .xls del SAT no se pudieron leer.')
     sections = {
-        'conciliacion': reconcile.result(),
-        'ppd': ppd.result(),
-        'certificados': certs.result(),
-        'cfdi': index.result(),
-        'impuestos': taxes.result(),
-        'imss': imss.result(),
-        'expediente': expediente.result(),
-        'finanzas': finance.result(),
-        'nomina': payroll.result(),
-        'trabajadores': workers.result(),
+        'conciliacion': scan.reconcile.result(),
+        'ppd': scan.ppd.result(),
+        'certificados': scan.certs.result(),
+        'cfdi': scan.index.result(),
+        'impuestos': scan.taxes.result(),
+        'imss': scan.imss.result(),
+        'expediente': scan.expediente.result(),
+        'finanzas': scan.finance.result(),
+        'nomina': scan.payroll.result(),
+        'trabajadores': scan.workers.result(),
     }
-    return result, warnings, truncated, sections
+    return result, warnings, scan.truncated, sections
+
+
+def export_virtual(payload, allowed_roots):
+    """Preview (apply false) or run (apply true) the export of a COPY of the folder in the virtual order.
+
+    The destination is checked twice: by its text (inside an authorized root, outside the company folder) and on disk
+    (resolved path, no links, nothing inside it yet). The originals are only read.
+    """
+    import shutil
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+    from app.export_copy import execute
+    from app.export_plan import build_plan, destination_problem, preview
+    from app.storage.paths import check_no_links
+    from app.storage.providers import StorageError
+
+    folder, destination = payload['folder'], str(payload.get('destination') or '')
+    problem = destination_problem(destination, folder, allowed_roots)
+    if problem:
+        raise StorageError(problem)
+    target = Path(destination)
+    # The nearest folder that already exists decides: it must be a real path (no links) inside an authorized root.
+    anchor = next(p for p in (target, *target.parents) if p.exists())
+    try:
+        check_no_links(anchor)
+    except StorageError:
+        raise StorageError('invalid_path') from None
+    real = anchor.resolve()
+    if not any(real.is_relative_to(Path(r).resolve()) for r in allowed_roots):
+        raise StorageError('destino_fuera_de_raices')
+    if target.exists() and (not target.is_dir() or any(target.iterdir())):
+        raise StorageError('destino_no_vacio')
+    scan = scan_tree(folder, allowed_roots, payload.get('rfc', ''))
+    # Later placements win: payroll XML belong to Nómina even though they are also CFDI.
+    maps = [
+        scan.index.virtual(),
+        scan.taxes.virtual(),
+        scan.imss.virtual(),
+        scan.expediente.virtual(),
+        scan.finance.virtual(),
+        scan.workers.virtual(),
+        scan.payroll.virtual(),
+    ]
+    plan = build_plan(scan.entries, maps, payload.get('include'), len(destination))
+    if not payload.get('apply'):
+        result = preview(plan, destination, shutil.disk_usage(anchor).free)
+        result['truncated'] = scan.truncated
+        return result
+    if scan.truncated:
+        raise StorageError('read_error')  # an incomplete walk would produce an incomplete copy
+    return execute(scan.provider, plan['items'], destination)
+
+
+def run_job(job, roots):
+    """(status, result) of one claimed job. Never raises: every failure becomes its data-free reason."""
+    try:
+        payload = job['payload']
+        if job['kind'] == 'scan_folder':
+            return 'completed', safe_inventory(payload['folder'], roots, payload.get('rfc', ''))
+        if job['kind'] == 'export_virtual':
+            return 'completed', export_virtual(payload, roots)
+        raise ValueError('Operación no admitida')
+    except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
+        logging.exception('Trabajo %s: no se pudo completar', job.get('id'))
+        return 'failed', reason(exc)
 
 
 def run(config, stop_event=None, request_fn=request):
@@ -241,7 +338,7 @@ def run(config, stop_event=None, request_fn=request):
     suffix = '?' + urlencode({'not_before': config['not_before']}) if config.get('not_before') else ''
     while not stop_event.is_set():
         try:
-            request_fn(url, token, '/agent/heartbeat', {'id': agent_id, 'capabilities': ['scan_folder']})
+            request_fn(url, token, '/agent/heartbeat', {'id': agent_id, 'capabilities': CAPABILITIES})
             if pending:
                 try:
                     request_fn(url, token, '/agent/jobs/' + pending[0] + '/result', pending[1])
@@ -254,15 +351,7 @@ def run(config, stop_event=None, request_fn=request):
             job = request_fn(url, token, '/agent/' + agent_id + '/claim' + suffix, {})
             if job:
                 logging.info('Procesando trabajo %s', job['id'])
-                try:
-                    if job['kind'] != 'scan_folder':
-                        raise ValueError('Operación no admitida')
-                    result = safe_inventory(job['payload']['folder'], roots, job['payload'].get('rfc', ''))
-                    status = 'completed'
-                except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
-                    logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])
-                    result = reason(exc)
-                    status = 'failed'
+                status, result = run_job(job, roots)
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})
                 continue
         except (URLError, TimeoutError, OSError, ValueError):
@@ -286,8 +375,13 @@ REASONS = {
 
 
 def reason(exc):
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+    from app.export_plan import REASONS as EXPORT_REASONS
+
     code = getattr(exc, 'code', None) or (exc.args[0] if exc.args and isinstance(exc.args[0], str) else '')
-    return {'error': REASONS.get(code, 'No se pudo analizar la carpeta.'), 'error_code': code or 'unknown'}
+    return {'error': {**REASONS, **EXPORT_REASONS}.get(code, 'No se pudo completar la operación.'), 'error_code': code or 'unknown'}
 
 
 def default_agent_id():
@@ -355,6 +449,21 @@ class LinkedAgent:
                 'notice': self.notice,
             }
 
+    def run_alive(self, job, token):
+        """Run a job in its own thread while the heartbeat continues: a long export must not look like a dead agent."""
+        outcome = []
+        worker = threading.Thread(
+            target=lambda: outcome.append(run_job(job, job['payload'].get('roots') or [])), daemon=True
+        )
+        worker.start()
+        while worker.is_alive():
+            worker.join(5)
+            try:
+                self.post(self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': CAPABILITIES}, token)
+            except (URLError, TimeoutError, OSError, ValueError):
+                pass  # the main loop handles a lost connection or a revoked link once the job is done
+        return outcome[0]
+
     def work(self, stop_event):
         from urllib.error import HTTPError
 
@@ -367,7 +476,7 @@ class LinkedAgent:
                 continue
             try:
                 beat = self.post(
-                    self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': ['scan_folder']}, token
+                    self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': CAPABILITIES}, token
                 )
                 if beat.get('restart'):
                     self.unpair('Reinicio solicitado por la administración: inicia sesión de nuevo.')
@@ -382,14 +491,7 @@ class LinkedAgent:
                 job = self.post(self.url, '/agent/' + self.agent_id + '/claim', {}, token)
                 if job:
                     logging.info('Procesando trabajo %s', job['id'])
-                    try:
-                        if job['kind'] != 'scan_folder':
-                            raise ValueError('Operación no admitida')
-                        result = safe_inventory(job['payload']['folder'], job['payload'].get('roots') or [], job['payload'].get('rfc', ''))
-                        status = 'completed'
-                    except Exception as exc:  # noqa: BLE001 - every failure ends the job with its data-free reason
-                        logging.exception('Trabajo %s: no se pudo analizar la carpeta', job['id'])
-                        result, status = reason(exc), 'failed'
+                    status, result = self.run_alive(job, token)
                     pending = (job['id'], {'agent_id': self.agent_id, 'status': status, 'result': result})
                     continue
             except HTTPError as error:

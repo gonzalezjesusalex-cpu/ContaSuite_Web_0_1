@@ -68,5 +68,12 @@ class FinanceIndex:
                 break
         self.items.append({'p': path, 't': report_type(name), 'y': year, 'n': month, 'o': scope})
 
+    def virtual(self):
+        """{path: folders}: Estados financieros / scope / year / report type."""
+        return {
+            i['p']: ('Estados financieros', *(i['o'].split('/') if i['o'] else ['General']), str(i['y'] or 'Sin ejercicio'), LABELS.get(i['t'], 'Otro'))
+            for i in self.items
+        }
+
     def result(self):
         return {'rows': self.items[:MAX_ROWS], 'total': len(self.items), 'dropped': max(0, len(self.items) - MAX_ROWS)}
