@@ -1,0 +1,8 @@
+{
+  "_nota": "Fragmento para AGREGAR al config.json del agente en el equipo de la prueba. No es un archivo completo.",
+  "sat": {
+    "base_url": "https://www.sat.gob.mx/portal/public/personas-morales/general-de-ley-personas-morales",
+    "guided": true,
+    "dry_run": true
+  }
+}

@@ -278,6 +278,10 @@ export interface Job {
       intentos?: number;
     }[];
     cancelar?: boolean;
+    prueba_en_seco?: boolean;
+    paginacion?: boolean;
+    coincide_url?: boolean;
+    encabezados?: string[];
     cancelada?: boolean;
     interrumpida?: string;
     mode?: 'preview' | 'apply';

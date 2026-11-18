@@ -31,6 +31,11 @@ export function satMessage(job: Job | undefined, agentReady: boolean): string {
   if (job?.status === 'completed') {
     const r = job.result;
     const failed = r.fallidas?.length ?? 0;
+    if (r.prueba_en_seco)
+      return (
+        `Prueba en seco: se reconocieron ${r.detectadas ?? 0} declaraciones con PDF. No se descargó nada.` +
+        (r.paginacion ? ' La tabla tiene más páginas: sólo se lee la visible.' : '')
+      );
     if (r.interrumpida === 'sesion_expirada')
       return `Se detuvo porque venció la sesión del SAT: ${r.entregados ?? 0} PDF recibidos. Vuelve a iniciar sesión y descarga de nuevo.`;
     if (r.cancelada)
@@ -135,6 +140,7 @@ export default function SatAccess({
     }
   }
   const failures = job?.status === 'completed' ? (job.result.fallidas ?? []) : [];
+  const seen = job?.status === 'completed' && job.result.prueba_en_seco ? job.result : null;
   const delivered = job?.status === 'completed' && (job.result.entregados ?? 0) > 0;
   return (
     <div className="recopila-warning" role="status" aria-live="polite">
@@ -187,6 +193,16 @@ export default function SatAccess({
                   </li>
                 ))}
               </ul>
+            </details>
+          )}
+          {seen && (
+            <details>
+              <summary>Lo que se reconoció en la tabla</summary>
+              <p>
+                Dirección de consulta reconocida: {seen.coincide_url ? 'sí' : 'no'} · Más páginas:{' '}
+                {seen.paginacion ? 'sí' : 'no'}
+              </p>
+              <p>Encabezados: {(seen.encabezados ?? []).join(' · ') || 'ninguno'}</p>
             </details>
           )}
           <small className="muted">{NOTE}</small>

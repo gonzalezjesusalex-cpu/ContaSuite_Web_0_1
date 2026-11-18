@@ -31,6 +31,16 @@ PDF_CONTROLS = (
 # El original ubica el icono en la primera celda cuando ninguno de los anteriores coincide.
 FIRST_CELL_CONTROLS = "a, button, input[type='image'], [role='button']"
 
+# Controles de paginación: la prueba en seco avisa si la tabla tiene más páginas (el agente sólo lee la visible).
+PAGINATION_CONTROLS = (
+    "a[rel='next']",
+    "[aria-label*='siguiente' i]",
+    "a:has-text('Siguiente')",
+    "button:has-text('Siguiente')",
+    '.pagination',
+    '.paginate_button',
+)
+
 # Ritmo: una descarga a la vez, con espera máxima por fila y pausa entre filas.
 DOWNLOAD_TIMEOUT_MS = 25_000
 ROW_PAUSE_MS = 350

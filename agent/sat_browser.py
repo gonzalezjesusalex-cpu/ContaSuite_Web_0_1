@@ -71,6 +71,16 @@ def row_year(cells, columns):
     return re.sub(r'\s+', ' ', cells[index]).strip() if index is not None and index < len(cells) else ''
 
 
+def has_pagination(page):
+    for selector in sel.PAGINATION_CONTROLS:
+        try:
+            if page.locator(selector).count() > 0:
+                return True
+        except Exception:  # noqa: BLE001 - an unusual selector never stops the dry run
+            continue
+    return False
+
+
 def is_pdf_file(path):
     try:
         with Path(path).open('rb') as handle:
@@ -112,7 +122,8 @@ def download_all(options, staging, on_progress=None, should_stop=None):
     """Abre el navegador, espera a que el usuario llegue a la consulta y descarga cada PDF en `staging`.
 
     `options`: base_url (obligatoria), profile_dir, browsers_dir, headless (sólo pruebas), login_timeout (s),
-    guided (entrada guiada al portal), ejercicio (sólo las filas de ese año).
+    guided (entrada guiada al portal), ejercicio (sólo las filas de ese año), dry_run (prueba en seco: reconoce la
+    tabla y la describe sin descargar nada).
     Devuelve {'detectadas', 'guardadas', 'fallidas': [{'fila', 'motivo'}], 'archivos': [...]}.
     Nunca hace clics a ciegas: si no identifica ningún control PDF, termina con `sat_sin_controles`.
     """
@@ -170,7 +181,8 @@ def download_all(options, staging, on_progress=None, should_stop=None):
             if rows.count() == 0:
                 rows = consulta.locator('table tr')
             heads = consulta.locator('table th')
-            columns = column_map([heads.nth(i).inner_text(timeout=800) for i in range(heads.count())])
+            header_texts = [heads.nth(i).inner_text(timeout=800) for i in range(heads.count())]
+            columns = column_map(header_texts)
             entries = []
             for i in range(min(rows.count(), MAX_ROWS)):
                 row = rows.nth(i)
@@ -187,6 +199,19 @@ def download_all(options, staging, on_progress=None, should_stop=None):
                     entries.append((i, *parsed))
             if not entries:
                 raise SatError('sat_sin_controles')
+            if options.get('dry_run'):
+                # First contact with the real portal: say what is recognized, click and download nothing.
+                return {
+                    'prueba_en_seco': True,
+                    'detectadas': len(entries),
+                    'guardadas': 0,
+                    'fallidas': [],
+                    'archivos': [],
+                    'encabezados': [norm(h)[:60] for h in header_texts][:20],
+                    'columnas': columns,
+                    'coincide_url': any(part in (consulta.url or '').lower() for part in sel.CONSULTA_URL_PARTS),
+                    'paginacion': has_pagination(consulta),
+                }
 
             notify({'fase': 'descargando', 'total': len(entries), 'hechas': 0})
             limits = (

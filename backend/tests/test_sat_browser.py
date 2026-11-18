@@ -46,6 +46,7 @@ PAGES = {
     '/expirada': table('/pdf/2', '/pdf/2', '/pdf/2', '/pdf/1', '/pdf/1'),  # every download is a login page
     '/inestable': table('/flaky'),  # the first request hangs; the retry answers at once
     '/dos': table('/pdf/1', '/pdf/3'),
+    '/paginada': table('/pdf/1').replace('</body>', '<a rel="next" href="#">Siguiente</a></body>'),
 }
 HITS = {'flaky': 0}
 
@@ -228,3 +229,17 @@ def test_cancelling_keeps_what_was_already_downloaded(fake_sat, tmp_path):
             pytest.skip('Firefox de Playwright no está instalado en este equipo.')
         raise
     assert result['cancelada'] is True and result['guardadas'] == 1 and result['detectadas'] == 2
+
+
+def test_dry_run_describes_the_table_and_downloads_nothing(fake_sat, tmp_path):
+    result, _ = run_download(fake_sat + '/consulta', tmp_path, dry_run=True)
+    assert result['prueba_en_seco'] is True and result['detectadas'] == 4 and result['guardadas'] == 0
+    assert result['archivos'] == [] and result['paginacion'] is False
+    assert 'NO. DE OPERACION' in result['encabezados'] and result['columnas']['operacion'] == 1
+    assert result['coincide_url'] is False  # the simulated address is not the SAT's
+    assert not any((tmp_path / 'staging').iterdir())  # not one click, not one file
+
+
+def test_dry_run_warns_when_the_table_has_more_pages(fake_sat, tmp_path):
+    result, _ = run_download(fake_sat + '/paginada', tmp_path, dry_run=True)
+    assert result['paginacion'] is True and result['detectadas'] == 1
