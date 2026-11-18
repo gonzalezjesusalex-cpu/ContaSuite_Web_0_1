@@ -34,6 +34,11 @@ FIRST_CELL_CONTROLS = "a, button, input[type='image'], [role='button']"
 # Ritmo: una descarga a la vez, con espera máxima por fila y pausa entre filas.
 DOWNLOAD_TIMEOUT_MS = 25_000
 ROW_PAUSE_MS = 350
+# Una fila que falla por red o por tiempo se reintenta; un archivo que no es PDF no (sesión vencida).
+RETRIES = 2
+RETRY_PAUSE_MS = 2_000
+# Descargas seguidas que no son PDF: la sesión del SAT venció y seguir sólo repetiría el error.
+MAX_CONSECUTIVE_NOT_PDF = 3
 
 # Entrada guiada (como el original): pestaña «Declara» y luego «Pagos provisionales del ISR». Nunca se fuerza la URL
 # del inicio de sesión: si algo no aparece, la persona sigue a mano.

@@ -8,6 +8,7 @@ La lógica pura (filas, nombres, validación de PDF) está separada del navegado
 """
 
 import hashlib
+import logging
 import re
 import shutil
 import tempfile
@@ -188,14 +189,34 @@ def download_all(options, staging, on_progress=None, should_stop=None):
                 raise SatError('sat_sin_controles')
 
             notify({'fase': 'descargando', 'total': len(entries), 'hechas': 0})
+            limits = (
+                int(options.get('download_timeout_ms', sel.DOWNLOAD_TIMEOUT_MS)),
+                int(options.get('retries', sel.RETRIES)),
+                int(options.get('retry_pause_ms', sel.RETRY_PAUSE_MS)),
+            )
+            cancelled, interrupted, not_pdf_in_a_row = False, None, 0
             for pos, (index, operation, kind, period) in enumerate(entries, start=1):
                 if stop():
-                    errors.append({'fila': pos, 'motivo': 'cancelado'})
+                    cancelled = True
                     break
-                _download_row(consulta, index, pos, (operation, kind, period), temp, staging, files, errors)
+                if consulta.is_closed():
+                    raise SatError('sat_navegador_cerrado')
+                meta = {'fila': pos, 'operacion': operation, 'tipo': kind, 'periodo': period}
+                outcome = _download_row(consulta, index, meta, temp, staging, files, errors, limits)
+                not_pdf_in_a_row = not_pdf_in_a_row + 1 if outcome == 'no_es_pdf' else 0
                 notify({'fase': 'descargando', 'total': len(entries), 'hechas': pos, 'guardadas': len(files)})
+                if not_pdf_in_a_row >= sel.MAX_CONSECUTIVE_NOT_PDF:
+                    interrupted = 'sesion_expirada'
+                    break
                 consulta.wait_for_timeout(sel.ROW_PAUSE_MS)
-            return {'detectadas': len(entries), 'guardadas': len(files), 'fallidas': errors, 'archivos': files}
+            return {
+                'detectadas': len(entries),
+                'guardadas': len(files),
+                'fallidas': errors,
+                'archivos': files,
+                **({'cancelada': True} if cancelled else {}),
+                **({'interrumpida': interrupted} if interrupted else {}),
+            }
         finally:
             context.close()
 
@@ -242,7 +263,9 @@ def _wait_consulta(context, timeout, stop, notify):
     deadline = time.time() + timeout
     last = time.time()
     while time.time() < deadline and not stop():
-        if time.time() - last >= 30:  # a sign of life while the person signs in
+        if not context.pages:
+            raise SatError('sat_navegador_cerrado')
+        if time.time() - last >= 10:  # a sign of life while the person signs in
             notify({'fase': 'esperando_sesion'})
             last = time.time()
         for candidate in reversed(context.pages):
@@ -258,38 +281,54 @@ def _wait_consulta(context, timeout, stop, notify):
     return None
 
 
-def _download_row(page, index, pos, meta, temp, staging, files, errors):
-    operation, kind, period = meta
-    try:
-        rows = page.locator('table tbody tr')
-        if rows.count() <= index:
-            rows = page.locator('table tr')
-        control = find_pdf_control(rows.nth(index))
-        if control is None:
-            errors.append({'fila': pos, 'motivo': 'sin_control'})
-            return
-        control.scroll_into_view_if_needed(timeout=5000)
-        with page.expect_download(timeout=sel.DOWNLOAD_TIMEOUT_MS) as waiting:
-            control.click(timeout=10_000)
-        download = waiting.value
-        got = Path(download.path())
-        if not is_pdf_file(got):
-            errors.append({'fila': pos, 'motivo': 'no_es_pdf'})
-            return
-        if got.stat().st_size > MAX_PDF_BYTES:
-            errors.append({'fila': pos, 'motivo': 'demasiado_grande'})
-            return
-        target = unique_path(staging, download.suggested_filename or 'declaracion.pdf')
-        shutil.copyfile(got, target)
-        files.append(
-            {
-                'nombre': target.name,
-                'sha256': sha256_file(target),
-                'bytes': target.stat().st_size,
-                'operacion': operation,
-                'tipo': kind,
-                'periodo': period,
-            }
-        )
-    except Exception:  # noqa: BLE001 - one failed row is recorded and the queue continues
-        errors.append({'fila': pos, 'motivo': 'descarga_fallida'})
+def _try_row(page, index, staging, meta, timeout):
+    """One attempt. ('ok', archivo) or (motivo, None) for a failure that retrying cannot fix; raises on the rest."""
+    rows = page.locator('table tbody tr')
+    if rows.count() <= index:
+        rows = page.locator('table tr')
+    control = find_pdf_control(rows.nth(index))
+    if control is None:
+        return 'sin_control', None
+    control.scroll_into_view_if_needed(timeout=5000)
+    with page.expect_download(timeout=timeout) as waiting:
+        control.click(timeout=10_000)
+    download = waiting.value
+    got = Path(download.path())
+    if not is_pdf_file(got):
+        return 'no_es_pdf', None
+    if got.stat().st_size > MAX_PDF_BYTES:
+        return 'demasiado_grande', None
+    target = unique_path(staging, download.suggested_filename or 'declaracion.pdf')
+    shutil.copyfile(got, target)
+    return 'ok', {
+        'nombre': target.name,
+        'sha256': sha256_file(target),
+        'bytes': target.stat().st_size,
+        'operacion': meta['operacion'],
+        'tipo': meta['tipo'],
+        'periodo': meta['periodo'],
+    }
+
+
+def _download_row(page, index, meta, temp, staging, files, errors, limits):
+    """Download one row, retrying network or timing failures. Records a failure with its row and attempts.
+
+    Returns 'ok' or the reason, so the caller can notice an expired session (several files that are not PDF).
+    """
+    timeout, retries, pause = limits
+    attempts = 0
+    while True:
+        attempts += 1
+        try:
+            motivo, archivo = _try_row(page, index, staging, meta, timeout)
+        except Exception:  # noqa: BLE001 - a failed attempt is retried, then recorded; the queue continues
+            if attempts <= retries and not page.is_closed():
+                page.wait_for_timeout(pause)
+                continue
+            motivo, archivo = 'descarga_fallida', None
+        if archivo is not None:
+            files.append(archivo)
+            return 'ok'
+        logging.warning('Descarga SAT: fila %s sin PDF (%s, %s intento(s)).', meta['fila'], motivo, attempts)
+        errors.append({**meta, 'motivo': motivo, 'intentos': attempts})
+        return motivo

@@ -5,12 +5,20 @@ import { stitchButton } from '../components/stitch';
 import { can } from '../permissions';
 import type { Job, State } from '../types';
 
+const REASONS: Record<string, string> = {
+  descarga_fallida: 'No se pudo descargar',
+  no_es_pdf: 'El SAT no entregó un PDF (¿venció la sesión?)',
+  sin_control: 'No se encontró el icono PDF de la fila',
+  demasiado_grande: 'El archivo pasa de 25 MB',
+};
+
 const NOTE = 'Este módulo no solicita FIEL ni contraseñas: inicias sesión tú en la ventana del SAT.';
 
 /** What the person should know or do now, in plain words, from the agent's state and the latest download. */
 export function satMessage(job: Job | undefined, agentReady: boolean): string {
   if (job?.status === 'queued') return 'Esperando a que tu agente local abra el navegador…';
   if (job?.status === 'running') {
+    if (job.result.cancelar) return 'Cancelando: la descarga se detiene al terminar la fila actual…';
     const p = job.result.progreso;
     if (!p || p.fase === 'abriendo') return 'Abriendo el navegador en tu equipo…';
     if (p.fase === 'esperando_sesion')
@@ -23,6 +31,13 @@ export function satMessage(job: Job | undefined, agentReady: boolean): string {
   if (job?.status === 'completed') {
     const r = job.result;
     const failed = r.fallidas?.length ?? 0;
+    if (r.interrumpida === 'sesion_expirada')
+      return `Se detuvo porque venció la sesión del SAT: ${r.entregados ?? 0} PDF recibidos. Vuelve a iniciar sesión y descarga de nuevo.`;
+    if (r.cancelada)
+      return (
+        `Descarga cancelada: ${r.entregados ?? 0} PDF recibidos antes de detenerla.` +
+        (r.analisis_id ? ' El análisis ya está creado.' : '')
+      );
     return (
       `Descarga terminada: ${r.entregados ?? 0} de ${r.detectadas ?? 0} PDF recibidos en ContaSuite` +
       (failed ? ` · ${failed} con error.` : '.') +
@@ -107,6 +122,19 @@ export default function SatAccess({
       setBusy(false);
     }
   }
+  async function cancel() {
+    if (!job) return;
+    setBusy(true);
+    try {
+      await api('/jobs/' + job.id + '/cancel', 'POST');
+      await refresh();
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const failures = job?.status === 'completed' ? (job.result.fallidas ?? []) : [];
   const delivered = job?.status === 'completed' && (job.result.entregados ?? 0) > 0;
   return (
     <div className="recopila-warning" role="status" aria-live="polite">
@@ -130,6 +158,11 @@ export default function SatAccess({
               <Globe size={16} />
               {active ? 'Descargando…' : 'Descargar del SAT'}
             </button>
+            {active && (
+              <button className={stitchButton} disabled={busy || !!job?.result.cancelar} onClick={cancel}>
+                Cancelar descarga
+              </button>
+            )}
             {delivered && (
               <button
                 className={stitchButton}
@@ -140,6 +173,22 @@ export default function SatAccess({
               </button>
             )}
           </div>
+          {failures.length > 0 && (
+            <details>
+              <summary>Ver las {failures.length} filas con error</summary>
+              <ul>
+                {failures.map((f) => (
+                  <li key={f.fila}>
+                    Fila {f.fila}
+                    {[f.periodo, f.tipo, f.operacion].filter(Boolean).length > 0 &&
+                      ' · ' + [f.periodo, f.tipo, f.operacion].filter(Boolean).join(' · ')}
+                    : {REASONS[f.motivo] || f.motivo}
+                    {f.intentos && f.intentos > 1 ? ` (${f.intentos} intentos)` : ''}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <small className="muted">{NOTE}</small>
         </>
       ) : (

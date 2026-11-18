@@ -269,7 +269,17 @@ export interface Job {
     guardadas?: number;
     entregados?: number;
     no_entregados?: number;
-    fallidas?: { fila: number; motivo: string }[];
+    fallidas?: {
+      fila: number;
+      motivo: string;
+      operacion?: string;
+      tipo?: string;
+      periodo?: string;
+      intentos?: number;
+    }[];
+    cancelar?: boolean;
+    cancelada?: boolean;
+    interrumpida?: string;
     mode?: 'preview' | 'apply';
     destination?: string;
     include?: string[];

@@ -913,6 +913,32 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
     return job
 
 
+@app.post('/api/jobs/{id}/cancel', dependencies=APP)
+def cancel_job(id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Stop a SAT download. Queued: ends now. Running: flagged, and the agent stops at its next report, keeping the
+    PDFs it already delivered."""
+    job = db.get(Job, id)
+    if not job or job.kind != 'sat_declaraciones' or not (principal.admin or job.requested_by == principal.subject):
+        raise HTTPException(404, 'Descarga no encontrada')
+    principal.require(job_action(job.kind), job.company_id)
+    if job.status == 'queued':
+        changed = db.execute(
+            update(Job)
+            .where(Job.id == job.id, Job.status == 'queued')
+            .values(status='failed', result={'error': 'La descarga se canceló.', 'error_code': 'sat_cancelado'})
+        )
+        if not changed.rowcount:
+            db.rollback()
+            raise HTTPException(409, 'La descarga ya empezó: vuelve a intentar cancelarla.')
+    elif job.status == 'running':
+        job.result = {**(job.result or {}), 'cancelar': True}
+    else:
+        raise HTTPException(409, 'La descarga ya terminó.')
+    record(db, 'Descarga de declaraciones: cancelación solicitada', job.company_id, principal.subject)
+    save(db)
+    return {'ok': True, 'estado': 'cancelando' if job.status == 'running' else 'cancelada'}
+
+
 @app.post('/api/agent/heartbeat')
 def heartbeat(data: Heartbeat, db: Session = Depends(session), caller=Depends(agent_caller)):
     from .agent_links import end_link, roots
@@ -967,7 +993,10 @@ def claim(
                 job.company_id,
                 job_action(job.kind),
             )
-            and (not (job.payload or {}).get('copy') or user_can_analyze(db, caller.user, job.company_id, 'documentos.subir'))
+            and (
+                not (job.payload or {}).get('copy')
+                or user_can_analyze(db, caller.user, job.company_id, 'documentos.subir')
+            )
         ):
             db.execute(
                 update(Job)

@@ -2,6 +2,7 @@
 
 import sys
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -29,6 +30,26 @@ HOME = """<html><body><h1>Portal (simulado)</h1>
 <div id="panel" style="display:none"><a href="/consulta">Pagos provisionales del ISR</a></div></body></html>"""
 
 
+HEAD = '<tr><th>PDF</th><th>No. de operación</th><th>Tipo de declaración</th><th>Ejercicio</th><th>Periodo</th></tr>'
+
+
+def table(*links):
+    rows = ''.join(
+        f'<tr><td><a href="{link}"><img src="/i.png" alt="PDF"></a></td><td>20260000{n}1</td><td>Normal</td>'
+        f'<td>2026</td><td>Mes {n}</td></tr>'
+        for n, link in enumerate(links, start=1)
+    )
+    return f'<html><body><table><thead>{HEAD}</thead><tbody>{rows}</tbody></table></body></html>'
+
+
+PAGES = {
+    '/expirada': table('/pdf/2', '/pdf/2', '/pdf/2', '/pdf/1', '/pdf/1'),  # every download is a login page
+    '/inestable': table('/flaky'),  # the first request hangs; the retry answers at once
+    '/dos': table('/pdf/1', '/pdf/3'),
+}
+HITS = {'flaky': 0}
+
+
 class FakeSat(BaseHTTPRequestHandler):
     def log_message(self, *_):
         return
@@ -36,6 +57,14 @@ class FakeSat(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         if self.path == '/':
             body, kind, extra = HOME.encode(), 'text/html; charset=utf-8', {}
+        elif self.path in PAGES:
+            body, kind, extra = PAGES[self.path].encode(), 'text/html; charset=utf-8', {}
+        elif self.path == '/flaky':
+            HITS['flaky'] += 1
+            if HITS['flaky'] == 1 or HITS['flaky'] < 0:
+                time.sleep(3)
+            body, kind = PDF + b'flaky', 'application/pdf'
+            extra = {'Content-Disposition': 'attachment; filename="flaky.pdf"'}
         elif self.path == '/consulta':
             body, kind, extra = PAGE.encode(), 'text/html; charset=utf-8', {}
         elif self.path == '/pdf/2':  # a session-expired page served as if it were the PDF
@@ -114,7 +143,16 @@ def test_download_from_the_simulated_portal(fake_sat, tmp_path):
     result, progress = run_download(fake_sat + '/consulta', tmp_path)
     # Four rows have a PDF control; the fifth has none and is never clicked. The second is not a real PDF.
     assert result['detectadas'] == 4 and result['guardadas'] == 3
-    assert result['fallidas'] == [{'fila': 2, 'motivo': 'no_es_pdf'}]
+    assert result['fallidas'] == [
+        {
+            'fila': 2,
+            'operacion': '2026000022',
+            'tipo': 'Normal',
+            'periodo': 'Febrero',
+            'motivo': 'no_es_pdf',
+            'intentos': 1,
+        }
+    ]
     names = sorted(f['nombre'] for f in result['archivos'])
     assert names == ['declaracion1.pdf', 'declaracion3.pdf', 'declaracion5.pdf']
     assert {f['periodo'] for f in result['archivos']} == {'Enero', 'Diciembre'}
@@ -137,3 +175,56 @@ def test_a_table_without_a_year_column_is_not_filtered():
 def test_guided_entry_follows_the_original_route_to_the_query(fake_sat, tmp_path):
     result, _ = run_download(fake_sat + '/', tmp_path, guided=True, ejercicio=2026)
     assert result['detectadas'] == 3 and result['guardadas'] == 2
+
+
+def test_a_slow_download_is_retried_and_succeeds(fake_sat, tmp_path):
+    HITS['flaky'] = 0
+    result, _ = run_download(fake_sat + '/inestable', tmp_path, download_timeout_ms=1000, retry_pause_ms=200)
+    assert result['guardadas'] == 1 and result['fallidas'] == []
+
+
+def test_a_row_that_keeps_failing_is_recorded_with_its_attempts(fake_sat, tmp_path):
+    HITS['flaky'] = -100  # every request hangs
+    result, _ = run_download(fake_sat + '/inestable', tmp_path, download_timeout_ms=500, retries=1, retry_pause_ms=100)
+    assert result['guardadas'] == 0
+    assert result['fallidas'] == [
+        {
+            'fila': 1,
+            'operacion': '202600001' + '1',
+            'tipo': 'Normal',
+            'periodo': 'Mes 1',
+            'motivo': 'descarga_fallida',
+            'intentos': 2,
+        }
+    ]
+
+
+def test_several_non_pdf_downloads_in_a_row_stop_the_queue_as_an_expired_session(fake_sat, tmp_path):
+    result, _ = run_download(fake_sat + '/expirada', tmp_path)
+    assert result['interrumpida'] == 'sesion_expirada'
+    assert result['guardadas'] == 0 and [f['fila'] for f in result['fallidas']] == [1, 2, 3]
+    assert all(f['motivo'] == 'no_es_pdf' and f['intentos'] == 1 for f in result['fallidas'])
+
+
+def test_cancelling_keeps_what_was_already_downloaded(fake_sat, tmp_path):
+    pytest.importorskip('playwright')
+    seen = []
+
+    def progress(event):
+        seen.append(event)
+
+    def stop():
+        return any(e.get('hechas') == 1 for e in seen)  # after the first row
+
+    try:
+        result = sb.download_all(
+            {'base_url': fake_sat + '/dos', 'headless': True, 'profile_dir': tmp_path / 'p', 'login_timeout': 20},
+            tmp_path / 'staging',
+            on_progress=progress,
+            should_stop=stop,
+        )
+    except sb.SatError as exc:
+        if exc.code in ('sat_navegador_no_disponible', 'sat_sin_playwright'):
+            pytest.skip('Firefox de Playwright no está instalado en este equipo.')
+        raise
+    assert result['cancelada'] is True and result['guardadas'] == 1 and result['detectadas'] == 2

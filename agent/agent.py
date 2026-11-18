@@ -490,7 +490,10 @@ def sat_download(payload, options, notify=None):
     sat.setdefault('browsers_dir', base / 'playwright-browsers')
     staging = Path(tempfile.mkdtemp(prefix='contasuite_sat_pdf_'))
     try:
-        result = sat_browser.download_all(sat, staging, on_progress=notify)
+        cancelled = getattr(notify, 'cancelled', None)
+        result = sat_browser.download_all(
+            sat, staging, on_progress=notify, should_stop=(lambda: cancelled.is_set()) if cancelled else None
+        )
     except BaseException:
         import shutil
 
@@ -531,17 +534,21 @@ def progress_reporter(post_fn, job_id, agent_id):
     import time
 
     last = {'fase': None, 'at': 0.0}
+    cancelled = threading.Event()
 
     def report(event):
         now = time.time()
-        if event.get('fase') == last['fase'] and event.get('fase') != 'descargando' and now - last['at'] < 20:
+        if event.get('fase') == last['fase'] and event.get('fase') != 'descargando' and now - last['at'] < 9:
             return
         last.update(fase=event.get('fase'), at=now)
         try:
-            post_fn('/agent/jobs/' + job_id + '/progress', {'agent_id': agent_id, **event})
+            reply = post_fn('/agent/jobs/' + job_id + '/progress', {'agent_id': agent_id, **event})
+            if isinstance(reply, dict) and reply.get('cancelar'):
+                cancelled.set()  # cancelled from ContaSuite: the download stops before its next row
         except Exception:  # noqa: BLE001 - progress is informative only
             logging.warning('No se pudo informar el avance de la descarga.')
 
+    report.cancelled = cancelled
     return report
 
 
@@ -632,6 +639,7 @@ REASONS = {
     'sat_sin_consulta': 'No se llegó a la pantalla de consulta de declaraciones a tiempo.',
     'sat_sin_controles': 'La tabla de declaraciones no tiene PDF descargables que se puedan identificar. No se hizo ningún clic.',
     'sat_cancelado': 'La descarga se canceló.',
+    'sat_navegador_cerrado': 'Se cerró la ventana del navegador antes de terminar la descarga.',
 }
 
 

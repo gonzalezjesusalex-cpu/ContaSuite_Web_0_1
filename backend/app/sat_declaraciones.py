@@ -97,6 +97,7 @@ def report_progress(ident: str, data: Progress, db: Session = Depends(session), 
     counts silence, not the time the person takes to sign in to the portal."""
     job = receiving_job(db, ident, data.agent_id, caller)
     progress = data.model_dump(exclude={'agent_id'}, exclude_none=True)
-    job.result = {**claim_marker(), 'progreso': progress}
+    cancel = bool((job.result or {}).get('cancelar'))
+    job.result = {**claim_marker(), 'progreso': progress, **({'cancelar': True} if cancel else {})}
     db.commit()
-    return {'ok': True}
+    return {'ok': True, 'cancelar': cancel}

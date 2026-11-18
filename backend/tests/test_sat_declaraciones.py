@@ -251,3 +251,64 @@ def test_analysis_is_created_once_from_the_received_pdfs(office):  # noqa: F811
     shown = next(j for j in c.get('/api/state').json()['jobs'] if j['id'] == claimed['id'])
     assert shown['result']['analisis_id'] == run['id']
     assert c.post('/api/declara/runs/from-sat', json={'job_id': 'no-existe', 'short_name': 'X'}).status_code == 404
+
+
+def test_a_queued_download_is_cancelled_at_once_and_only_once(office):  # noqa: F811
+    c, companies, _ = office
+    login(c, 'ana')
+    _, token = pair(c)
+    heartbeat(c, token)
+    job = start(c, companies['a']).json()
+    assert c.post(f'/api/jobs/{job["id"]}/cancel').json() == {'ok': True, 'estado': 'cancelada'}
+    shown = next(j for j in c.get('/api/state').json()['jobs'] if j['id'] == job['id'])
+    assert shown['status'] == 'failed' and shown['result']['error_code'] == 'sat_cancelado'
+    # The agent finds nothing to claim, and a finished job cannot be cancelled again.
+    assert c.post('/api/agent/pc-ana/claim', headers=bearer(token)).json() is None
+    assert c.post(f'/api/jobs/{job["id"]}/cancel').status_code == 409
+    assert c.post('/api/jobs/no-existe/cancel').status_code == 404
+
+
+def test_a_running_download_is_told_to_stop_through_its_next_report(office):  # noqa: F811
+    c, companies, _ = office
+    login(c, 'ana')
+    _, token = pair(c)
+    heartbeat(c, token)
+    job = start(c, companies['a']).json()
+    claimed = c.post('/api/agent/pc-ana/claim', headers=bearer(token)).json()
+    url = f'/api/agent/jobs/{claimed["id"]}/progress'
+    assert (
+        c.post(url, headers=bearer(token), json={'agent_id': 'pc-ana', 'fase': 'abriendo'}).json()['cancelar'] is False
+    )
+    assert c.post(f'/api/jobs/{job["id"]}/cancel').json() == {'ok': True, 'estado': 'cancelando'}
+    # The flag survives the agent's reports until it stops.
+    stop = c.post(
+        url, headers=bearer(token), json={'agent_id': 'pc-ana', 'fase': 'descargando', 'total': 3, 'hechas': 1}
+    )
+    assert stop.json() == {'ok': True, 'cancelar': True}
+    again = c.post(
+        url, headers=bearer(token), json={'agent_id': 'pc-ana', 'fase': 'descargando', 'total': 3, 'hechas': 2}
+    )
+    assert again.json()['cancelar'] is True
+
+
+def test_cancelling_is_only_for_sat_downloads_of_the_requester(office):  # noqa: F811
+    c, companies, _ = office
+    login(c, 'ana')
+    pair(c)
+    scan = c.post('/api/jobs', json={'company_id': companies['a'], 'kind': 'scan_folder'}).json()
+    assert c.post(f'/api/jobs/{scan["id"]}/cancel').status_code == 404
+
+
+def test_progress_reporter_learns_of_the_cancellation():
+    agent = load_agent()
+    calls = []
+
+    def post(path, data):
+        calls.append((path, data))
+        return {'ok': True, 'cancelar': len(calls) >= 2}
+
+    report = agent.progress_reporter(post, 'j1', 'pc-ana')
+    report({'fase': 'descargando', 'total': 2, 'hechas': 0})
+    assert not report.cancelled.is_set()
+    report({'fase': 'descargando', 'total': 2, 'hechas': 1})
+    assert report.cancelled.is_set() and calls[0][0] == '/agent/jobs/j1/progress'
