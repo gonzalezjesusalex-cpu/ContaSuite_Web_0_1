@@ -208,7 +208,7 @@ export default function VirtualExplorer({
           </button>
         ))}
       </div>
-      {view === 'Inventario' && <Inventory job={job} />}
+      {view === 'Inventario' && <Inventory job={job} companyId={companyId} />}
       <div className="toolbar" style={{ flexWrap: 'wrap', display: view === 'Inventario' ? 'none' : undefined }}>
         <input
           aria-label="Buscar documentos virtuales"

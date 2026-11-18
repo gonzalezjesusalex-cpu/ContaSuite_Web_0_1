@@ -33,7 +33,9 @@ export default function FolderAnalysis({ job }: { job?: Job }) {
           {summary.total.toLocaleString('es-MX')} archivos · {size(summary.bytes)} · {dateLabel(job.created_at)}
         </small>
       </header>
-      {job.result.truncated && <p className="muted">Se alcanzó el límite de recorrido: el conteo puede estar incompleto.</p>}
+      {job.result.truncated && (
+        <p className="muted">Se alcanzó el límite de recorrido: el conteo puede estar incompleto.</p>
+      )}
       <div className="folder-groups">
         {summary.groups.map((g) => (
           <details key={g.key} className={g.sensitive ? 'folder-group sensitive' : 'folder-group'}>

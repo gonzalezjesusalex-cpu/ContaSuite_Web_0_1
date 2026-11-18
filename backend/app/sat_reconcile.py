@@ -50,49 +50,52 @@ def parse_report(rows):
         'receptor': col('RFC RECEPTOR'),
         'estatus': col('ESTATUS'),
     }
+
+    def cell(row, key):
+        index = cols[key]
+        return row[index] if index is not None and index < len(row) else None
+
     out = []
     for row in rows[head + 1 :]:
-        def cell(key):
-            index = cols[key]
-            return row[index] if index is not None and index < len(row) else None
-
-        uuid = str(cell('u') or '').strip().upper()
+        uuid = str(cell(row, 'u') or '').strip().upper()
         if not UUID.fullmatch(uuid):
             continue
-        total = cell('total')
+        total = cell(row, 'total')
         out.append(
             {
                 'u': uuid,
-                'tipo': str(cell('tipo') or '')[:12],
-                'fecha': str(cell('fecha') or '')[:10],
+                'tipo': str(cell(row, 'tipo') or '')[:12],
+                'fecha': str(cell(row, 'fecha') or '')[:10],
                 'total': round(total, 2) if isinstance(total, (int, float)) else None,
-                'emisor': str(cell('emisor') or '')[:13],
-                'receptor': str(cell('receptor') or '')[:13],
-                'cancelado': 'CANCEL' in fold(str(cell('estatus') or '')),
+                'emisor': str(cell(row, 'emisor') or '')[:13],
+                'receptor': str(cell(row, 'receptor') or '')[:13],
+                'cancelado': 'CANCEL' in fold(str(cell(row, 'estatus') or '')),
             }
         )
     return out
+
+
+def _attr(attrs, name):
+    found = re.search(r'\b' + name + r'\s*=\s*"([^"]*)"', attrs)
+    return found.group(1) if found else ''
+
+
+def _number(attrs, name):
+    try:
+        return float(_attr(attrs, name))
+    except ValueError:
+        return None
 
 
 def parse_payment(text):
     """(uuid, pagado, saldo, parcialidad) of every document a payment complement settles."""
     out = []
     for attrs in DOCUMENT.findall(text):
-        def attr(name):
-            found = re.search(r'\b' + name + r'\s*=\s*"([^"]*)"', attrs)
-            return found.group(1) if found else ''
-
-        uuid = attr('IdDocumento').upper()
+        uuid = _attr(attrs, 'IdDocumento').upper()
         if not UUID.fullmatch(uuid):
             continue
-
-        def number(name):
-            try:
-                return float(attr(name))
-            except ValueError:
-                return None
-
-        out.append((uuid, number('ImpPagado'), number('ImpSaldoInsoluto'), int(attr('NumParcialidad') or 0)))
+        parcialidad = int(_attr(attrs, 'NumParcialidad') or 0)
+        out.append((uuid, _number(attrs, 'ImpPagado'), _number(attrs, 'ImpSaldoInsoluto'), parcialidad))
     return out
 
 

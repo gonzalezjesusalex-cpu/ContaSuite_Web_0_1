@@ -19,8 +19,10 @@ const EXCLUDED: Record<string, string> = {
   ruido: 'archivos de sistema',
 };
 const DEFAULT_ON = Object.keys(SECTIONS).filter((k) => k !== 'trabajadores');
-const size = (b: number) => (b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
-const same = (a: string, b: string) => a.trim().replace(/\//g, '\\').toLowerCase() === b.trim().replace(/\//g, '\\').toLowerCase();
+const size = (b: number) =>
+  b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+const same = (a: string, b: string) =>
+  a.trim().replace(/\//g, '\\').toLowerCase() === b.trim().replace(/\//g, '\\').toLowerCase();
 
 /** Export a COPY of the company's folder in the virtual order: preview first, then copy. Originals are never touched. */
 export default function ExportDialog({
@@ -59,12 +61,19 @@ export default function ExportDialog({
       include.every((k) => result.include!.includes(k)),
     [result, destination, include],
   );
-  const toggle = (key: string) => setInclude((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]));
+  const toggle = (key: string) =>
+    setInclude((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]));
   async function send(apply: boolean) {
     setBusy(true);
     setError('');
     try {
-      await api('/jobs', 'POST', { company_id: company.id, kind: 'export_virtual', destination: destination.trim(), apply, include });
+      await api('/jobs', 'POST', {
+        company_id: company.id,
+        kind: 'export_virtual',
+        destination: destination.trim(),
+        apply,
+        include,
+      });
       await refresh();
       notify(apply ? 'Copia enviada a tu agente.' : 'Vista previa enviada a tu agente.');
     } catch (e) {
@@ -80,8 +89,8 @@ export default function ExportDialog({
       <div className="padded export-dialog">
         <p className="muted">
           Crea una <strong>copia</strong> de la carpeta de la empresa con el orden virtual (CFDI por mes, impuestos por
-          periodo, IMSS por mes…). Tus archivos originales no se mueven ni se modifican, y nunca se sobrescribe nada.
-          La e.firma, el sello digital y las contraseñas no se exportan.
+          periodo, IMSS por mes…). Tus archivos originales no se mueven ni se modifican, y nunca se sobrescribe nada. La
+          e.firma, el sello digital y las contraseñas no se exportan.
         </p>
         {blockedReason && <p className="tax-why revisar">{blockedReason}</p>}
         <Field label="Carpeta de destino (nueva, dentro de una carpeta autorizada)">
@@ -100,7 +109,9 @@ export default function ExportDialog({
             </label>
           ))}
           {include.includes('trabajadores') && (
-            <p className="tax-why">Incluye identificaciones y datos de seguridad social: cuida dónde guardas esta copia.</p>
+            <p className="tax-why">
+              Incluye identificaciones y datos de seguridad social: cuida dónde guardas esta copia.
+            </p>
           )}
         </fieldset>
         {error && (
@@ -125,9 +136,13 @@ export default function ExportDialog({
               {preview.total?.toLocaleString('es-MX')} archivos · {size(preview.bytes ?? 0)}
               {preview.free_bytes != null && ` · espacio libre ${size(preview.free_bytes)}`}
             </p>
-            {preview.enough_space === false && <p className="tax-why revisar">No hay espacio suficiente en el destino.</p>}
+            {preview.enough_space === false && (
+              <p className="tax-why revisar">No hay espacio suficiente en el destino.</p>
+            )}
             {preview.truncated && (
-              <p className="tax-why revisar">El recorrido llegó a su límite: la copia saldría incompleta y no se permitirá.</p>
+              <p className="tax-why revisar">
+                El recorrido llegó a su límite: la copia saldría incompleta y no se permitirá.
+              </p>
             )}
             <ul className="imss-files">
               {Object.entries(preview.sections ?? {}).map(([key, s]) => (
@@ -170,8 +185,8 @@ export default function ExportDialog({
               {size(done.bytes ?? 0)}
             </p>
             <p className="muted">
-              Carpeta: <code>{done.destination}</code>. El manifiesto <code>{done.manifiesto}</code> lista cada archivo con
-              su ruta original, su ruta nueva y su huella SHA-256.
+              Carpeta: <code>{done.destination}</code>. El manifiesto <code>{done.manifiesto}</code> lista cada archivo
+              con su ruta original, su ruta nueva y su huella SHA-256.
             </p>
             {(done.detalle_errores ?? []).map((e) => (
               <small className="tax-why revisar" key={e.p} title={e.p}>
@@ -184,7 +199,11 @@ export default function ExportDialog({
           <button className="btn" onClick={onClose}>
             Cerrar
           </button>
-          <button className="btn" disabled={busy || active || !agentReady || !destination.trim() || !include.length} onClick={() => void send(false)}>
+          <button
+            className="btn"
+            disabled={busy || active || !agentReady || !destination.trim() || !include.length}
+            onClick={() => void send(false)}
+          >
             Ver vista previa
           </button>
           <button

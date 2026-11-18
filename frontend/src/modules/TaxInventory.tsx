@@ -16,7 +16,11 @@ const MONTHS = [
   'Noviembre',
   'Diciembre',
 ];
-const SCOPES: Record<string, string> = { federal: 'Federales (ISR e IVA)', estatal: 'Estatales (ISN)', anual: 'Anuales' };
+const SCOPES: Record<string, string> = {
+  federal: 'Federales (ISR e IVA)',
+  estatal: 'Estatales (ISN)',
+  anual: 'Anuales',
+};
 const QUALIFIERS: Record<string, string> = { COMPL: 'Complementaria', RESICO: 'RESICO', SALARIOS: 'Salarios' };
 const REASONS: Record<string, string> = {
   acuse_sin_declaracion: 'Hay acuse, pero no hay una declaración con el mismo periodo y calificativo.',
@@ -84,8 +88,8 @@ export default function TaxInventory({ job }: { job?: Job }) {
   return (
     <div className="tax-inventory">
       <p>
-        <strong>Declaraciones y acuses</strong> · {tax.total} archivos · {tax.pairs} pares · {tax.faltantes} con faltante ·{' '}
-        {tax.revisar} por revisar · análisis del {dateLabel(job.created_at)}
+        <strong>Declaraciones y acuses</strong> · {tax.total} archivos · {tax.pairs} pares · {tax.faltantes} con
+        faltante · {tax.revisar} por revisar · análisis del {dateLabel(job.created_at)}
       </p>
       <p className="muted">
         El emparejamiento usa el nombre y la carpeta de cada archivo (periodo, complementaria, RESICO, salarios). No

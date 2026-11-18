@@ -60,8 +60,8 @@ export default function ImssInventory({ job }: { job?: Job }) {
   return (
     <div className="imss-inventory">
       <p>
-        <strong>IMSS</strong> · {imss.total} archivos · {imss.completos} meses completos · {imss.faltantes} con faltantes
-        · {imss.revisar} por revisar · análisis del {dateLabel(job.created_at)}
+        <strong>IMSS</strong> · {imss.total} archivos · {imss.completos} meses completos · {imss.faltantes} con
+        faltantes · {imss.revisar} por revisar · análisis del {dateLabel(job.created_at)}
       </p>
       <p className="muted">
         Paquete mensual armado con el nombre y la carpeta de cada archivo. No acredita el pago ni abre los documentos.
@@ -100,9 +100,7 @@ export default function ImssInventory({ job }: { job?: Job }) {
               ))}
             </div>
             {m.sin_emision.length > 0 && (
-              <p className="muted">
-                Sin emisión del IDSE: {m.sin_emision.map((c) => COMPONENTS[c]).join(', ')}.
-              </p>
+              <p className="muted">Sin emisión del IDSE: {m.sin_emision.map((c) => COMPONENTS[c]).join(', ')}.</p>
             )}
             {m.notas.map((n) => (
               <small className="tax-why" key={n}>
@@ -112,7 +110,11 @@ export default function ImssInventory({ job }: { job?: Job }) {
             <ul className="imss-files">
               {rowsOf(m.y, m.m).map((r: ImssRow) => (
                 <li key={r.p} title={r.p}>
-                  {base(r.p)} <small>{COMPONENTS[r.c]}{r.fo ? ' · copia en ' + r.fo : ''}</small>
+                  {base(r.p)}{' '}
+                  <small>
+                    {COMPONENTS[r.c]}
+                    {r.fo ? ' · copia en ' + r.fo : ''}
+                  </small>
                   {r.why && <small className="tax-why revisar">{WHY[r.why] || r.why}</small>}
                 </li>
               ))}
@@ -132,8 +134,8 @@ export default function ImssInventory({ job }: { job?: Job }) {
       )}
       {imss.generales > 0 && (
         <p className="muted">
-          {imss.generales} archivos IMSS generales (Afil/Aseg/Movt, lotes IDSE de trabajadores y avisos) no pertenecen a un
-          mes.
+          {imss.generales} archivos IMSS generales (Afil/Aseg/Movt, lotes IDSE de trabajadores y avisos) no pertenecen a
+          un mes.
         </p>
       )}
       {!months.length && <p className="muted">Sin meses con este estado.</p>}

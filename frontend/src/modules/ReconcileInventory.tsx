@@ -58,12 +58,16 @@ export function ReconcileInventory({ job }: { job?: Job }) {
           {(p.faltan ?? []).length > 0 && (
             <>
               <small className="tax-why revisar">
-                {p.n_faltan} factura(s) del SAT sin XML en la carpeta{(p.n_faltan ?? 0) > p.faltan.length && ' (primeras ' + p.faltan.length + ')'}:
+                {p.n_faltan} factura(s) del SAT sin XML en la carpeta
+                {(p.n_faltan ?? 0) > p.faltan.length && ' (primeras ' + p.faltan.length + ')'}:
               </small>
               <ul className="imss-files">
                 {p.faltan.map((f) => (
                   <li key={f.u}>
-                    <code>{f.u}</code> <small>{f.fecha} · {f.tipo} · {money(f.total)}</small>
+                    <code>{f.u}</code>{' '}
+                    <small>
+                      {f.fecha} · {f.tipo} · {money(f.total)}
+                    </small>
                     {f.cancelado && <small className="tax-why revisar">Cancelado</small>}
                   </li>
                 ))}
@@ -85,7 +89,9 @@ export function ReconcileInventory({ job }: { job?: Job }) {
               </ul>
             </>
           )}
-          {p.cancelados > 0 && <small className="tax-why revisar">{p.cancelados} XML de un CFDI marcado como cancelado.</small>}
+          {p.cancelados > 0 && (
+            <small className="tax-why revisar">{p.cancelados} XML de un CFDI marcado como cancelado.</small>
+          )}
         </details>
       ))}
       {!periods.length && <p className="muted">Todos los meses coinciden con su reporte.</p>}

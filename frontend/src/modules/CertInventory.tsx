@@ -1,7 +1,12 @@
 import { dateLabel } from '../api';
 import type { Job } from '../types';
 
-const KIND: Record<string, string> = { FIEL: 'e.firma (FIEL)', CSD: 'Sello digital (CSD)', RL: 'Representante legal', '': 'Certificado' };
+const KIND: Record<string, string> = {
+  FIEL: 'e.firma (FIEL)',
+  CSD: 'Sello digital (CSD)',
+  RL: 'Representante legal',
+  '': 'Certificado',
+};
 const STATE: Record<string, string> = {
   vigente: 'Vigente',
   por_vencer: 'Por vencer',
@@ -24,8 +29,8 @@ export default function CertInventory({ job }: { job?: Job }) {
         {data.por_vencer} por vencer · {data.vencidos} vencidos
       </p>
       <p className="tax-why">
-        Sólo se lee el certificado público (.cer). Las llaves privadas y las contraseñas no se abren. Las fechas son
-        las del propio certificado: no son una validación del SAT ni revisan revocación.
+        Sólo se lee el certificado público (.cer). Las llaves privadas y las contraseñas no se abren. Las fechas son las
+        del propio certificado: no son una validación del SAT ni revisan revocación.
       </p>
       {data.rows.map((r) => (
         <div className="tax-entry" key={r.p} title={r.p}>
@@ -46,7 +51,9 @@ export default function CertInventory({ job }: { job?: Job }) {
             </span>
           </div>
           <span className={r.s === 'vigente' ? 'chip ok' : 'chip warn'}>{STATE[r.s]}</span>
-          {r.why === 'rfc_ajeno' && <small className="tax-why revisar">Un sello digital debe traer el RFC de la empresa.</small>}
+          {r.why === 'rfc_ajeno' && (
+            <small className="tax-why revisar">Un sello digital debe traer el RFC de la empresa.</small>
+          )}
         </div>
       ))}
     </div>

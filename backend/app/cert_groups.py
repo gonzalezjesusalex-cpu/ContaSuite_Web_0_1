@@ -66,7 +66,16 @@ class CertIndex:
             info = certificate_info(data, today, self.rfc)
         except (ValueError, ImportError):
             self.items.append(
-                {**row, 'desde': '', 'hasta': '', 'dias': None, 's': 'ilegible', 'rfcs': [], 'emp': False, 'why': 'ilegible'}
+                {
+                    **row,
+                    'desde': '',
+                    'hasta': '',
+                    'dias': None,
+                    's': 'ilegible',
+                    'rfcs': [],
+                    'emp': False,
+                    'why': 'ilegible',
+                }
             )
             return
         mine = bool(self.rfc and self.rfc in info['rfcs'])
@@ -75,7 +84,9 @@ class CertIndex:
         self.items.append({**row, **info, 'emp': mine, 'why': why})
 
     def result(self):
-        rows = sorted(self.items, key=lambda r: (r['s'] not in {'vencido', 'por_vencer', 'ilegible'}, r['hasta']))[:MAX_ROWS]
+        rows = sorted(self.items, key=lambda r: (r['s'] not in {'vencido', 'por_vencer', 'ilegible'}, r['hasta']))[
+            :MAX_ROWS
+        ]
         count = lambda state: sum(1 for r in self.items if r['s'] == state)  # noqa: E731
         return {
             'rows': rows,

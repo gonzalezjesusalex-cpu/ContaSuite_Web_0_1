@@ -109,7 +109,7 @@ class TaxIndex:
         for members in groups.values():
             decls = sorted((i for i in members if i['d'] == 'declaracion'), key=lambda i: (i['seq'], i['p']))
             acuses = sorted((i for i in members if i['d'] == 'acuse'), key=lambda i: (i['seq'], i['p']))
-            for decl, acuse in zip(decls, acuses):
+            for decl, acuse in zip(decls, acuses, strict=False):
                 decl['pair'], acuse['pair'] = acuse['p'], decl['p']
             for decl in decls[len(acuses) :]:
                 decl.update(s='faltante', why='declaracion_sin_acuse')

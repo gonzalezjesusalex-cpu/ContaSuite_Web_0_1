@@ -7,12 +7,13 @@ import FinanceInventory from './FinanceInventory';
 import { PayrollInventory, WorkersInventory } from './PayrollInventory';
 import { PpdInventory, ReconcileInventory } from './ReconcileInventory';
 import CertInventory from './CertInventory';
+import ChangesInventory from './ChangesInventory';
 import type { Job } from '../types';
 
 type Section = {
   key: string;
   label: string;
-  view: ComponentType<{ job?: Job }>;
+  view: ComponentType<{ job?: Job; companyId: string }>;
   count: (r: Job['result']) => number | undefined;
   alert: (r: Job['result']) => number;
 };
@@ -77,6 +78,13 @@ const SECTIONS: Section[] = [
     alert: (r) => (r.certificados?.por_vencer ?? 0) + (r.certificados?.vencidos ?? 0) + (r.certificados?.revisar ?? 0),
   },
   {
+    key: 'cambios',
+    label: 'Cambios y faltantes',
+    view: ChangesInventory,
+    count: () => undefined,
+    alert: () => 0,
+  },
+  {
     key: 'trabajadores',
     label: 'Trabajadores',
     view: WorkersInventory,
@@ -86,7 +94,7 @@ const SECTIONS: Section[] = [
 ];
 
 /** Virtual inventory of the last folder analysis, one section per document group. */
-export default function Inventory({ job }: { job?: Job }) {
+export default function Inventory({ job, companyId }: { job?: Job; companyId: string }) {
   const [key, setKey] = useState('cfdi');
   const current = SECTIONS.find((s) => s.key === key) ?? SECTIONS[0];
   const View = current.view;
@@ -111,7 +119,7 @@ export default function Inventory({ job }: { job?: Job }) {
           );
         })}
       </div>
-      <View job={job} />
+      <View job={job} companyId={companyId} />
     </>
   );
 }

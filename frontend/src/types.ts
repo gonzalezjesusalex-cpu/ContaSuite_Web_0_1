@@ -125,6 +125,39 @@ export interface ImssMonth {
   notas: string[];
   s: 'completo' | 'faltante' | 'parcial' | 'revisar';
 }
+/** The persistent virtual index of a company's folder (server side, cs_0014). */
+export interface VirtualScanRow {
+  id: string;
+  created_at: string;
+  finished_at: string | null;
+  complete: boolean;
+  total: number;
+  added: number;
+  changed: number;
+  moved: number;
+  restored: number;
+  missing: number;
+}
+export interface VirtualIndexSummary {
+  scans: VirtualScanRow[];
+  latest: VirtualScanRow | null;
+  sections: Record<string, number>;
+  total: number;
+  missing: number;
+}
+export interface VirtualFileRow {
+  id: string;
+  path: string;
+  name: string;
+  size: number;
+  section: string;
+  virtual_path: string;
+  state: 'ok' | 'revisar';
+  change: string;
+  moved_from: string | null;
+  first_seen: string;
+  missing_since: string | null;
+}
 /** One month and direction of the SAT report compared with the XML in the folder. */
 export interface ReconPeriod {
   k: 'E' | 'R';

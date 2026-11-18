@@ -42,7 +42,9 @@ export default function FinanceInventory({ job }: { job?: Job }) {
         <strong>Estados financieros</strong> · {data.total} archivos
         {data.dropped > 0 && ' · se muestran los primeros ' + data.rows.length}
       </p>
-      <p className="muted">Ordenados por subcarpeta, ejercicio y tipo de reporte. No se leen ni se validan las cifras.</p>
+      <p className="muted">
+        Ordenados por subcarpeta, ejercicio y tipo de reporte. No se leen ni se validan las cifras.
+      </p>
       {scopes.length > 1 && (
         <div className="toolbar">
           <select aria-label="Subcarpeta" value={scope} onChange={(e) => setScope(e.target.value)}>
