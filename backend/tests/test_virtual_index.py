@@ -5,7 +5,7 @@ from test_agent_links import beat, bearer, office, pair  # noqa: F401
 from test_accounts import login
 from test_permissions import account
 from app.database import SessionLocal
-from app.models import VirtualFile, VirtualScan
+from app.models import Document, DocumentVersion, VirtualFile, VirtualScan
 
 
 def sha(text):
@@ -179,3 +179,50 @@ def test_reading_the_index_follows_company_access(office):  # noqa: F811
     assert c.get(f"/api/companies/{companies['b']}/virtual-index/summary").status_code == 200
     assert c.get(f"/api/companies/{companies['b']}/virtual-index/files", params={'change': 'raro'}).status_code == 422
 
+
+def registered(company_id, name, content, revision=1):
+    """A registered document of the document center whose version has the bytes `content`."""
+    with SessionLocal() as db:
+        doc = Document(company_id=company_id, name=name, size=len(content), storage_revision=revision)
+        db.add(doc)
+        db.flush()
+        db.add(
+            DocumentVersion(
+                document_id=doc.id, number=revision, original_name=name, sha256=sha(content),
+                size=len(content), media_type='application/pdf', created_by='prueba',
+            )
+        )
+        db.commit()
+        return doc.id
+
+
+def test_tree_lists_one_level_and_links_files_to_registered_documents(office):  # noqa: F811
+    c, companies, _ = office
+    login(c, 'ana')
+    _, token = pair(c)
+    beat(c, token)
+    a, b = companies['a'], companies['b']
+    rows = [
+        {**row('X/1.xml', 'uno'), 'v': 'CFDI/2026/01/1.xml'},
+        {**row('X/2.xml', 'dos'), 'v': 'CFDI/2026/02/2.xml'},
+        {**row('X/acuse.pdf', 'acuse', section='declaraciones'), 'v': 'Declaraciones/acuse.pdf'},
+        {**row('X/doble.pdf', 'doble', section='otros'), 'v': 'doble.pdf'},
+    ]
+    scan(c, token, a, [rows])
+    linked = registered(a, 'acuse.pdf', 'acuse', revision=2)
+    registered(a, 'copia-1.pdf', 'doble')
+    registered(a, 'copia-2.pdf', 'doble')  # same bytes, two documents: ambiguous, never linked
+    registered(b, 'ajeno.xml', 'uno')  # another company's document is not a link for A
+
+    root = c.get(f'/api/companies/{a}/virtual-index/tree').json()
+    assert [(f['name'], f['files']) for f in root['folders']] == [('CFDI', 2), ('Declaraciones', 1)]
+    assert [(f['name'], f['document_id']) for f in root['files']] == [('doble.pdf', None)]
+    cfdi = c.get(f'/api/companies/{a}/virtual-index/tree', params={'prefix': 'CFDI/2026'}).json()
+    assert [f['path'] for f in cfdi['folders']] == ['CFDI/2026/01', 'CFDI/2026/02'] and cfdi['files'] == []
+    assert c.get(f'/api/companies/{a}/virtual-index/tree', params={'prefix': 'CFDI/2026/01'}).json()['files'][0][
+        'document_id'
+    ] is None
+    decl = c.get(f'/api/companies/{a}/virtual-index/tree', params={'prefix': 'Declaraciones'}).json()['files']
+    assert [(f['document_id'], f['revision']) for f in decl] == [(linked, 2)]
+    found = c.get(f'/api/companies/{a}/virtual-index/tree', params={'q': '2.xml'}).json()
+    assert found['folders'] == [] and [f['virtual_path'] for f in found['files']] == ['CFDI/2026/02/2.xml']

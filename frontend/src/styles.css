@@ -4061,3 +4061,107 @@ textarea:user-invalid {
   justify-content: flex-end;
   margin-top: 12px;
 }
+
+/* Centro Documental: rama virtual (índice persistente de la carpeta enlazado a los originales registrados). */
+.documents-filters[hidden],
+.documents-note[hidden] {
+  display: none;
+}
+.documents-tabs .stitch-button svg,
+.documents-tabs button svg {
+  vertical-align: -3px;
+  margin-right: 6px;
+}
+.virtual-branch {
+  min-width: 0;
+}
+.virtual-branch-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.virtual-branch-toolbar .documents-search {
+  flex: 1;
+}
+.virtual-branch-tree,
+.virtual-branch-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.virtual-branch-tree {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  max-height: 620px;
+  overflow: auto;
+  background: var(--panel);
+}
+.virtual-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.virtual-branch-row:hover {
+  background: var(--hover);
+}
+.virtual-branch-row:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.virtual-branch-row.selected {
+  background: var(--blue-soft);
+  color: var(--primary);
+  font-weight: 600;
+}
+.virtual-branch-row.folder {
+  font-weight: 600;
+}
+.virtual-branch-row > svg {
+  flex: none;
+  color: var(--muted);
+}
+.virtual-branch-row.selected > svg,
+.virtual-branch-row .virtual-branch-linked {
+  color: var(--primary);
+}
+.virtual-branch-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.virtual-branch-row small {
+  flex: none;
+  font-weight: 400;
+}
+.virtual-branch-status {
+  padding: 8px 10px;
+  font-size: var(--fs-xs);
+}
+.virtual-branch-origin {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+.virtual-branch-origin svg {
+  flex: none;
+  margin-top: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .virtual-branch-row {
+    transition: none;
+  }
+}

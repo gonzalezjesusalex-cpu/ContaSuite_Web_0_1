@@ -2,13 +2,25 @@ import { confirmDiscard } from '../dirtyForms';
 import DocumentReconciliation from './DocumentReconciliation';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Download, Eye, FileSearch, FileText, FolderOpen, RefreshCw, Search, Upload, X } from 'lucide-react';
+import {
+  Download,
+  Eye,
+  FileSearch,
+  FileText,
+  FolderOpen,
+  FolderTree,
+  RefreshCw,
+  Search,
+  Upload,
+  X,
+} from 'lucide-react';
 import { api, dateLabel, getToken } from '../api';
 import { Badge, Empty, Field, MiddleText, Modal } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
 import type { StorageDetail, StorageDocument, StorageOptions, StoragePage } from '../types';
 import StorageReview from './StorageReview';
 import StorageJobs from './StorageJobs';
+import VirtualBranch, { type BranchFile } from './VirtualBranch';
 
 const typeNames: Record<string, string> = {
   unknown: 'Sin tipo asignado',
@@ -70,6 +82,10 @@ export default function Documents({
   const [type, setType] = useState('unknown');
   const [period, setPeriod] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [branch, setBranch] = useState(false);
+  const [branchFile, setBranchFile] = useState<BranchFile | null>(null);
+  const [previewRevision, setPreviewRevision] = useState<number | null>(null);
+  const autoPreview = useRef(false);
   const requestId = useRef(0);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
@@ -129,7 +145,11 @@ export default function Documents({
     setDetailLoading(true);
     api<StorageDetail>('/storage/documents/' + selected, 'GET', undefined, controller.signal)
       .then((d) => {
-        if (!controller.signal.aborted) setDetail(d);
+        if (controller.signal.aborted) return;
+        setDetail(d);
+        // Opened from the virtual branch: show the original right away when it can be previewed.
+        if (autoPreview.current && ['pdf', 'xml'].includes(d.document.format)) setPreview(true);
+        autoPreview.current = false;
       })
       .catch((e) => {
         if (!controller.signal.aborted) setError(e.message);
@@ -146,7 +166,8 @@ export default function Documents({
     if (!preview || !detail) return;
     const controller = new AbortController();
     let url = '';
-    fetch('/api/storage/documents/' + detail.document.id + '/content?preview=true', {
+    const query = '?preview=true' + (previewRevision ? '&revision=' + previewRevision : '');
+    fetch('/api/storage/documents/' + detail.document.id + '/content' + query, {
       headers: { Authorization: 'Bearer ' + getToken() },
       signal: controller.signal,
     })
@@ -173,7 +194,7 @@ export default function Documents({
       controller.abort();
       URL.revokeObjectURL(url);
     };
-  }, [preview, detail]);
+  }, [preview, detail, previewRevision]);
   useEffect(
     () => () => {
       requestId.current++;
@@ -272,7 +293,34 @@ export default function Documents({
     }
   }
   function chooseDocument(id: string) {
-    if (id !== selected && confirmDiscard()) setSelected(id);
+    if (id !== selected && confirmDiscard()) {
+      setPreviewRevision(null);
+      setSelected(id);
+    }
+  }
+  function openBranchFile(f: BranchFile) {
+    if (busy || !confirmDiscard()) return;
+    setBranchFile(f);
+    setPreviewRevision(f.revision);
+    if (!f.document_id) {
+      selectedRef.current = '';
+      setSelected('');
+      return;
+    }
+    if (f.document_id === selected) {
+      if (detail && ['pdf', 'xml'].includes(detail.document.format)) setPreview(true);
+      return;
+    }
+    autoPreview.current = true;
+    setSelected(f.document_id);
+  }
+  function showBranch(on: boolean) {
+    setBranch(on);
+    setBranchFile(null);
+    setPreviewRevision(null);
+    selectedRef.current = '';
+    setSelected('');
+    setPreview(false);
   }
   const canUpload =
     !!options?.can_write &&
@@ -341,23 +389,39 @@ export default function Documents({
         </div>
         <div className="documents-tabs">
           <button
-            aria-pressed={!filters.pending}
-            className={stitchButton + (!filters.pending ? ' selected' : '')}
-            onClick={() => filter('pending', false)}
+            aria-pressed={!branch && !filters.pending}
+            className={stitchButton + (!branch && !filters.pending ? ' selected' : '')}
+            onClick={() => {
+              if (branch) showBranch(false);
+              filter('pending', false);
+            }}
           >
             Explorador
           </button>
           {options?.can_review && (
             <button
-              aria-pressed={filters.pending}
-              className={stitchButton + (filters.pending ? ' selected' : '')}
-              onClick={() => filter('pending', true)}
+              aria-pressed={!branch && filters.pending}
+              className={stitchButton + (!branch && filters.pending ? ' selected' : '')}
+              onClick={() => {
+                if (branch) showBranch(false);
+                filter('pending', true);
+              }}
             >
               Sin clasificar <Badge>{loading ? '…' : (catalog?.pending_count ?? '—')}</Badge>
             </button>
           )}
+          {companyId && (
+            <button
+              aria-pressed={branch}
+              className={stitchButton + (branch ? ' selected' : '')}
+              onClick={() => showBranch(true)}
+            >
+              <FolderTree size={16} />
+              Rama virtual
+            </button>
+          )}
         </div>
-        <div className="documents-filters">
+        <div className="documents-filters" hidden={branch}>
           <Field label="Buscar nombre, empresa, RFC o periodo">
             <div className="documents-search">
               <Search size={16} />
@@ -448,129 +512,136 @@ export default function Documents({
             </button>
           </div>
         )}
-        <p className="documents-note muted">
+        <p className="documents-note muted" hidden={branch}>
           Disponibilidad según la última comprobación. La clasificación usa RFC del contenido; los casos ambiguos
           requieren revisión. Sin OCR ni validación SAT.
         </p>
         {!companyId && options?.can_index && <StorageJobs sources={options.sources} onComplete={refreshJobs} />}
         <div className="documents-workspace">
-          <div>
-            <div className="receipt-table scroll sticky-actions" aria-busy={loading}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Documento</th>
-                    <th>Empresa / RFC</th>
-                    <th>Periodo</th>
-                    <th>Origen / disponibilidad</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {!loading &&
-                    catalog?.items.map((d) => (
-                      <tr key={d.id} className={selected === d.id ? 'receipt-selected' : ''}>
-                        <td>
-                          <button
-                            className="receipt-text-button"
-                            onClick={() => {
-                              if (!busy) {
-                                setSelected(d.id);
-                                setPreview(false);
+          {branch && companyId ? (
+            <VirtualBranch companyId={companyId} selected={branchFile?.id || ''} onSelect={openBranchFile} />
+          ) : (
+            <div>
+              <div className="receipt-table scroll sticky-actions" aria-busy={loading}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Documento</th>
+                      <th>Empresa / RFC</th>
+                      <th>Periodo</th>
+                      <th>Origen / disponibilidad</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!loading &&
+                      catalog?.items.map((d) => (
+                        <tr key={d.id} className={selected === d.id ? 'receipt-selected' : ''}>
+                          <td>
+                            <button
+                              className="receipt-text-button"
+                              onClick={() => {
+                                if (!busy) {
+                                  setPreviewRevision(null);
+                                  setSelected(d.id);
+                                  setPreview(false);
+                                }
+                              }}
+                            >
+                              <strong>
+                                <MiddleText value={d.name} />
+                              </strong>
+                              <small>
+                                {d.format.toUpperCase()} · {typeNames[d.document_type] || d.document_type} ·{' '}
+                                {(d.size / 1024).toFixed(1)} KB
+                              </small>
+                            </button>
+                          </td>
+                          <td>
+                            {d.companies.length ? (
+                              d.companies.map((c) => (
+                                <div key={c.id}>
+                                  <Link to={'/empresas/' + c.id + '?tab=Documentos'}>{c.name}</Link>
+                                  <small>{c.rfc}</small>
+                                </div>
+                              ))
+                            ) : (
+                              <Badge tone="amber">Sin clasificar</Badge>
+                            )}
+                          </td>
+                          <td>{d.period || 'Sin periodo'}</td>
+                          <td>
+                            {d.sources.map((s, i) => (
+                              <small key={s.source_id + i}>{s.label}</small>
+                            ))}
+                            <Badge
+                              tone={
+                                d.availability === 'available'
+                                  ? 'green'
+                                  : d.availability === 'unchecked'
+                                    ? 'neutral'
+                                    : 'amber'
                               }
-                            }}
-                          >
-                            <strong>
-                              <MiddleText value={d.name} />
-                            </strong>
-                            <small>
-                              {d.format.toUpperCase()} · {typeNames[d.document_type] || d.document_type} ·{' '}
-                              {(d.size / 1024).toFixed(1)} KB
-                            </small>
-                          </button>
-                        </td>
-                        <td>
-                          {d.companies.length ? (
-                            d.companies.map((c) => (
-                              <div key={c.id}>
-                                <Link to={'/empresas/' + c.id + '?tab=Documentos'}>{c.name}</Link>
-                                <small>{c.rfc}</small>
-                              </div>
-                            ))
-                          ) : (
-                            <Badge tone="amber">Sin clasificar</Badge>
-                          )}
-                        </td>
-                        <td>{d.period || 'Sin periodo'}</td>
-                        <td>
-                          {d.sources.map((s, i) => (
-                            <small key={s.source_id + i}>{s.label}</small>
-                          ))}
-                          <Badge
-                            tone={
-                              d.availability === 'available'
-                                ? 'green'
-                                : d.availability === 'unchecked'
-                                  ? 'neutral'
-                                  : 'amber'
-                            }
-                          >
-                            {availabilityNames[d.availability] || d.availability}
-                          </Badge>
-                        </td>
-                        <td>
-                          <button
-                            className="icon-button"
-                            aria-label={'Descargar ' + d.name}
-                            disabled={busy}
-                            onClick={() => download(d)}
-                          >
-                            <Download size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-              {loading ? (
-                <div className="documents-loading" role="status">
-                  <RefreshCw size={20} className="recopila-spinner" />
-                  Cargando documentos…
-                </div>
-              ) : (
-                !catalog?.items.length && (
-                  <Empty
-                    icon={FileText}
-                    title={
-                      filters.pending ? 'Sin documentos pendientes de clasificar' : 'Sin documentos para estos filtros'
-                    }
-                  >
-                    Carga un documento o ajusta la búsqueda.
-                  </Empty>
-                )
-              )}
+                            >
+                              {availabilityNames[d.availability] || d.availability}
+                            </Badge>
+                          </td>
+                          <td>
+                            <button
+                              className="icon-button"
+                              aria-label={'Descargar ' + d.name}
+                              disabled={busy}
+                              onClick={() => download(d)}
+                            >
+                              <Download size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+                {loading ? (
+                  <div className="documents-loading" role="status">
+                    <RefreshCw size={20} className="recopila-spinner" />
+                    Cargando documentos…
+                  </div>
+                ) : (
+                  !catalog?.items.length && (
+                    <Empty
+                      icon={FileText}
+                      title={
+                        filters.pending
+                          ? 'Sin documentos pendientes de clasificar'
+                          : 'Sin documentos para estos filtros'
+                      }
+                    >
+                      Carga un documento o ajusta la búsqueda.
+                    </Empty>
+                  )
+                )}
+              </div>
+              <div className="recopila-pagination">
+                <button
+                  className={stitchButton}
+                  disabled={loading || busy || page === 0}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Anterior
+                </button>
+                <span>
+                  {loading ? '…' : (catalog?.total ?? '—')} documentos · {page + 1} /{' '}
+                  {Math.max(1, Math.ceil((catalog?.total || 0) / 25))}
+                </span>
+                <button
+                  className={stitchButton}
+                  disabled={loading || busy || (page + 1) * 25 >= (catalog?.total || 0)}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Siguiente
+                </button>
+              </div>
             </div>
-            <div className="recopila-pagination">
-              <button
-                className={stitchButton}
-                disabled={loading || busy || page === 0}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Anterior
-              </button>
-              <span>
-                {loading ? '…' : (catalog?.total ?? '—')} documentos · {page + 1} /{' '}
-                {Math.max(1, Math.ceil((catalog?.total || 0) / 25))}
-              </span>
-              <button
-                className={stitchButton}
-                disabled={loading || busy || (page + 1) * 25 >= (catalog?.total || 0)}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
+          )}
           <aside className="documents-detail">
             {detailLoading ? (
               <div role="status" className="documents-loading">
@@ -579,6 +650,14 @@ export default function Documents({
             ) : doc ? (
               <>
                 <h3>{doc.name}</h3>
+                {branch && branchFile?.document_id === doc.id && (
+                  <p className="muted virtual-branch-origin">
+                    <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
+                    {branchFile.revision && branchFile.revision !== doc.revision
+                      ? ` · la carpeta tiene la versión ${branchFile.revision}`
+                      : ''}
+                  </p>
+                )}
                 <p className="muted">
                   {doc.category} · {dateLabel(doc.created_at)}
                 </p>
@@ -670,7 +749,7 @@ export default function Documents({
                 {preview && (
                   <div className="documents-preview">
                     <div className="documents-preview-title">
-                      <strong>Vista previa</strong>
+                      <strong>Vista previa{previewRevision ? ` · versión ${previewRevision}` : ''}</strong>
                       <button
                         className="icon-button"
                         aria-label="Cerrar vista previa"
@@ -693,9 +772,32 @@ export default function Documents({
                   </div>
                 )}
               </>
+            ) : branch && branchFile && !branchFile.document_id ? (
+              <>
+                <h3>{branchFile.name}</h3>
+                <p className="muted virtual-branch-origin">
+                  <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
+                </p>
+                <dl>
+                  <div>
+                    <dt>Ruta original</dt>
+                    <dd>{branchFile.path}</dd>
+                  </div>
+                  <div>
+                    <dt>Tamaño</dt>
+                    <dd>{(branchFile.size / 1024).toFixed(1)} KB</dd>
+                  </div>
+                </dl>
+                <Empty icon={FileSearch} title="Sin documento registrado con la misma huella">
+                  La vista previa está disponible cuando el original está registrado en el Centro Documental (carga o
+                  indexación de la carpeta). Nada se movió ni se copió.
+                </Empty>
+              </>
             ) : (
-              <Empty icon={FileSearch} title="Selecciona un documento">
-                Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.
+              <Empty icon={FileSearch} title={branch ? 'Selecciona un archivo de la rama' : 'Selecciona un documento'}>
+                {branch
+                  ? 'Los archivos enlazados abren aquí la vista previa de su original registrado.'
+                  : 'Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.'}
               </Empty>
             )}
           </aside>

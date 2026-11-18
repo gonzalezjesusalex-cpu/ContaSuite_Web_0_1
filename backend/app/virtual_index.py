@@ -15,11 +15,11 @@ A scan whose walk hit its limit never marks anything as missing or moved. Nothin
 from collections import Counter, defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from .database import session
-from .models import VirtualFile, VirtualScan, now
+from .models import Document, DocumentCompanyLink, DocumentVersion, VirtualFile, VirtualScan, now
 from .security import Principal, auth
 
 router = APIRouter(prefix='/api/companies/{company_id}/virtual-index', tags=['Índice virtual'])
@@ -239,3 +239,84 @@ def files(
         'more': len(rows) > limit,
     }
 
+
+def _links(db, company_id, hashes):
+    """Registered document versions of this company whose SHA-256 equals a scanned file: {sha256: (id, revision)}.
+
+    The link only says "this file of the folder has the same bytes as that registered version", so its preview can be
+    served by the document center. A hash shared by two different documents is ambiguous and is not linked; nothing
+    is merged or reclassified here.
+    """
+    hashes = sorted({h for h in hashes if h})
+    if not hashes:
+        return {}
+    owned = select(DocumentCompanyLink.document_id).where(DocumentCompanyLink.company_id == company_id)
+    found = defaultdict(dict)
+    for i in range(0, len(hashes), 500):
+        rows = db.execute(
+            select(DocumentVersion.sha256, DocumentVersion.document_id, DocumentVersion.number)
+            .join(Document, Document.id == DocumentVersion.document_id)
+            .where(
+                DocumentVersion.sha256.in_(hashes[i : i + 500]),
+                or_(Document.company_id == company_id, Document.id.in_(owned)),
+            )
+        ).all()
+        for digest, document_id, number in rows:
+            found[digest][document_id] = max(number, found[digest].get(document_id, 0))
+    return {digest: next(iter(docs.items())) for digest, docs in found.items() if len(docs) == 1}
+
+
+@router.get('/tree')
+def tree(
+    company_id: str,
+    prefix: str = Query('', max_length=1200),
+    q: str = Query('', max_length=120),
+    principal: Principal = Depends(auth),
+    db: Session = Depends(session),
+):
+    """One level of the virtual branch: its folders (with how many files each holds) and its files.
+
+    Files carry the registered document they are linked to (same SHA-256), so the document center can preview the
+    original without exposing where it lives. With `q`, the level lists every matching file below `prefix` instead.
+    """
+    principal.require('documentos.ver', company_id)
+    prefix = prefix.strip('/')
+    base = prefix + '/' if prefix else ''
+    query = select(VirtualFile).where(VirtualFile.company_id == company_id, VirtualFile.missing_since.is_(None))
+    if base:
+        query = query.where(VirtualFile.virtual_path.startswith(base, autoescape=True))
+    if q:
+        query = query.where(
+            or_(VirtualFile.virtual_path.contains(q, autoescape=True), VirtualFile.path.contains(q, autoescape=True))
+        )
+    rows = db.scalars(query.order_by(VirtualFile.virtual_path, VirtualFile.path)).all()
+    folders, here = Counter(), []
+    for f in rows:
+        rest = f.virtual_path[len(base) :].strip('/')
+        if not q and '/' in rest:
+            folders[rest.split('/', 1)[0]] += 1
+        else:
+            here.append(f)
+    limit = 500
+    links = _links(db, company_id, [f.sha256 for f in here[:limit]])
+    return {
+        'prefix': prefix,
+        'folders': [{'name': name, 'path': base + name, 'files': n} for name, n in sorted(folders.items())],
+        'files': [
+            {
+                'id': f.id,
+                'name': f.virtual_path.rsplit('/', 1)[-1] or f.name,
+                'path': f.path,
+                'virtual_path': f.virtual_path,
+                'size': f.size,
+                'section': f.section,
+                'state': f.state,
+                'change': f.last_change,
+                'document_id': links.get(f.sha256, (None, None))[0] if f.sha256 else None,
+                'revision': links.get(f.sha256, (None, None))[1] if f.sha256 else None,
+            }
+            for f in here[:limit]
+        ],
+        'more': len(here) > limit,
+        'total': len(rows),
+    }
