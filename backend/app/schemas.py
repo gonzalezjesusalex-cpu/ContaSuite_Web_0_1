@@ -154,27 +154,60 @@ class ObligationIn(CleanModel):
 
 class Heartbeat(CleanModel):
     id: str = Field(pattern=r'^[a-zA-Z0-9_-]{1,80}$')
-    capabilities: list[Literal['scan_folder']] = Field(default_factory=list, max_length=10)
+    capabilities: list[Literal['scan_folder', 'export_virtual', 'sat_declaraciones']] = Field(
+        default_factory=list, max_length=10
+    )
 
 
 class JobIn(CleanModel):
     company_id: str
     # Bloque 4: the server uses the requester's linked agent; an id is only read for the legacy shared token.
     agent_id: str | None = None
-    kind: Literal['scan_folder', 'export_virtual'] = 'scan_folder'
+    kind: Literal['scan_folder', 'export_virtual', 'sat_declaraciones'] = 'scan_folder'
+    # Only for `sat_declaraciones`: the fiscal year to download. The address of the portal is never sent by the client.
+    ejercicio: int | None = Field(default=None, ge=2000, le=2100)
     # Only for `export_virtual`: where the copy goes (a new folder inside an authorized root), whether to write it
     # (false = preview only) and which sections to include (none = the default set, without workers' personal data).
     destination: str | None = Field(default=None, max_length=400)
     apply: bool = False
     include: list[str] | None = Field(default=None, max_length=12)
+    # Only for `scan_folder`: also store an internal copy of the content of these sections (cs_0015).
+    copy: list[str] | None = Field(default=None, max_length=12)
 
     @model_validator(mode='after')
     def _export_needs_destination(self):
         if self.kind == 'export_virtual' and not self.destination:
             raise ValueError('La exportación necesita una carpeta de destino.')
+        if self.kind == 'export_virtual' and self.copy:
+            raise ValueError('La copia interna sólo se pide al analizar la carpeta.')
         if self.kind == 'scan_folder' and (self.destination or self.apply or self.include):
             raise ValueError('Esos datos sólo aplican a la exportación.')
+        if self.kind == 'sat_declaraciones' and (self.destination or self.apply or self.include or self.copy):
+            raise ValueError('Esos datos no aplican a la descarga de declaraciones.')
+        if self.kind != 'sat_declaraciones' and self.ejercicio is not None:
+            raise ValueError('El ejercicio sólo aplica a la descarga de declaraciones.')
         return self
+
+
+class BlobHashes(CleanModel):
+    """The SHA-256 of files the agent wants to copy; the server answers which ones it does not have yet."""
+
+    agent_id: str
+    hashes: list[str] = Field(max_length=500)
+
+    @field_validator('hashes')
+    @classmethod
+    def _hex(cls, values):
+        if any(not re.fullmatch(r'[0-9a-f]{64}', v) for v in values):
+            raise ValueError('Huella inválida.')
+        return values
+
+
+class BlobCommit(CleanModel):
+    """Closes the copy of a scan: mark which files of those sections now have their internal copy."""
+
+    agent_id: str
+    sections: list[str] = Field(max_length=12)
 
 
 class IndexRow(CleanModel):

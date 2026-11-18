@@ -406,6 +406,19 @@ strong {
 .menu-button {
   display: none;
 }
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  padding-right: 10px;
+}
+.sidebar-head .brand {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-toggle {
+  color: #c3c6d7;
+  flex: none;
+}
 .workspace {
   margin-left: 256px;
   padding: 88px 25px 30px;
@@ -1726,6 +1739,9 @@ dd {
   }
   .menu-button {
     display: flex;
+  }
+  .sidebar-toggle {
+    display: none;
   }
   .registration-layout {
     grid-template-columns: 1fr;
@@ -4163,5 +4179,122 @@ textarea:user-invalid {
 @media (prefers-reduced-motion: reduce) {
   .virtual-branch-row {
     transition: none;
+  }
+}
+
+/* Panel lateral contraíble (escritorio): riel de sólo iconos. */
+@media (min-width: 901px) {
+  .sidebar,
+  .workspace,
+  .topbar {
+    transition:
+      width 220ms var(--ease-drawer),
+      margin-left 220ms var(--ease-drawer),
+      left 220ms var(--ease-drawer);
+  }
+  .sidebar-collapsed .sidebar {
+    width: 68px;
+  }
+  .sidebar-collapsed .workspace {
+    margin-left: 68px;
+  }
+  .sidebar-collapsed .topbar {
+    left: 68px;
+  }
+  .sidebar-collapsed .sidebar {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .sidebar-collapsed .sidebar-head {
+    flex-direction: column;
+    padding: 0 0 8px;
+  }
+  .sidebar-collapsed .sidebar .brand {
+    justify-content: center;
+    padding: 21px 0 12px;
+  }
+  .sidebar-collapsed .sidebar .brand > div,
+  .sidebar-collapsed .sidebar nav a > span,
+  .sidebar-collapsed .sidebar-footer > div:not(.profile-avatar) {
+    display: none;
+  }
+  .sidebar-collapsed .sidebar nav {
+    padding: 0 10px 16px;
+    overflow-x: hidden;
+  }
+  .sidebar-collapsed .nav-group {
+    font-size: 0;
+    padding: 0;
+    margin: 6px 8px 10px;
+    border-top: 1px solid #ffffff1f;
+  }
+  .sidebar-collapsed .sidebar nav a {
+    justify-content: center;
+    padding: 9px 0;
+  }
+  .sidebar-collapsed .sidebar-footer {
+    flex-direction: column;
+    padding: 14px 0;
+  }
+  .sidebar-collapsed .sidebar-footer .icon-button {
+    margin-left: 0;
+  }
+}
+/* Al pasar el cursor (o con foco de teclado) el riel se despliega sobre el contenido. */
+@media (min-width: 901px) and (hover: hover) and (pointer: fine) {
+  .sidebar-collapsed .sidebar:hover,
+  .sidebar-collapsed .sidebar:focus-within {
+    width: 256px;
+    box-shadow: 8px 0 28px #0b1c3059;
+    transition-delay: 140ms;
+  }
+  .sidebar-collapsed .sidebar:hover .sidebar-head,
+  .sidebar-collapsed .sidebar:focus-within .sidebar-head {
+    flex-direction: row;
+    padding: 0 10px 0 0;
+  }
+  .sidebar-collapsed .sidebar:hover .brand,
+  .sidebar-collapsed .sidebar:focus-within .brand {
+    justify-content: flex-start;
+    padding: 21px 20px 25px;
+  }
+  .sidebar-collapsed .sidebar:hover .brand > div,
+  .sidebar-collapsed .sidebar:hover nav a > span,
+  .sidebar-collapsed .sidebar:hover .sidebar-footer > div:not(.profile-avatar),
+  .sidebar-collapsed .sidebar:focus-within .brand > div,
+  .sidebar-collapsed .sidebar:focus-within nav a > span,
+  .sidebar-collapsed .sidebar:focus-within .sidebar-footer > div:not(.profile-avatar) {
+    display: revert;
+  }
+  .sidebar-collapsed .sidebar:hover nav,
+  .sidebar-collapsed .sidebar:focus-within nav {
+    padding: 0 12px 16px;
+  }
+  .sidebar-collapsed .sidebar:hover .nav-group,
+  .sidebar-collapsed .sidebar:focus-within .nav-group {
+    font-size: var(--fs-xs);
+    padding: 13px 8px 9px;
+    margin: 0;
+    border-top: 0;
+  }
+  .sidebar-collapsed .sidebar:hover nav a,
+  .sidebar-collapsed .sidebar:focus-within nav a {
+    justify-content: flex-start;
+    padding: 11px 10px;
+  }
+  .sidebar-collapsed .sidebar:hover .sidebar-footer,
+  .sidebar-collapsed .sidebar:focus-within .sidebar-footer {
+    flex-direction: row;
+    padding: 17px 14px;
+  }
+  .sidebar-collapsed .sidebar:hover .sidebar-footer .icon-button,
+  .sidebar-collapsed .sidebar:focus-within .sidebar-footer .icon-button {
+    margin-left: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace,
+  .topbar {
+    transition: none !important;
   }
 }

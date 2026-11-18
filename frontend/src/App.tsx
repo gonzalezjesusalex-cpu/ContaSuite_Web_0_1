@@ -13,6 +13,8 @@ import {
   Search,
   ChevronRight,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   LogOut,
   Sun,
@@ -160,6 +162,38 @@ export default function App() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [open, setOpen] = useState(false);
+  // Panel lateral contraíble en escritorio (se recuerda por navegador).
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('contasuite-sidebar-collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebar = () => {
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      setOpen((o) => !o);
+      return;
+    }
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem('contasuite-sidebar-collapsed', c ? '0' : '1');
+      } catch {
+        /* sin almacenamiento */
+      }
+      return !c;
+    });
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [globalSearch, setGlobalSearch] = useState('');
   const [name, setName] = useState(localStorage.getItem('contasuite-name') || '');
   const [theme, setTheme] = useState(localStorage.getItem('contasuite-theme') || 'light');
@@ -304,18 +338,29 @@ export default function App() {
   const shared = state ? { state, refresh, notify } : null;
   const agentOnline = state?.agent_link?.state === 'online';
   return (
-    <div className="app-shell">
+    <div className={'app-shell' + (collapsed ? ' sidebar-collapsed' : '')}>
       <a className="skip-link" href="#main-content">
         Saltar al contenido
       </a>
       <aside className={'sidebar ' + (open ? 'open' : '')}>
-        <Link to="/" className="brand">
-          <Logo sidebar />
-          <div>
-            <strong>ContaSuite</strong>
-            <small>Gestión contable inteligente</small>
-          </div>
-        </Link>
+        <div className="sidebar-head">
+          <Link to="/" className="brand">
+            <Logo sidebar />
+            <div>
+              <strong>ContaSuite</strong>
+              <small>Gestión contable inteligente</small>
+            </div>
+          </Link>
+          <button
+            className="icon-button sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-label={collapsed ? 'Fijar panel lateral expandido' : 'Contraer panel lateral'}
+            aria-expanded={!collapsed}
+            title={(collapsed ? 'Expandir' : 'Contraer') + ' panel (Ctrl+B)'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+        </div>
         <nav>
           {nav.map((g) => (
             <div key={g.group}>
@@ -323,7 +368,7 @@ export default function App() {
               {g.items
                 .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
                 .map((i) => (
-                  <NavLink key={i.path} to={i.path} end={i.path === '/'}>
+                  <NavLink key={i.path} to={i.path} end={i.path === '/'} title={collapsed ? i.title : undefined} aria-label={i.title}>
                     {moduleIconNames[i.path.slice(1)] ? (
                       <OriginalIcon name={moduleIconNames[i.path.slice(1)]} size={28} sidebar />
                     ) : (
@@ -356,7 +401,12 @@ export default function App() {
       </aside>
       {open && <button className="sidebar-shade" aria-label="Cerrar menú" onClick={() => setOpen(false)} />}
       <header className="topbar">
-        <button className="icon-button menu-button" onClick={() => setOpen(!open)} aria-label="Abrir menú">
+        <button
+          className="icon-button menu-button"
+          onClick={toggleSidebar}
+          aria-label="Abrir menú"
+          title="Abrir menú"
+        >
           <Menu size={21} />
         </button>
         <div className="breadcrumbs">

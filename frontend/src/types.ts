@@ -139,6 +139,8 @@ export interface VirtualScanRow {
   missing: number;
 }
 export interface VirtualIndexSummary {
+  /** Files whose content is also stored inside ContaSuite (a copy goes stale when the original changes). */
+  copia: { con_copia: number; bytes: number; pendientes: number };
   scans: VirtualScanRow[];
   latest: VirtualScanRow | null;
   sections: Record<string, number>;
@@ -157,6 +159,7 @@ export interface VirtualFileRow {
   moved_from: string | null;
   first_seen: string;
   missing_since: string | null;
+  copied: boolean;
 }
 /** One month and direction of the SAT report compared with the XML in the folder. */
 export interface ReconPeriod {
@@ -236,6 +239,16 @@ export interface Job {
   status: string;
   result: {
     // Export (kind export_virtual): preview first (mode «preview»), then the copy (mode «apply»).
+    // Internal copy (scan_folder with `copy`): what was stored inside ContaSuite.
+    copia?: {
+      archivos: number;
+      subidos: number;
+      ya_estaban: number;
+      errores: number;
+      sin_huella: number;
+      marcados?: number;
+      error?: string;
+    };
     mode?: 'preview' | 'apply';
     destination?: string;
     include?: string[];

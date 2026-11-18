@@ -13,7 +13,7 @@ from pathlib import Path
 
 from uuid import uuid4
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query, Request
 
 
 from fastapi.responses import FileResponse
@@ -38,7 +38,7 @@ from .agent_links import agent_caller
 
 from .agent_jobs import claim_marker, expire_stale_jobs
 
-from .schemas import CompanyIn, TaskIn, ObligationIn, Heartbeat, IndexBatch, JobIn, JobResult
+from .schemas import BlobCommit, BlobHashes, CompanyIn, TaskIn, ObligationIn, Heartbeat, IndexBatch, JobIn, JobResult
 
 
 from .security import auth, admin_auth, Principal
@@ -810,17 +810,32 @@ def delete_document(id: str, db: Session = Depends(session), principal: Principa
     path.unlink(missing_ok=True)
 
 
+def job_action(kind):
+    """The permission a job needs, by kind: exporting and downloading from the SAT are their own permissions."""
+    if kind == 'export_virtual':
+        return 'carpeta.exportar'
+    return 'declara.usar' if kind == 'sat_declaraciones' else 'carpeta.analizar'
+
+
 @app.post('/api/jobs', dependencies=APP, status_code=201)
 def create_job(data: JobIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
     """Folder analysis through the requesting user's own linked agent (Bloque 4)."""
     from .agent_links import active_link_for, inside_roots, online as link_online, roots, shared_token_allowed
 
     exporting = data.kind == 'export_virtual'
+    downloading = data.kind == 'sat_declaraciones'
     # Writing a copy to the person's computer is its own permission: it is never part of a template.
-    principal.require('carpeta.exportar' if exporting else 'carpeta.analizar', data.company_id)
+    principal.require(job_action(data.kind), data.company_id)
+    if data.copy:
+        # Storing a copy of the content inside ContaSuite is an upload: it needs that permission too.
+        principal.require('documentos.subir', data.company_id)
+        from .export_plan import SECTIONS as COPY_SECTIONS
+
+        if not set(data.copy) <= set(COPY_SECTIONS):
+            raise HTTPException(422, 'Hay secciones desconocidas en la copia.')
     company = get(db, Company, data.company_id)
     expire_stale_jobs(db)
-    if not company.folder:
+    if not downloading and not company.folder:
         raise HTTPException(422, 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.')
     allowed = roots(db)
     if exporting:
@@ -832,7 +847,14 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
         if data.include is not None and not set(data.include) <= set(SECTIONS):
             raise HTTPException(422, 'Hay secciones desconocidas en la exportación.')
     link = active_link_for(db, principal.subject)
-    if link is None and data.agent_id and principal.admin and shared_token_allowed() and not exporting:
+    if (
+        link is None
+        and data.agent_id
+        and principal.admin
+        and shared_token_allowed()
+        and not exporting
+        and not downloading
+    ):
         # Transition only: an agent with the former shared token, chosen by an administrator.
         agent = get(db, Agent, data.agent_id)
         if not online(agent) or data.kind not in agent.capabilities:
@@ -851,14 +873,21 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
                 + (link.machine or 'el equipo')
                 + '.',
             )
-        if not allowed:
+        if not downloading and not allowed:
             raise HTTPException(409, 'No hay carpetas autorizadas para el agente: las define la administración.')
-        if not inside_roots(company.folder, allowed):
+        if not downloading and not inside_roots(company.folder, allowed):
             raise HTTPException(409, 'La ruta de la empresa está fuera de las carpetas autorizadas para el agente.')
         agent_id, link_id, machine = link.agent_id, link.id, link.machine
-    payload = {'folder': company.folder, 'rfc': company.rfc}
+    # The browser of a SAT download needs no company folder: the portal address comes from the agent's own setup.
+    payload = (
+        {'rfc': company.rfc, 'ejercicio': data.ejercicio}
+        if downloading
+        else {'folder': company.folder, 'rfc': company.rfc}
+    )
     if exporting:
         payload.update(destination=data.destination, apply=data.apply, include=data.include)
+    elif data.copy:
+        payload['copy'] = data.copy
     job = Job(
         company_id=company.id,
         agent_id=agent_id,
@@ -873,7 +902,9 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
         db,
         ('Exportación ordenada solicitada (' + ('copia' if data.apply else 'vista previa') + ')')
         if exporting
-        else 'Análisis de carpeta solicitado',
+        else 'Descarga de declaraciones solicitada'
+        if downloading
+        else 'Análisis de carpeta solicitado' + (' con copia interna' if data.copy else ''),
         company.id,
         principal.subject,
         {'agente': {'after': agent_id}, 'equipo': {'after': machine}} if link_id else None,
@@ -929,8 +960,14 @@ def claim(
         query = query.where(Job.created_at >= not_before)
     expire_stale_jobs(db)
     for job in db.scalars(query.order_by(Job.created_at).limit(50)).all():
-        if caller is not None and not user_can_analyze(
-            db, caller.user, job.company_id, 'carpeta.exportar' if job.kind == 'export_virtual' else 'carpeta.analizar'
+        if caller is not None and not (
+            user_can_analyze(
+                db,
+                caller.user,
+                job.company_id,
+                job_action(job.kind),
+            )
+            and (not (job.payload or {}).get('copy') or user_can_analyze(db, caller.user, job.company_id, 'documentos.subir'))
         ):
             db.execute(
                 update(Job)
@@ -961,6 +998,8 @@ def audit_text(kind, status):
     done = status == 'completed'
     if kind == 'export_virtual':
         return 'Exportación ordenada ' + ('completada' if done else 'fallida')
+    if kind == 'sat_declaraciones':
+        return 'Descarga de declaraciones ' + ('completada' if done else 'fallida')
     return 'Análisis local ' + ('completado' if done else 'fallido')
 
 
@@ -990,6 +1029,82 @@ def index_batch(id: str, data: IndexBatch, db: Session = Depends(session), calle
         )
     save(db)
     return {'ok': True, 'scan_id': scan.id, 'total': scan.total}
+
+
+def copy_job(db, id, agent_id, caller):
+    """The running analysis that asked for an internal copy, checked like the other agent calls."""
+    job = get(db, Job, id)
+    if (
+        job.agent_id != agent_id
+        or job.status != 'running'
+        or job.kind != 'scan_folder'
+        or not (job.payload or {}).get('copy')
+    ):
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    if caller is not None and (agent_id != caller.link.agent_id or job.requested_by != caller.link.user_id):
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    return job
+
+
+@app.post('/api/agent/jobs/{id}/blobs/missing')
+def blobs_missing(id: str, data: BlobHashes, db: Session = Depends(session), caller=Depends(agent_caller)):
+    """Which of these contents the server does not have yet (the agent uploads only those)."""
+    from . import virtual_blobs
+
+    copy_job(db, id, data.agent_id, caller)
+    return {'missing': virtual_blobs.missing(data.hashes)}
+
+
+@app.put('/api/agent/jobs/{id}/blobs/{sha}')
+async def blob_put(
+    id: str,
+    sha: str,
+    request: Request,
+    agent_id: str = Query(..., max_length=80),
+    db: Session = Depends(session),
+    caller=Depends(agent_caller),
+):
+    """The bytes of one file, named by its SHA-256. Stored only if they hash to that name."""
+    from . import virtual_blobs
+
+    copy_job(db, id, agent_id, caller)
+    if not virtual_blobs.SHA.fullmatch(sha):
+        raise HTTPException(422, 'Huella inválida.')
+    if int(request.headers.get('content-length') or 0) > virtual_blobs.MAX_BLOB:
+        raise HTTPException(413, 'Archivo demasiado grande para la copia interna.')
+    body = bytearray()
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > virtual_blobs.MAX_BLOB:
+            raise HTTPException(413, 'Archivo demasiado grande para la copia interna.')
+    try:
+        created = virtual_blobs.store(sha, bytes(body))
+    except virtual_blobs.BlobError as exc:
+        raise HTTPException(
+            422,
+            {
+                'hash_mismatch': 'El contenido no coincide con su huella.',
+                'protected_file': 'El archivo contiene una llave privada: no se copia.',
+            }.get(exc.code, 'No se pudo guardar la copia.'),
+        ) from None
+    return {'ok': True, 'new': created}
+
+
+@app.post('/api/agent/jobs/{id}/blobs/commit')
+def blobs_commit(id: str, data: BlobCommit, db: Session = Depends(session), caller=Depends(agent_caller)):
+    """Mark the files of this scan whose content now has its internal copy."""
+    from .virtual_index import mark_copies
+
+    job = copy_job(db, id, data.agent_id, caller)
+    copied = mark_copies(db, job, data.sections)
+    record(
+        db,
+        f'Copia interna guardada: {copied} archivos',
+        job.company_id,
+        job.requested_by or 'agent:' + job.agent_id,
+    )
+    save(db)
+    return {'copied': copied}
 
 
 @app.post('/api/agent/jobs/{id}/result')
@@ -1124,6 +1239,11 @@ app.include_router(agent_links_router)
 from .virtual_index import router as virtual_index_router
 
 app.include_router(virtual_index_router)
+
+
+from .sat_declaraciones import router as sat_declaraciones_router
+
+app.include_router(sat_declaraciones_router)
 
 
 from .fiscal_control import router as fiscal_control_router

@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { Archive, ArrowLeft, Pencil, FolderOutput, FolderSearch, FileText, ShieldCheck, KeyRound } from 'lucide-react';
+import {
+  Archive,
+  ArrowLeft,
+  Pencil,
+  FolderInput,
+  FolderOutput,
+  FolderSearch,
+  FileText,
+  ShieldCheck,
+  KeyRound,
+} from 'lucide-react';
 import { api, dateLabel, today } from '../api';
 import { Badge, Kpi, Heading } from '../components/ui';
 import { Records } from './Records';
@@ -20,6 +30,7 @@ import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
 import FolderAnalysis from './FolderAnalysis';
 import ExportDialog from './ExportDialog';
+import CopyDialog from './CopyDialog';
 import { CompanySwitcher, CompanyViews, MoreMenu } from './CompanyHeader';
 export default function Dossier({
   company: c,
@@ -73,10 +84,13 @@ export default function Dossier({
   // Folder analyses (the inventory) and exports are different jobs: each view reads its own kind.
   const jobs = allJobs.filter((j) => j.kind === 'scan_folder');
   const [exporting, setExporting] = useState(false);
+  const [copying, setCopying] = useState(false);
   // Why «Analizar carpeta» cannot run now, in plain words (Bloques 3 and 4): it uses the user's own linked agent;
   // the server also checks the folders the administrator authorizes and explains a refusal.
   const link = state.agent_link;
   const canScan = can(me, 'carpeta.analizar', c.id);
+  // Keeping a copy of the content inside ContaSuite is an upload: it needs that permission as well.
+  const canCopy = canScan && can(me, 'documentos.subir', c.id);
   const scanBlocked = !c.folder
     ? 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.'
     : link?.state === 'offline'
@@ -189,6 +203,7 @@ export default function Dossier({
               )}
               {(can(me, 'recopila.usar', c.id) ||
                 can(me, 'carpeta.exportar', c.id) ||
+                canCopy ||
                 can(me, 'empresa.editar', c.id) ||
                 can(me, 'empresa.archivar', c.id)) && (
                 <MoreMenu label="Más acciones de la empresa">
@@ -197,6 +212,12 @@ export default function Dossier({
                       <FolderSearch size={16} />
                       Recopila
                     </Link>
+                  )}
+                  {canCopy && (
+                    <button role="menuitem" type="button" onClick={() => setCopying(true)}>
+                      <FolderInput size={16} />
+                      Guardar copia interna
+                    </button>
                   )}
                   {can(me, 'carpeta.exportar', c.id) && (
                     <button role="menuitem" type="button" onClick={() => setExporting(true)}>
@@ -234,6 +255,17 @@ export default function Dossier({
         </p>
       )}
       <FolderAnalysis job={jobs[0]} />
+      {copying && (
+        <CopyDialog
+          company={c}
+          jobs={allJobs}
+          agentReady={!scanBlocked}
+          blockedReason={scanBlocked}
+          refresh={refresh}
+          notify={notify}
+          onClose={() => setCopying(false)}
+        />
+      )}
       {exporting && (
         <ExportDialog
           company={c}

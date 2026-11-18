@@ -14,6 +14,12 @@ MAX_FILES = 3000
 CAPABILITIES = ['scan_folder', 'export_virtual']
 
 
+def capabilities(config):
+    """The SAT download is advertised only when this computer's setup names the portal address to open."""
+    sat = config.get('sat') or {}
+    return CAPABILITIES + (['sat_declaraciones'] if sat.get('base_url') else [])
+
+
 def request(url, token, path, data):
     req = Request(
         url.rstrip('/') + '/api' + path,
@@ -28,11 +34,28 @@ def request(url, token, path, data):
         return json.load(response)
 
 
-def safe_inventory(folder, allowed_roots, rfc='', with_index=False):
+def put_bytes(url, token, path, data):
+    """PUT raw bytes (one file's content) to the API. The server verifies them against the SHA-256 in the path."""
+    req = Request(
+        url.rstrip('/') + '/api' + path,
+        data=data,
+        headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/octet-stream'},
+        method='PUT',
+    )
+    opener = (
+        build_opener(ProxyHandler({})).open if urlparse(url).hostname in {'localhost', '127.0.0.1', '::1'} else urlopen
+    )
+    with opener(req, timeout=120) as response:
+        return json.load(response)
+
+
+def safe_inventory(folder, allowed_roots, rfc='', with_index=False, copy=None):
     """Use the same path/link checks and secret exclusions as CS-Storage; metadata only.
 
     With `with_index` the result also carries `_index` (one row per file, with its SHA-256) and `_complete` for the
     persistent virtual index; the caller sends them in batches and removes them before delivering the result.
+    With `copy` (a list of sections) it also carries `_copy`: the files whose content the caller must store inside
+    ContaSuite. Only files that were hashed (so, readable and within the size limit) can be copied.
     """
     import sys
 
@@ -66,7 +89,18 @@ def safe_inventory(folder, allowed_roots, rfc='', with_index=False):
         size += cost
     scan = scan_tree(folder, allowed_roots, rfc)
     summary, summary_warnings, summary_truncated, sections = inventory_from_scan(scan)
-    extra = {'_index': index_rows(scan), '_complete': not scan.truncated} if with_index else {}
+    extra = {}
+    if with_index:
+        rows = index_rows(scan)
+        extra = {'_index': rows, '_complete': not scan.truncated}
+        if copy:
+            wanted = set(copy)
+            extra['_copy'] = {
+                'sections': sorted(wanted),
+                'provider': scan.provider,
+                'rows': [r for r in rows if r['sec'] in wanted and r['h']],
+                'sin_huella': sum(1 for r in rows if r['sec'] in wanted and not r['h']),
+            }
     return {
         **extra,
         'files': files,
@@ -342,6 +376,59 @@ def send_index(send, job_id, agent_id, result):
         logging.warning('No se pudo guardar el índice virtual; el análisis se entrega igual.')
 
 
+COPY_ASK = 500
+
+
+def send_copies(post_fn, put_fn, job_id, agent_id, result):
+    """Store an internal copy of the files the analysis asked for, uploading only what the server lacks.
+
+    The server names each content by its SHA-256 and checks the bytes against it, so the same content is stored once.
+    The summary goes into the result under `copia`; a failure is reported there too and never blocks the analysis.
+    """
+    task = result.pop('_copy', None)
+    if task is None:
+        return
+    stats = {
+        'archivos': len(task['rows']),
+        'sin_huella': task['sin_huella'],
+        'subidos': 0,
+        'ya_estaban': 0,
+        'errores': 0,
+    }
+    try:
+        by_hash = {}
+        for row in task['rows']:
+            by_hash.setdefault(row['h'], row['p'])
+        wanted = list(by_hash)
+        missing = set()
+        for i in range(0, len(wanted), COPY_ASK):
+            reply = post_fn(
+                '/agent/jobs/' + job_id + '/blobs/missing', {'agent_id': agent_id, 'hashes': wanted[i : i + COPY_ASK]}
+            )
+            missing.update(reply['missing'])
+        stats['ya_estaban'] = len(wanted) - len(missing)
+        for digest in missing:
+            try:
+                with task['provider'].open_read(by_hash[digest]) as handle:
+                    data = handle.read()
+                import hashlib
+
+                if hashlib.sha256(data).hexdigest() != digest:
+                    raise ValueError(
+                        'changed'
+                    )  # the file changed after it was hashed: it is copied on the next analysis
+                put_fn('/agent/jobs/' + job_id + '/blobs/' + digest + '?agent_id=' + agent_id, data)
+                stats['subidos'] += 1
+            except Exception:  # noqa: BLE001 - one unreadable or rejected file must not stop the rest
+                stats['errores'] += 1
+        reply = post_fn('/agent/jobs/' + job_id + '/blobs/commit', {'agent_id': agent_id, 'sections': task['sections']})
+        stats['marcados'] = reply['copied']
+    except Exception:  # noqa: BLE001 - the analysis is delivered even if the copy could not be completed
+        logging.warning('No se pudo completar la copia interna; el análisis se entrega igual.')
+        stats['error'] = 'No se pudo completar la copia interna.'
+    result['copia'] = stats
+
+
 def export_virtual(payload, allowed_roots):
     """Preview (apply false) or run (apply true) the export of a COPY of the folder in the virtual order.
 
@@ -384,14 +471,69 @@ def export_virtual(payload, allowed_roots):
     return execute(scan.provider, plan['items'], destination)
 
 
-def run_job(job, roots):
+def sat_download(payload, options):
+    """Open the browser for the user, download the declarations' PDFs into a private temporary folder and report them.
+
+    The PDFs travel to the server afterwards (`send_sat_pdfs`). Nothing is read from the portal but those PDFs.
+    """
+    import sys
+    import tempfile
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import sat_browser
+
+    sat = dict(options.get('sat') or {})
+    base = Path(os.getenv('LOCALAPPDATA') or Path.home()) / 'ContaSuite' / 'agent'
+    sat.setdefault('profile_dir', base / 'sat-profile')
+    sat.setdefault('browsers_dir', base / 'playwright-browsers')
+    staging = Path(tempfile.mkdtemp(prefix='contasuite_sat_pdf_'))
+    try:
+        result = sat_browser.download_all(sat, staging)
+    except BaseException:
+        import shutil
+
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+    result['ejercicio'] = payload.get('ejercicio')
+    result['_sat'] = {'dir': str(staging)}
+    return result
+
+
+def send_sat_pdfs(put_fn, job_id, agent_id, result):
+    """Upload the PDFs a SAT download saved, then delete the temporary folder. A failure is counted, never raised."""
+    task = result.pop('_sat', None)
+    if task is None:
+        return
+    import shutil
+
+    folder = Path(task['dir'])
+    sent = failed = 0
+    try:
+        for item in result.get('archivos', []):
+            try:
+                data = (folder / item['nombre']).read_bytes()
+                put_fn('/agent/jobs/' + job_id + '/sat/' + item['sha256'] + '?agent_id=' + agent_id, data)
+                sent += 1
+            except Exception:  # noqa: BLE001 - one rejected or unreadable file must not stop the rest
+                failed += 1
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+    result['entregados'] = sent
+    result['no_entregados'] = failed
+
+
+def run_job(job, roots, options=None):
     """(status, result) of one claimed job. Never raises: every failure becomes its data-free reason."""
     try:
         payload = job['payload']
         if job['kind'] == 'scan_folder':
-            return 'completed', safe_inventory(payload['folder'], roots, payload.get('rfc', ''), with_index=True)
+            return 'completed', safe_inventory(
+                payload['folder'], roots, payload.get('rfc', ''), with_index=True, copy=payload.get('copy')
+            )
         if job['kind'] == 'export_virtual':
             return 'completed', export_virtual(payload, roots)
+        if job['kind'] == 'sat_declaraciones':
+            return 'completed', sat_download(payload, options or {})
         raise ValueError('Operación no admitida')
     except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
         logging.exception('Trabajo %s: no se pudo completar', job.get('id'))
@@ -417,7 +559,7 @@ def run(config, stop_event=None, request_fn=request):
     suffix = '?' + urlencode({'not_before': config['not_before']}) if config.get('not_before') else ''
     while not stop_event.is_set():
         try:
-            request_fn(url, token, '/agent/heartbeat', {'id': agent_id, 'capabilities': CAPABILITIES})
+            request_fn(url, token, '/agent/heartbeat', {'id': agent_id, 'capabilities': capabilities(config)})
             if pending:
                 try:
                     request_fn(url, token, '/agent/jobs/' + pending[0] + '/result', pending[1])
@@ -430,8 +572,16 @@ def run(config, stop_event=None, request_fn=request):
             job = request_fn(url, token, '/agent/' + agent_id + '/claim' + suffix, {})
             if job:
                 logging.info('Procesando trabajo %s', job['id'])
-                status, result = run_job(job, roots)
+                status, result = run_job(job, roots, config)
                 send_index(lambda path, data: request_fn(url, token, path, data), job['id'], agent_id, result)
+                send_copies(
+                    lambda path, data: request_fn(url, token, path, data),
+                    lambda path, data: put_bytes(url, token, path, data),
+                    job['id'],
+                    agent_id,
+                    result,
+                )
+                send_sat_pdfs(lambda path, data: put_bytes(url, token, path, data), job['id'], agent_id, result)
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})
                 continue
         except (URLError, TimeoutError, OSError, ValueError):
@@ -451,6 +601,12 @@ REASONS = {
     'smb_not_configured': 'Las carpetas de red no están habilitadas para el agente.',
     'invalid_configuration': 'La configuración de carpetas autorizadas no es válida.',
     'read_error': 'No se pudo leer la carpeta.',
+    'sat_no_habilitado': 'La descarga de declaraciones no está habilitada en este equipo.',
+    'sat_sin_playwright': 'Falta instalar el componente de navegador del agente en este equipo.',
+    'sat_navegador_no_disponible': 'No se pudo abrir el navegador del agente: reinstálalo o ciérralo si ya está abierto.',
+    'sat_sin_consulta': 'No se llegó a la pantalla de consulta de declaraciones a tiempo.',
+    'sat_sin_controles': 'La tabla de declaraciones no tiene PDF descargables que se puedan identificar. No se hizo ningún clic.',
+    'sat_cancelado': 'La descarga se canceló.',
 }
 
 
@@ -490,7 +646,7 @@ def post(url, path, data, token=None):
 class LinkedAgent:
     """Paired at the user's sign-in through http://127.0.0.1:<local_port>; the credential lives in memory only."""
 
-    def __init__(self, config, post_fn=post):
+    def __init__(self, config, post_fn=post, put_fn=None):
         url = config['api_url']
         parsed = urlparse(url)
         if parsed.scheme != 'https' and not (
@@ -498,12 +654,15 @@ class LinkedAgent:
         ):
             raise ValueError('La API remota necesita HTTPS.')
         self.url = url
+        self.config = config
+        self.capabilities = capabilities(config)
         self.agent_id = config.get('agent_id') or default_agent_id()
         self.machine = config.get('machine') or os.getenv('COMPUTERNAME', '')
         self.port = int(config.get('local_port', 47865))
         origin = parsed.scheme + '://' + parsed.netloc
         self.origins = set(config.get('app_origins') or [origin])
         self.post = post_fn
+        self.put = put_fn or put_bytes
         self.lock = threading.Lock()
         self.token = None
         self.user = None
@@ -533,16 +692,29 @@ class LinkedAgent:
             }
 
     def run_alive(self, job, token):
-        """Run a job in its own thread while the heartbeat continues: a long export must not look like a dead agent."""
+        """Run a job (its index and internal copy included) in its own thread while the heartbeat continues: a long
+        export or copy must not make the agent look dead."""
         outcome = []
-        worker = threading.Thread(
-            target=lambda: outcome.append(run_job(job, job['payload'].get('roots') or [])), daemon=True
-        )
+
+        def work():
+            status, result = run_job(job, job['payload'].get('roots') or [], self.config)
+            send_index(lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id, result)
+            send_copies(
+                lambda path, data: self.post(self.url, path, data, token),
+                lambda path, data: self.put(self.url, token, path, data),
+                job['id'],
+                self.agent_id,
+                result,
+            )
+            send_sat_pdfs(lambda path, data: self.put(self.url, token, path, data), job['id'], self.agent_id, result)
+            outcome.append((status, result))
+
+        worker = threading.Thread(target=work, daemon=True)
         worker.start()
         while worker.is_alive():
             worker.join(5)
             try:
-                self.post(self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': CAPABILITIES}, token)
+                self.post(self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': self.capabilities}, token)
             except (URLError, TimeoutError, OSError, ValueError):
                 pass  # the main loop handles a lost connection or a revoked link once the job is done
         return outcome[0]
@@ -559,7 +731,7 @@ class LinkedAgent:
                 continue
             try:
                 beat = self.post(
-                    self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': CAPABILITIES}, token
+                    self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': self.capabilities}, token
                 )
                 if beat.get('restart'):
                     self.unpair('Reinicio solicitado por la administración: inicia sesión de nuevo.')
@@ -575,12 +747,6 @@ class LinkedAgent:
                 if job:
                     logging.info('Procesando trabajo %s', job['id'])
                     status, result = self.run_alive(job, token)
-                    send_index(
-                        lambda path, data, token=token: self.post(self.url, path, data, token),
-                        job['id'],
-                        self.agent_id,
-                        result,
-                    )
                     pending = (job['id'], {'agent_id': self.agent_id, 'status': status, 'result': result})
                     continue
             except HTTPError as error:

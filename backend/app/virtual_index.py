@@ -13,13 +13,16 @@ A scan whose walk hit its limit never marks anything as missing or moved. Nothin
 """
 
 from collections import Counter, defaultdict
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import FileResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from . import virtual_blobs
 from .database import session
-from .models import Document, DocumentCompanyLink, DocumentVersion, VirtualFile, VirtualScan, now
+from .models import Audit, Document, DocumentCompanyLink, DocumentVersion, VirtualFile, VirtualScan, now
 from .security import Principal, auth
 
 router = APIRouter(prefix='/api/companies/{company_id}/virtual-index', tags=['Índice virtual'])
@@ -140,6 +143,27 @@ def _finalize(db, scan, complete, stamp):
             scan.missing += 1
 
 
+def mark_copies(db, job, sections):
+    """Mark the files of this job's scan whose content has its internal copy. Returns how many were marked."""
+    scan = db.scalar(select(VirtualScan).where(VirtualScan.job_id == job.id))
+    if scan is None:
+        return 0
+    wanted = set(sections) & set((job.payload or {}).get('copy') or [])
+    stamp, marked = now(), 0
+    for stored in db.scalars(
+        select(VirtualFile).where(
+            VirtualFile.company_id == job.company_id,
+            VirtualFile.scan_id == scan.id,
+            VirtualFile.section.in_(wanted or ['-']),
+            VirtualFile.sha256.is_not(None),
+        )
+    ):
+        if virtual_blobs.exists(stored.sha256):
+            stored.copy_sha256, stored.copied_at = stored.sha256, stamp
+            marked += 1
+    return marked
+
+
 def describe(scan):
     return {
         'id': scan.id,
@@ -181,12 +205,19 @@ def summary(company_id: str, principal: Principal = Depends(auth), db: Session =
         select(func.count()).where(VirtualFile.company_id == company_id, VirtualFile.missing_since.is_not(None))
     )
     latest = _latest(db, company_id)
+    present = (VirtualFile.company_id == company_id, VirtualFile.missing_since.is_(None))
+    hashed = db.scalar(select(func.count()).where(*present, VirtualFile.sha256.is_not(None))) or 0
+    copied_where = (*present, VirtualFile.copy_sha256 == VirtualFile.sha256)
+    copied = db.scalar(select(func.count()).where(*copied_where)) or 0
+    copied_bytes = db.scalar(select(func.coalesce(func.sum(VirtualFile.size), 0)).where(*copied_where)) or 0
     return {
         'scans': [describe(s) for s in scans],
         'latest': describe(latest) if latest else None,
         'sections': sections,
         'total': sum(sections.values()),
         'missing': missing or 0,
+        # Files whose content is also stored inside ContaSuite (a copy goes stale when the original changes).
+        'copia': {'con_copia': copied, 'bytes': copied_bytes, 'pendientes': max(0, hashed - copied)},
     }
 
 
@@ -196,6 +227,7 @@ def files(
     section: str = Query('', max_length=30),
     change: str = Query('', max_length=10),
     missing: bool = False,
+    copied: bool | None = None,
     q: str = Query('', max_length=120),
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
@@ -214,6 +246,9 @@ def files(
         if latest is None:
             return {'rows': [], 'total': 0, 'more': False}
         query = query.where(VirtualFile.last_change == change, VirtualFile.last_change_scan == latest.id)
+    if copied is not None:
+        has_copy = VirtualFile.copy_sha256 == VirtualFile.sha256
+        query = query.where(has_copy if copied else or_(VirtualFile.copy_sha256.is_(None), ~has_copy))
     if q:
         query = query.where(VirtualFile.path.contains(q, autoescape=True))
     total = db.scalar(select(func.count()).select_from(query.subquery()))
@@ -232,12 +267,53 @@ def files(
                 'moved_from': f.moved_from,
                 'first_seen': f.first_seen,
                 'missing_since': f.missing_since,
+                'copied': bool(f.copy_sha256 and f.copy_sha256 == f.sha256),
             }
             for f in rows[:limit]
         ],
         'total': total,
         'more': len(rows) > limit,
     }
+
+
+@router.get('/files/{file_id}/content')
+def content(
+    company_id: str,
+    file_id: str,
+    preview: bool = False,
+    principal: Principal = Depends(auth),
+    db: Session = Depends(session),
+):
+    """The internal copy of a file, even if its original was moved or deleted. Reading it is recorded."""
+    principal.require('documentos.ver', company_id)
+    stored = db.get(VirtualFile, file_id)
+    if stored is None or stored.company_id != company_id:
+        raise HTTPException(404, 'Registro no encontrado.')
+    if not stored.copy_sha256 or stored.copy_sha256 != stored.sha256 or not virtual_blobs.exists(stored.copy_sha256):
+        raise HTTPException(404, 'Este archivo no tiene una copia interna vigente.')
+    extension = stored.name.rsplit('.', 1)[-1].lower() if '.' in stored.name else ''
+    if preview and extension not in {'pdf', 'xml'}:
+        raise HTTPException(415, 'Este formato admite descarga, pero no vista previa.')
+    db.add(
+        Audit(
+            action=('Copia interna consultada: ' if preview else 'Copia interna descargada: ') + stored.name[:150],
+            company_id=company_id,
+            actor_id=principal.subject,
+        )
+    )
+    db.commit()
+    headers = {
+        'Content-Disposition': ('inline' if preview else 'attachment')
+        + "; filename*=UTF-8''"
+        + quote(stored.name, safe=''),
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': "frame-ancestors 'self'",
+    }
+    media = 'application/octet-stream'
+    if preview:
+        media = 'application/pdf' if extension == 'pdf' else 'text/plain; charset=utf-8'
+    return FileResponse(virtual_blobs.path_for(stored.copy_sha256), media_type=media, headers=headers)
 
 
 def _links(db, company_id, hashes):

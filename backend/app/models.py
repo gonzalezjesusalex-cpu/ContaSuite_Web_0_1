@@ -243,6 +243,9 @@ class VirtualFile(Base):
     last_change: Mapped[str] = mapped_column(String(10), default='')
     last_change_scan: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     moved_from: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # cs_0015: the internal copy of the content (stored by SHA-256). Copied while copy_sha256 == sha256.
+    copy_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    copied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Setting(Base):
