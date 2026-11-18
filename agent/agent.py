@@ -59,11 +59,11 @@ def safe_inventory(folder, allowed_roots, rfc=''):
             break
         files.append(row)
         size += cost
-    summary, summary_warnings, summary_truncated, cfdi = classify_folder(folder, allowed_roots, rfc)
+    summary, summary_warnings, summary_truncated, sections = classify_folder(folder, allowed_roots, rfc)
     return {
         'files': files,
         'summary': summary,
-        'cfdi': cfdi,
+        **sections,  # one entry per virtual group with its own structure: cfdi, impuestos…
         'truncated': truncated or summary_truncated,
         'warnings': list(dict.fromkeys(warnings + summary_warnings))[:10],
         'catalog_imported': False,
@@ -88,13 +88,14 @@ def classify_folder(folder, allowed_roots, rfc=''):
     from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
     from app.storage.local import LocalFolderProvider
     from app.storage.providers import ScanIssue, StorageError
+    from app.tax_groups import TaxIndex
 
     class AllFiles(LocalFolderProvider):
         def _supported(self, key):  # every extension is counted; nothing here is returned as content
             return True
 
     provider = AllFiles(Path(folder), tuple(Path(p) for p in allowed_roots), max_seconds=120, max_entries=60000)
-    summary, index = Summary(), CfdiIndex(rfc)
+    summary, index, taxes = Summary(), CfdiIndex(rfc), TaxIndex()
     warnings, truncated, heads = [], False, 0
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
@@ -117,12 +118,14 @@ def classify_folder(folder, allowed_roots, rfc=''):
             index.add_pdf(entry.key)
         elif group == 'sat_reportes':
             index.add_report(entry.key)
+        elif group == 'impuestos':
+            taxes.add(entry.key)
     result = summary.result()
     result['xml_headers_read'] = heads
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
         warnings.append(f'{sensitive} archivos de credenciales o contraseñas se contaron sin abrirse.')
-    return result, warnings, truncated, index.result()
+    return result, warnings, truncated, {'cfdi': index.result(), 'impuestos': taxes.result()}
 
 
 def run(config, stop_event=None, request_fn=request):

@@ -48,11 +48,11 @@ def classify(relative_path, size=0, tipo=None):
     ext = path.suffix.lower()
     folders = [fold(p) for p in path.parts[:-1]]
     where = ' / '.join(folders)
-    in_credentials = any(re.search(r'FIEL|E-?FIRMA|SELLO|\bCSD\b', f) for f in folders)
+    in_credentials = any(re.search(r'FIEL|E-?FIRMA|SELLO|\bCSD\b|CERTIFICADO', f) for f in folders)
 
     if re.search(r'CONTRASE|PASSWORD|CONTRA_\d', name) or (in_credentials and ext in {'.txt', '.doc', '.docx'}):
         return 'contrasenas', None
-    if ext in CREDENTIAL_EXTENSIONS or (ext in {'.zip', '.rar', '.7z'} and (in_credentials or re.search(r'FIEL|E-?FIRMA|\bCSD\b|SELLO', name))):
+    if ext in CREDENTIAL_EXTENSIONS or (ext == '.pdf' and in_credentials) or (ext in {'.zip', '.rar', '.7z'} and (in_credentials or re.search(r'FIEL|E-?FIRMA|\bCSD\b|SELLO', name))):
         return 'credenciales', None
     if name.lower() in NOISE_NAMES or ext in NOISE_EXTENSIONS or name.startswith('~$'):
         return 'ruido', None

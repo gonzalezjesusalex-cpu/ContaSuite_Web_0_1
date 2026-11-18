@@ -308,7 +308,7 @@ export default function Dossier({
           admin={state.current_user.admin}
           notify={notify}
           refresh={refresh}
-          job={jobs.find((j) => j.status === 'completed' && j.result.cfdi)}
+          job={jobs.find((j) => j.status === 'completed' && (j.result.cfdi || j.result.impuestos))}
         />
       ) : tab === 'Credenciales y Certificados' ? (
         <Credentials state={state} companyId={c.id} />

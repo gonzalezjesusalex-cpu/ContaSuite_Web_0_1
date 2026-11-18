@@ -3,7 +3,7 @@ import { api } from '../api';
 import { Field, Modal } from '../components/ui';
 import { stitchCard, stitchButton, stitchPrimary } from '../components/stitch';
 import Documents from './Documents';
-import CfdiInventory from './CfdiInventory';
+import Inventory from './Inventory';
 import type { Job } from '../types';
 type Item = {
   id: string;
@@ -208,7 +208,7 @@ export default function VirtualExplorer({
           </button>
         ))}
       </div>
-      {view === 'Inventario' && <CfdiInventory job={job} />}
+      {view === 'Inventario' && <Inventory job={job} />}
       <div className="toolbar" style={{ flexWrap: 'wrap', display: view === 'Inventario' ? 'none' : undefined }}>
         <input
           aria-label="Buscar documentos virtuales"

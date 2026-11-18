@@ -3913,3 +3913,70 @@ textarea:user-invalid {
   border-radius: 6px;
   padding: 3px 8px;
 }
+
+/* Inventario: selector de grupo y declaraciones/acuses */
+.inventory-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+.inventory-sections .chip {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+.inventory-sections .chip.on {
+  background: var(--blue-soft);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.inventory-alert {
+  color: var(--warn-strong);
+}
+.tax-block {
+  border-top: 1px solid var(--border);
+  padding: 8px 0;
+  font-size: var(--fs-xs);
+}
+.tax-block h4 {
+  margin: 0 0 6px;
+}
+.tax-block h4 small {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.tax-entry {
+  padding: 5px 0;
+}
+.tax-docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+.tax-docs span {
+  overflow-wrap: anywhere;
+}
+.tax-docs small {
+  display: block;
+  color: var(--muted);
+}
+.tax-why {
+  display: block;
+  margin-top: 4px;
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-strong);
+}
+.tax-why.revisar {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-strong);
+}

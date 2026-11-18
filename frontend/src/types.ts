@@ -93,6 +93,19 @@ export interface CfdiRow {
   why: string;
   src: string;
 }
+/** A declaración or acuse, paired by period inside its folder; `pair` is the counterpart's path. */
+export interface TaxRow {
+  p: string;
+  d: 'declaracion' | 'acuse' | 'otro';
+  inf: boolean;
+  a: 'federal' | 'estatal' | 'anual';
+  y: number | null;
+  n: number | null;
+  q: string[];
+  pair: string | null;
+  s: 'ok' | 'faltante' | 'revisar';
+  why: string;
+}
 export interface Job {
   id: string;
   company_id: string;
@@ -122,6 +135,13 @@ export interface Job {
       ok: number;
       revisar: number;
       dropped: number;
+    };
+    impuestos?: {
+      rows: TaxRow[];
+      total: number;
+      pairs: number;
+      faltantes: number;
+      revisar: number;
     };
     truncated?: boolean;
     error?: string;
