@@ -74,6 +74,58 @@ def safe_inventory(folder, allowed_roots, rfc=''):
 
 XML_HEAD_BYTES = 16384
 MAX_XML_HEADS = 20000
+MAX_PAYMENT_BYTES = 2_000_000
+MAX_REPORT_BYTES = 8_000_000
+
+
+def read_cfdi(provider, entry):
+    """(info, uuid, payment text) of a CFDI XML. Payment text is only returned for tipo P (to find what it settles)."""
+    from app.folder_groups import cfdi_info
+    from app.sat_reconcile import uuid_in
+
+    with provider.open_read(entry.key) as handle:
+        info = cfdi_info(handle.read(XML_HEAD_BYTES))
+        if not info:
+            return None, None, None
+        uuid, text = uuid_in(Path(entry.key).name), None
+        if info['tipo'] == 'P' and entry.size <= MAX_PAYMENT_BYTES:
+            handle.seek(0)
+            text = handle.read(MAX_PAYMENT_BYTES).decode('utf-8', errors='ignore')
+            uuid = uuid or uuid_in(text[-4096:])
+        elif not uuid:  # the stamp (TimbreFiscalDigital) closes the document
+            handle.seek(max(0, entry.size - 4096))
+            uuid = uuid_in(handle.read(4096).decode('utf-8', errors='ignore'))
+    return info, uuid, text
+
+
+def read_report(provider, entry, reconcile):
+    """Feed one SAT monthly report (.xls) to the reconciliation. False when it cannot be read."""
+    from app.folder_groups import REPORT_NAME
+    from app.storage.providers import StorageError
+    from app.xls_reader import read_rows
+
+    match = REPORT_NAME.match(Path(entry.key).name)
+    if not match:
+        return True
+    try:
+        with provider.open_read(entry.key) as handle:
+            rows = read_rows(handle.read(MAX_REPORT_BYTES))
+    except (StorageError, ValueError):
+        return False
+    reconcile.add_report('E' if match.group(1).lower() == 'emitid' else 'R', int(match.group(2)), int(match.group(3)), rows)
+    return True
+
+
+def read_certificate(provider, entry, certs):
+    """Validity of a PUBLIC .cer. Private keys never reach this function (they are not .cer files)."""
+    from app.storage.providers import StorageError
+
+    try:
+        with provider.open_read(entry.key) as handle:
+            data = handle.read(65536)
+    except StorageError:
+        return
+    certs.add(entry.key, data)
 
 
 def classify_folder(folder, allowed_roots, rfc=''):
@@ -88,6 +140,8 @@ def classify_folder(folder, allowed_roots, rfc=''):
     from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
     from app.storage.local import LocalFolderProvider
     from app.storage.providers import ScanIssue, StorageError
+    from app.cert_groups import CertIndex
+    from app.sat_reconcile import PpdIndex, SatReconcile
     from app.expediente_groups import ExpedienteIndex
     from app.finance_groups import FinanceIndex
     from app.imss_groups import ImssIndex
@@ -112,36 +166,51 @@ def classify_folder(folder, allowed_roots, rfc=''):
         'estados_financieros': (finance.add,),
         'trabajadores': (workers.add,),
     }
-    warnings, truncated, heads = [], False, 0
+    reconcile, ppd, certs = SatReconcile(), PpdIndex(), CertIndex(rfc)
+    warnings, truncated, heads, unreadable = [], False, 0, 0
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
             warnings.append('Incidencia de recorrido: ' + entry.code)
             truncated = truncated or entry.code == 'scan_limit'
             continue
         tipo = None
-        if entry.key.lower().endswith('.xml') and heads < MAX_XML_HEADS:
+        lower = entry.key.lower()
+        if lower.endswith('.xml') and heads < MAX_XML_HEADS:
             heads += 1
             try:
-                with provider.open_read(entry.key) as handle:
-                    info = cfdi_info(handle.read(XML_HEAD_BYTES))
+                info, uuid, payment = read_cfdi(provider, entry)
                 tipo = info['tipo'] if info else ''
                 if info:
-                    index.add_xml(entry.key, info)
+                    place = index.add_xml(entry.key, info)
+                    reconcile.add_xml(uuid, entry.key, place)
+                    ppd.add_invoice(uuid, entry.key, info, place)
+                    if payment:
+                        ppd.add_payment(entry.key, payment)
             except StorageError:
                 index.add_xml(entry.key, None)  # unreadable or too large: reviewed by a person
         group = summary.add(entry.key, entry.size, tipo)
         if group == 'cfdi_xml' and tipo == 'N':
             payroll.add_xml(entry.key)
-        elif group == 'nomina' and entry.key.lower().endswith('.pdf'):
+        elif group == 'nomina' and lower.endswith('.pdf'):
             payroll.add_pdf(entry.key)
+        elif group == 'sat_reportes' and lower.endswith('.xls'):
+            if not read_report(provider, entry, reconcile):
+                unreadable += 1
+        elif group == 'credenciales' and lower.endswith('.cer'):
+            read_certificate(provider, entry, certs)
         for target in routes.get(group, ()):
             target(entry.key)
     result = summary.result()
     result['xml_headers_read'] = heads
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
-        warnings.append(f'{sensitive} archivos de credenciales o contraseñas se contaron sin abrirse.')
+        warnings.append(f'{sensitive} archivos de credenciales o contraseñas: sólo se leyó la vigencia de los .cer públicos.')
+    if unreadable:
+        warnings.append(f'{unreadable} reportes .xls del SAT no se pudieron leer.')
     sections = {
+        'conciliacion': reconcile.result(),
+        'ppd': ppd.result(),
+        'certificados': certs.result(),
         'cfdi': index.result(),
         'impuestos': taxes.result(),
         'imss': imss.result(),

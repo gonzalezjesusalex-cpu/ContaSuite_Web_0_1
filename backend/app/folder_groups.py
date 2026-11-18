@@ -164,7 +164,11 @@ def cfdi_info(head):
     side = lambda tag: (  # noqa: E731
         lambda m: m.group(1).upper() if m else ''
     )(re.search(r'<(?:\w+:)?' + tag + r'\b[^>]*?\bRfc\s*=\s*"([^"]+)"', text, re.S))
+    method = re.search(r'MetodoPago\s*=\s*"(\w+)"', attrs)
+    total = re.search(r'\bTotal\s*=\s*"([\d.]+)"', attrs)
     return {
+        'metodo': method.group(1).upper() if method else '',
+        'total': float(total.group(1)) if total else None,
         'month': (int(date.group(1)), int(date.group(2))) if date else None,
         'tipo': tipo.group(1).upper() if tipo else '',
         'emisor': side('Emisor'),
@@ -270,6 +274,7 @@ class CfdiIndex:
         place = place_cfdi(path, info, self.rfc)
         place['t'] = (info or {}).get('tipo', '')
         self.xml[PurePosixPath(path).with_suffix('').as_posix().casefold()] = (path, place)
+        return place
 
     def add_pdf(self, path):
         self.pdf.append(path)

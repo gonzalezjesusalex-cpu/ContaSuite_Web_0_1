@@ -125,6 +125,44 @@ export interface ImssMonth {
   notas: string[];
   s: 'completo' | 'faltante' | 'parcial' | 'revisar';
 }
+/** One month and direction of the SAT report compared with the XML in the folder. */
+export interface ReconPeriod {
+  k: 'E' | 'R';
+  y: number;
+  m: number;
+  xml: number;
+  reporte: number | null;
+  s: 'ok' | 'revisar' | 'sin_reporte_mes';
+  ok: number;
+  faltan: { u: string; tipo: string; fecha: string; total: number | null; emisor: string; receptor: string; cancelado: boolean }[];
+  n_faltan?: number;
+  sobran: string[];
+  n_sobran?: number;
+  cancelados: number;
+}
+export interface PpdRow {
+  u: string;
+  p: string;
+  k: 'E' | 'R' | null;
+  y: number | null;
+  m: number | null;
+  tot: number | null;
+  pagos: number;
+  pagado: number;
+  saldo: number | null;
+  s: 'sin_pago' | 'parcial' | 'liquidada';
+}
+export interface CertRow {
+  p: string;
+  k: 'FIEL' | 'CSD' | 'RL' | '';
+  desde: string;
+  hasta: string;
+  dias: number | null;
+  s: 'vigente' | 'por_vencer' | 'vencido' | 'aun_no' | 'ilegible';
+  rfcs: string[];
+  emp: boolean;
+  why: string;
+}
 export interface ExpedienteRow {
   p: string;
   t: string;
@@ -186,6 +224,32 @@ export interface Job {
       ok: number;
       revisar: number;
       dropped: number;
+    };
+    conciliacion?: {
+      periodos: ReconPeriod[];
+      con_reporte: number;
+      ok: number;
+      revisar: number;
+      sin_reporte: number;
+      faltan_xml: number;
+      sin_reporte_xml: number;
+    };
+    ppd?: {
+      rows: PpdRow[];
+      total: number;
+      sin_pago: number;
+      parcial: number;
+      liquidadas: number;
+      pagos_ajenos: number;
+      ajenos: { u: string; p: string }[];
+    };
+    certificados?: {
+      rows: CertRow[];
+      total: number;
+      vigentes: number;
+      por_vencer: number;
+      vencidos: number;
+      revisar: number;
     };
     expediente?: { rows: ExpedienteRow[]; total: number; faltan: string[]; revisar: number };
     finanzas?: { rows: FinanceRow[]; total: number; dropped: number };

@@ -5,6 +5,8 @@ import ImssInventory from './ImssInventory';
 import ExpedienteInventory from './ExpedienteInventory';
 import FinanceInventory from './FinanceInventory';
 import { PayrollInventory, WorkersInventory } from './PayrollInventory';
+import { PpdInventory, ReconcileInventory } from './ReconcileInventory';
+import CertInventory from './CertInventory';
 import type { Job } from '../types';
 
 type Section = {
@@ -52,6 +54,27 @@ const SECTIONS: Section[] = [
     view: FinanceInventory,
     count: (r) => r.finanzas?.total,
     alert: () => 0,
+  },
+  {
+    key: 'conciliacion',
+    label: 'Conciliación SAT',
+    view: ReconcileInventory,
+    count: (r) => r.conciliacion?.con_reporte,
+    alert: (r) => r.conciliacion?.revisar ?? 0,
+  },
+  {
+    key: 'ppd',
+    label: 'Pagos PPD',
+    view: PpdInventory,
+    count: (r) => r.ppd?.total,
+    alert: (r) => (r.ppd?.parcial ?? 0) + (r.ppd?.sin_pago ?? 0),
+  },
+  {
+    key: 'certificados',
+    label: 'e.firma y sello',
+    view: CertInventory,
+    count: (r) => r.certificados?.total,
+    alert: (r) => (r.certificados?.por_vencer ?? 0) + (r.certificados?.vencidos ?? 0) + (r.certificados?.revisar ?? 0),
   },
   {
     key: 'trabajadores',
