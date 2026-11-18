@@ -176,3 +176,39 @@ def test_agent_uploads_what_it_downloaded_and_removes_its_temporary_folder(offic
     assert (result['entregados'], result['no_entregados']) == (1, 2) and '_sat' not in result
     assert not staged.exists()
     assert (DATA / 'declara_sat' / claimed['id'] / (sha(PDF) + '.pdf')).exists()
+
+
+def test_progress_is_shown_and_renews_the_claim_while_the_person_signs_in(office):  # noqa: F811
+    from datetime import datetime, timedelta, timezone
+
+    from app.database import SessionLocal
+    from app.models import Job
+
+    c, companies, _ = office
+    login(c, 'ana')
+    _, token = pair(c)
+    heartbeat(c, token)
+    start(c, companies['a'])
+    claimed = c.post('/api/agent/pc-ana/claim', headers=bearer(token)).json()
+    url = f'/api/agent/jobs/{claimed["id"]}/progress'
+
+    # Claimed long ago, but the agent keeps reporting: the job is not expired.
+    old = (datetime.now(timezone.utc) - timedelta(minutes=14)).isoformat()
+    with SessionLocal.begin() as db:
+        db.get(Job, claimed['id']).result = {'claimed_at': old}
+    waiting = c.post(url, headers=bearer(token), json={'agent_id': 'pc-ana', 'fase': 'esperando_sesion'})
+    assert waiting.status_code == 200
+    with SessionLocal() as db:
+        result = db.get(Job, claimed['id']).result
+    assert result['progreso'] == {'fase': 'esperando_sesion'}
+    assert datetime.fromisoformat(result['claimed_at']) > datetime.now(timezone.utc) - timedelta(minutes=1)
+
+    c.post(url, headers=bearer(token), json={'agent_id': 'pc-ana', 'fase': 'descargando', 'total': 12, 'hechas': 3})
+    shown = next(j for j in c.get('/api/state').json()['jobs'] if j['id'] == claimed['id'])
+    assert shown['result']['progreso'] == {'fase': 'descargando', 'total': 12, 'hechas': 3}
+
+    # Only a phase and counters: nothing else is accepted, and only from the agent holding the job.
+    assert c.post(url, headers=bearer(token), json={'agent_id': 'pc-ana', 'fase': 'otra'}).status_code == 422
+    extra = {'agent_id': 'pc-ana', 'fase': 'abriendo', 'url': 'https://x'}
+    assert c.post(url, headers=bearer(token), json=extra).status_code == 422
+    assert c.post(url, headers=bearer(token), json={'agent_id': 'otro', 'fase': 'abriendo'}).status_code == 409

@@ -105,7 +105,7 @@ def download_all(options, staging, on_progress=None, should_stop=None):
     """Abre el navegador, espera a que el usuario llegue a la consulta y descarga cada PDF en `staging`.
 
     `options`: base_url (obligatoria), profile_dir, browsers_dir, headless (sólo pruebas), login_timeout (s).
-    Devuelve {'detectadas', 'guardadas', 'errores': [{'fila', 'motivo'}], 'archivos': [...]}.
+    Devuelve {'detectadas', 'guardadas', 'fallidas': [{'fila', 'motivo'}], 'archivos': [...]}.
     Nunca hace clics a ciegas: si no identifica ningún control PDF, termina con `sat_sin_controles`.
     """
     notify = on_progress or (lambda event: None)
@@ -130,6 +130,7 @@ def download_all(options, staging, on_progress=None, should_stop=None):
     login_timeout = float(options.get('login_timeout', 600))
     files, errors = [], []
     with sync_playwright() as p, tempfile.TemporaryDirectory(prefix='contasuite_sat_') as temp:
+        notify({'fase': 'abriendo'})
         try:
             context = p.firefox.launch_persistent_context(
                 str(profile),
@@ -150,7 +151,7 @@ def download_all(options, staging, on_progress=None, should_stop=None):
             page = context.pages[0] if context.pages else context.new_page()
             page.goto(base_url, wait_until='domcontentloaded', timeout=90_000)
             notify({'fase': 'esperando_sesion'})
-            consulta = _wait_consulta(context, login_timeout, stop)
+            consulta = _wait_consulta(context, login_timeout, stop, notify)
             if consulta is None:
                 raise SatError('sat_cancelado' if stop() else 'sat_sin_consulta')
 
@@ -179,15 +180,19 @@ def download_all(options, staging, on_progress=None, should_stop=None):
                 _download_row(consulta, index, pos, (operation, kind, period), temp, staging, files, errors)
                 notify({'fase': 'descargando', 'total': len(entries), 'hechas': pos, 'guardadas': len(files)})
                 consulta.wait_for_timeout(sel.ROW_PAUSE_MS)
-            return {'detectadas': len(entries), 'guardadas': len(files), 'errores': errors, 'archivos': files}
+            return {'detectadas': len(entries), 'guardadas': len(files), 'fallidas': errors, 'archivos': files}
         finally:
             context.close()
 
 
-def _wait_consulta(context, timeout, stop):
+def _wait_consulta(context, timeout, stop, notify):
     """La página que muestra la tabla de declaraciones; espera a que el usuario llegue hasta ella."""
     deadline = time.time() + timeout
+    last = time.time()
     while time.time() < deadline and not stop():
+        if time.time() - last >= 30:  # a sign of life while the person signs in
+            notify({'fase': 'esperando_sesion'})
+            last = time.time()
         for candidate in reversed(context.pages):
             try:
                 url = (candidate.url or '').lower()

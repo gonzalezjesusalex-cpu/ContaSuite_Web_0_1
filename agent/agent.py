@@ -471,7 +471,7 @@ def export_virtual(payload, allowed_roots):
     return execute(scan.provider, plan['items'], destination)
 
 
-def sat_download(payload, options):
+def sat_download(payload, options, notify=None):
     """Open the browser for the user, download the declarations' PDFs into a private temporary folder and report them.
 
     The PDFs travel to the server afterwards (`send_sat_pdfs`). Nothing is read from the portal but those PDFs.
@@ -488,7 +488,7 @@ def sat_download(payload, options):
     sat.setdefault('browsers_dir', base / 'playwright-browsers')
     staging = Path(tempfile.mkdtemp(prefix='contasuite_sat_pdf_'))
     try:
-        result = sat_browser.download_all(sat, staging)
+        result = sat_browser.download_all(sat, staging, on_progress=notify)
     except BaseException:
         import shutil
 
@@ -499,13 +499,15 @@ def sat_download(payload, options):
     return result
 
 
-def send_sat_pdfs(put_fn, job_id, agent_id, result):
+def send_sat_pdfs(put_fn, job_id, agent_id, result, notify=None):
     """Upload the PDFs a SAT download saved, then delete the temporary folder. A failure is counted, never raised."""
     task = result.pop('_sat', None)
     if task is None:
         return
     import shutil
 
+    if notify:
+        notify({'fase': 'subiendo'})
     folder = Path(task['dir'])
     sent = failed = 0
     try:
@@ -522,7 +524,26 @@ def send_sat_pdfs(put_fn, job_id, agent_id, result):
     result['no_entregados'] = failed
 
 
-def run_job(job, roots, options=None):
+def progress_reporter(post_fn, job_id, agent_id):
+    """Best-effort reports of a SAT download's phase: a lost report never fails the job."""
+    import time
+
+    last = {'fase': None, 'at': 0.0}
+
+    def report(event):
+        now = time.time()
+        if event.get('fase') == last['fase'] and event.get('fase') != 'descargando' and now - last['at'] < 20:
+            return
+        last.update(fase=event.get('fase'), at=now)
+        try:
+            post_fn('/agent/jobs/' + job_id + '/progress', {'agent_id': agent_id, **event})
+        except Exception:  # noqa: BLE001 - progress is informative only
+            logging.warning('No se pudo informar el avance de la descarga.')
+
+    return report
+
+
+def run_job(job, roots, options=None, notify=None):
     """(status, result) of one claimed job. Never raises: every failure becomes its data-free reason."""
     try:
         payload = job['payload']
@@ -533,7 +554,7 @@ def run_job(job, roots, options=None):
         if job['kind'] == 'export_virtual':
             return 'completed', export_virtual(payload, roots)
         if job['kind'] == 'sat_declaraciones':
-            return 'completed', sat_download(payload, options or {})
+            return 'completed', sat_download(payload, options or {}, notify)
         raise ValueError('Operación no admitida')
     except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
         logging.exception('Trabajo %s: no se pudo completar', job.get('id'))
@@ -572,7 +593,9 @@ def run(config, stop_event=None, request_fn=request):
             job = request_fn(url, token, '/agent/' + agent_id + '/claim' + suffix, {})
             if job:
                 logging.info('Procesando trabajo %s', job['id'])
-                status, result = run_job(job, roots, config)
+                post_fn = lambda path, data: request_fn(url, token, path, data)  # noqa: E731
+                notify = progress_reporter(post_fn, job['id'], agent_id)
+                status, result = run_job(job, roots, config, notify)
                 send_index(lambda path, data: request_fn(url, token, path, data), job['id'], agent_id, result)
                 send_copies(
                     lambda path, data: request_fn(url, token, path, data),
@@ -581,7 +604,7 @@ def run(config, stop_event=None, request_fn=request):
                     agent_id,
                     result,
                 )
-                send_sat_pdfs(lambda path, data: put_bytes(url, token, path, data), job['id'], agent_id, result)
+                send_sat_pdfs(lambda path, data: put_bytes(url, token, path, data), job['id'], agent_id, result, notify)
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})
                 continue
         except (URLError, TimeoutError, OSError, ValueError):
@@ -697,7 +720,10 @@ class LinkedAgent:
         outcome = []
 
         def work():
-            status, result = run_job(job, job['payload'].get('roots') or [], self.config)
+            notify = progress_reporter(
+                lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id
+            )
+            status, result = run_job(job, job['payload'].get('roots') or [], self.config, notify)
             send_index(lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id, result)
             send_copies(
                 lambda path, data: self.post(self.url, path, data, token),
@@ -706,7 +732,9 @@ class LinkedAgent:
                 self.agent_id,
                 result,
             )
-            send_sat_pdfs(lambda path, data: self.put(self.url, token, path, data), job['id'], self.agent_id, result)
+            send_sat_pdfs(
+                lambda path, data: self.put(self.url, token, path, data), job['id'], self.agent_id, result, notify
+            )
             outcome.append((status, result))
 
         worker = threading.Thread(target=work, daemon=True)

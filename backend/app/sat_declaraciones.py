@@ -9,12 +9,17 @@ import hashlib
 import re
 from pathlib import Path
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import Field
 from sqlalchemy.orm import Session
 
 from .agent_links import agent_caller
 from .database import DATA, session
+from .agent_jobs import claim_marker
 from .models import Job
+from .schemas import CleanModel
 
 KIND = 'sat_declaraciones'
 ACTION = 'declara.usar'
@@ -74,3 +79,24 @@ async def receive_pdf(
     pending.write_bytes(bytes(body))
     pending.replace(target)
     return {'ok': True, 'new': True}
+
+
+class Progress(CleanModel):
+    """Where the browser is. Only counters and a phase: never page content, names or addresses."""
+
+    agent_id: str = Field(max_length=80)
+    fase: Literal['abriendo', 'esperando_sesion', 'descargando', 'subiendo']
+    total: int | None = Field(default=None, ge=0, le=MAX_PDFS)
+    hechas: int | None = Field(default=None, ge=0, le=MAX_PDFS)
+    guardadas: int | None = Field(default=None, ge=0, le=MAX_PDFS)
+
+
+@router.post('/{ident}/progress')
+def report_progress(ident: str, data: Progress, db: Session = Depends(session), caller=Depends(agent_caller)):
+    """Phase of a running download, shown to the user. Each report also renews the job's claim: the 15-minute limit
+    counts silence, not the time the person takes to sign in to the portal."""
+    job = receiving_job(db, ident, data.agent_id, caller)
+    progress = data.model_dump(exclude={'agent_id'}, exclude_none=True)
+    job.result = {**claim_marker(), 'progreso': progress}
+    db.commit()
+    return {'ok': True}

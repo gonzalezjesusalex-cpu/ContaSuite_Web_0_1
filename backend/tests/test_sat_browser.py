@@ -101,10 +101,10 @@ def test_download_from_the_simulated_portal(fake_sat, tmp_path):
         raise
     # Three rows have a PDF control; the fourth has none and is never clicked.
     assert result['detectadas'] == 3 and result['guardadas'] == 2
-    assert result['errores'] == [{'fila': 2, 'motivo': 'no_es_pdf'}]
+    assert result['fallidas'] == [{'fila': 2, 'motivo': 'no_es_pdf'}]
     names = sorted(f['nombre'] for f in result['archivos'])
     assert names == ['declaracion1.pdf', 'declaracion3.pdf']
     assert {f['periodo'] for f in result['archivos']} == {'Enero'}
     assert {f['tipo'] for f in result['archivos']} == {'Normal', 'Complementaria'}
     assert all(sb.is_pdf_file(tmp_path / 'staging' / n) for n in names)
-    assert progress[0]['fase'] == 'esperando_sesion' and progress[-1]['hechas'] == 3
+    assert [e['fase'] for e in progress[:2]] == ['abriendo', 'esperando_sesion'] and progress[-1]['hechas'] == 3

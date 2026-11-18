@@ -170,7 +170,15 @@ export interface ReconPeriod {
   reporte: number | null;
   s: 'ok' | 'revisar' | 'sin_reporte_mes';
   ok: number;
-  faltan: { u: string; tipo: string; fecha: string; total: number | null; emisor: string; receptor: string; cancelado: boolean }[];
+  faltan: {
+    u: string;
+    tipo: string;
+    fecha: string;
+    total: number | null;
+    emisor: string;
+    receptor: string;
+    cancelado: boolean;
+  }[];
   n_faltan?: number;
   sobran: string[];
   n_sobran?: number;
@@ -249,6 +257,18 @@ export interface Job {
       marcados?: number;
       error?: string;
     };
+    // SAT download (kind sat_declaraciones): where the browser is, and what it delivered at the end.
+    progreso?: {
+      fase: 'abriendo' | 'esperando_sesion' | 'descargando' | 'subiendo';
+      total?: number;
+      hechas?: number;
+      guardadas?: number;
+    };
+    detectadas?: number;
+    guardadas?: number;
+    entregados?: number;
+    no_entregados?: number;
+    fallidas?: { fila: number; motivo: string }[];
     mode?: 'preview' | 'apply';
     destination?: string;
     include?: string[];

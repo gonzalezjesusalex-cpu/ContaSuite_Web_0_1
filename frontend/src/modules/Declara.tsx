@@ -5,6 +5,7 @@ import { api, dateLabel, getToken } from '../api';
 import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
 import type { State } from '../types';
+import SatAccess from './SatAccess';
 
 type Month = { declaracion: boolean; acuse: boolean; aplicable: boolean; razon_no_aplica: string | null };
 type Run = {
@@ -438,13 +439,7 @@ export default function Declara({
                 ))}
               </select>
             </Field>
-            <div className="recopila-warning">
-              <strong>Acceso SAT</strong>
-              <p>
-                La sesión local y la descarga automática del SAT aún requieren integrar el agente. Este módulo analiza
-                los PDF que cargues y no solicita FIEL ni contraseñas.
-              </p>
-            </div>
+            <SatAccess state={state} company={company} notify={notify} refresh={refresh} />
           </div>
         </div>
       </section>

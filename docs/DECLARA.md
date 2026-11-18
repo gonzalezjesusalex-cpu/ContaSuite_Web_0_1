@@ -37,7 +37,7 @@ Incluye `data/declara` en el respaldo junto con la base. No distribuyas `.qa/`, 
 
 ## Límites y siguiente etapa
 
-La sesión Firefox y la descarga automática desde SAT del original aún necesitan integración con el agente local. No hay captura de FIEL, llaves privadas ni contraseñas. No se han realizado descargas ni presentaciones ante SAT. No hay OCR: los formatos ordinarios requieren texto extraíble.
+La descarga desde el SAT se integra por fases con el agente local. Fases 1 y 2 (hechas): el agente abre un Firefox visible con perfil propio, la persona inicia sesión ella misma, el agente descarga uno por uno los PDF de la consulta, valida que sean PDF y los envía a ContaSuite; la tarjeta «Acceso SAT» muestra el estado (esperando al agente, abriendo, esperando inicio de sesión, descargando n de m, enviando). Sólo se ofrece cuando la configuración del agente trae `sat.base_url`, pensada hasta ahora para un SAT simulado: no se ha probado contra el portal real. Pendiente: entrada guiada al portal (fase 3 de la descarga) y crear el análisis de Declara con los PDF recibidos. No hay captura de FIEL, llaves privadas ni contraseñas. No se han realizado descargas ni presentaciones ante SAT. No hay OCR: los formatos ordinarios requieren texto extraíble.
 
 El siguiente trabajo acordado es el dashboard en la primera pestaña de Empresas, con seguimiento de FIEL y otros indicadores por definir. La lectura de vigencia de certificados públicos y la consolidación del control de Declara se implementarán en esa etapa; todavía no son funciones activas del dashboard.
 
