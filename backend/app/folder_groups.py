@@ -17,7 +17,8 @@ GROUPS = {
     'sat_reportes': ('Reportes del SAT (Emitidos / Recibidos)', False),
     'impuestos': ('Declaraciones, acuses y pagos', False),
     'imss': ('IMSS, SUA e IDSE', False),
-    'nomina': ('Nómina y trabajadores', False),
+    'nomina': ('Nómina (recibos y quincenas)', False),
+    'trabajadores': ('Expedientes de trabajadores (datos personales)', False),
     'estados_financieros': ('Estados financieros', False),
     'legal': ('Constitutivos, constancias y REPSE', False),
     'identificaciones': ('Identificaciones', False),
@@ -50,7 +51,7 @@ def classify(relative_path, size=0, tipo=None):
     where = ' / '.join(folders)
     in_credentials = any(re.search(r'FIEL|E-?FIRMA|SELLO|\bCSD\b|CERTIFICADO', f) for f in folders)
 
-    if re.search(r'CONTRASE|PASSWORD|CONTRA_\d', name) or (in_credentials and ext in {'.txt', '.doc', '.docx'}):
+    if re.search(r'CONTRASE|PASSWORD|CONTRA_\d|\bUSUARIO\b|^ACCESOS?\b', name) or (in_credentials and ext in {'.txt', '.doc', '.docx'}):
         return 'contrasenas', None
     if ext in CREDENTIAL_EXTENSIONS or (ext == '.pdf' and in_credentials) or (ext in {'.zip', '.rar', '.7z'} and (in_credentials or re.search(r'FIEL|E-?FIRMA|\bCSD\b|SELLO', name))):
         return 'credenciales', None
@@ -66,6 +67,8 @@ def classify(relative_path, size=0, tipo=None):
     if ext in {'.xls', '.xlsx', '.csv'} and SAT_REPORT.match(path.name):
         return 'sat_reportes', None
 
+    if re.search(r'(^| / )(TRABAJADOR(ES)?|DOCUMENTOS DEL TRABAJADOR[^/]*)( / |$)', where) or re.match(r'TRABAJADOR(ES)?\b', name):
+        return 'trabajadores', None
     if (
         ext in {'.sua', '.log'}
         or re.search(r'IDSE|SIPARE|SIAPRE|\bEMA\b|\bEBA\b|_EMA_|_EBA_|CEDULA|CONFRONTA|CONSFRONTA|LIQUIDACION|DIFERENCIAS', name)
@@ -82,7 +85,7 @@ def classify(relative_path, size=0, tipo=None):
         return 'estados_financieros', None
     if re.search(r'\bINE\b|CURP|PASAPORTE|IDENTIFICACION|WHATSAPP IMAGE', name):
         return 'identificaciones', None
-    if re.search(r'ACTA|\bRPC\b|CONSTANCIA|(?<![A-Z0-9])CSF(?![A-Z0-9])|REPSE|REGISTRO|\bTIP\b|PODER|CONTRATO', name + ' ' + where):
+    if re.search(r'ACTA|\bRPC\b|CONSTANCIA|(?<![A-Z0-9])CSF(?![A-Z0-9])|REPSE|REGISTRO|\bTIP\b|PODER|CONTRATO|TARJETA PATRONAL|OBJETO SOCIAL|TELMEX|\bCFE\b', name + ' ' + where):
         return 'legal', None
     if re.search(r'NOMINA|TRABAJADOR|RECIBO|FINIQUITO', name + ' ' + where):
         return 'nomina', None

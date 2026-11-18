@@ -88,7 +88,10 @@ def classify_folder(folder, allowed_roots, rfc=''):
     from app.folder_groups import GROUPS, CfdiIndex, Summary, classify, cfdi_info
     from app.storage.local import LocalFolderProvider
     from app.storage.providers import ScanIssue, StorageError
+    from app.expediente_groups import ExpedienteIndex
+    from app.finance_groups import FinanceIndex
     from app.imss_groups import ImssIndex
+    from app.payroll_groups import PayrollIndex, WorkersIndex
     from app.tax_groups import TaxIndex
 
     class AllFiles(LocalFolderProvider):
@@ -97,6 +100,18 @@ def classify_folder(folder, allowed_roots, rfc=''):
 
     provider = AllFiles(Path(folder), tuple(Path(p) for p in allowed_roots), max_seconds=120, max_entries=60000)
     summary, index, taxes, imss = Summary(), CfdiIndex(rfc), TaxIndex(), ImssIndex()
+    expediente, finance, payroll, workers = ExpedienteIndex(rfc), FinanceIndex(), PayrollIndex(), WorkersIndex()
+    # Which index receives each group's files; the CFDI XML and the payroll PDFs are routed above.
+    routes = {
+        'cfdi_pdf': (index.add_pdf,),
+        'sat_reportes': (index.add_report,),
+        'impuestos': (taxes.add,),
+        'imss': (imss.add,),
+        'legal': (expediente.add,),
+        'identificaciones': (expediente.add,),
+        'estados_financieros': (finance.add,),
+        'trabajadores': (workers.add,),
+    }
     warnings, truncated, heads = [], False, 0
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
@@ -115,20 +130,27 @@ def classify_folder(folder, allowed_roots, rfc=''):
             except StorageError:
                 index.add_xml(entry.key, None)  # unreadable or too large: reviewed by a person
         group = summary.add(entry.key, entry.size, tipo)
-        if group == 'cfdi_pdf':
-            index.add_pdf(entry.key)
-        elif group == 'sat_reportes':
-            index.add_report(entry.key)
-        elif group == 'impuestos':
-            taxes.add(entry.key)
-        elif group == 'imss':
-            imss.add(entry.key)
+        if group == 'cfdi_xml' and tipo == 'N':
+            payroll.add_xml(entry.key)
+        elif group == 'nomina' and entry.key.lower().endswith('.pdf'):
+            payroll.add_pdf(entry.key)
+        for target in routes.get(group, ()):
+            target(entry.key)
     result = summary.result()
     result['xml_headers_read'] = heads
     sensitive = sum(g['count'] for g in result['groups'] if GROUPS[g['key']][1])
     if sensitive:
         warnings.append(f'{sensitive} archivos de credenciales o contraseñas se contaron sin abrirse.')
-    return result, warnings, truncated, {'cfdi': index.result(), 'impuestos': taxes.result(), 'imss': imss.result()}
+    sections = {
+        'cfdi': index.result(),
+        'impuestos': taxes.result(),
+        'imss': imss.result(),
+        'expediente': expediente.result(),
+        'finanzas': finance.result(),
+        'nomina': payroll.result(),
+        'trabajadores': workers.result(),
+    }
+    return result, warnings, truncated, sections
 
 
 def run(config, stop_event=None, request_fn=request):

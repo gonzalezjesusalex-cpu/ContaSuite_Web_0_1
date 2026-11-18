@@ -125,6 +125,38 @@ export interface ImssMonth {
   notas: string[];
   s: 'completo' | 'faltante' | 'parcial' | 'revisar';
 }
+export interface ExpedienteRow {
+  p: string;
+  t: string;
+  o: string;
+  s: 'ok' | 'revisar';
+  why: string;
+}
+export interface FinanceRow {
+  p: string;
+  t: string;
+  y: number | null;
+  n: number | null;
+  o: string;
+}
+export interface PayrollQuincena {
+  y: number;
+  q: number;
+  label: string;
+  xml: number;
+  pdf: number;
+  paired: number;
+  sin_pdf: number;
+  sin_xml: number;
+  s: 'completo' | 'faltante';
+  files: string[];
+}
+export interface WorkerRow {
+  w: string;
+  count: number;
+  faltan: string[];
+  files: { p: string; t: string }[];
+}
 export interface Job {
   id: string;
   company_id: string;
@@ -155,6 +187,16 @@ export interface Job {
       revisar: number;
       dropped: number;
     };
+    expediente?: { rows: ExpedienteRow[]; total: number; faltan: string[]; revisar: number };
+    finanzas?: { rows: FinanceRow[]; total: number; dropped: number };
+    nomina?: {
+      quincenas: PayrollQuincena[];
+      huecos: number[];
+      completas: number;
+      faltantes: number;
+      total: number;
+    };
+    trabajadores?: { workers: WorkerRow[]; total: number; personas: number; incompletos: number };
     imss?: {
       rows: ImssRow[];
       months: ImssMonth[];
