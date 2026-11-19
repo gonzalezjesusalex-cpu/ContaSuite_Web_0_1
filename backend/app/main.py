@@ -36,7 +36,7 @@ from .models import Company, Task, Obligation, Document, Audit, Agent, Job, User
 from .csf_extract import ocr_available
 from .agent_links import agent_caller
 
-from .agent_jobs import claim_marker, expire_stale_jobs
+from .agent_jobs import claim_marker, expire_stale_jobs, renew_claim
 
 from .schemas import BlobCommit, BlobHashes, CompanyIn, TaskIn, ObligationIn, Heartbeat, IndexBatch, JobIn, JobResult
 
@@ -951,6 +951,7 @@ def heartbeat(data: Heartbeat, db: Session = Depends(session), caller=Depends(ag
         db.add(agent)
     agent.last_seen = datetime.now(timezone.utc)
     agent.capabilities = data.capabilities
+    renew_claim(db, data.job_id, data.id, caller.link.user_id if caller is not None else None)
     if caller is None:
         save(db)
         return {'ok': True}

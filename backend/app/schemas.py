@@ -157,6 +157,8 @@ class Heartbeat(CleanModel):
     capabilities: list[Literal['scan_folder', 'export_virtual', 'sat_declaraciones']] = Field(
         default_factory=list, max_length=10
     )
+    # The job the agent is working on right now (optional: agents that do not send it keep the old behavior).
+    job_id: str | None = Field(default=None, pattern=r'^[a-zA-Z0-9_-]{1,80}$')
 
 
 class JobIn(CleanModel):

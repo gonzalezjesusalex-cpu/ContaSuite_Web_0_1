@@ -758,7 +758,12 @@ class LinkedAgent:
         while worker.is_alive():
             worker.join(5)
             try:
-                self.post(self.url, '/agent/heartbeat', {'id': self.agent_id, 'capabilities': self.capabilities}, token)
+                self.post(
+                    self.url,
+                    '/agent/heartbeat',
+                    {'id': self.agent_id, 'capabilities': self.capabilities, 'job_id': job['id']},
+                    token,
+                )
             except (URLError, TimeoutError, OSError, ValueError):
                 pass  # the main loop handles a lost connection or a revoked link once the job is done
         return outcome[0]

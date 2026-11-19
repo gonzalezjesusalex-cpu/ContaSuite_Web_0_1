@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import select
 
 from test_api import client, A, G, TEMP, company  # noqa: F401  Isolated environment before app imports.
+from test_agent_links import beat, bearer, office, pair  # noqa: F401
 from app.agent_jobs import expire_stale_jobs, timeout_minutes
 from app.database import SessionLocal
 from app.models import Audit, Job
@@ -111,3 +112,74 @@ def test_timeout_configuration(monkeypatch):
             timeout_minutes(invalid)
     monkeypatch.delenv('CS_AGENT_JOB_TIMEOUT_MINUTES', raising=False)
     assert timeout_minutes() == 15
+
+
+def beat_with(client, job_id, agent_id='local'):
+    return client.post(
+        '/api/agent/heartbeat', headers=G, json={'id': agent_id, 'capabilities': ['scan_folder'], 'job_id': job_id}
+    )
+
+
+def expire_now():
+    with SessionLocal() as db:
+        return expire_stale_jobs(db)
+
+
+def test_heartbeat_with_job_id_keeps_a_long_job_alive_and_keeps_other_keys(client):
+    _, job = claimed_job(client)
+    backdate(job['id'], 20)
+    with SessionLocal.begin() as db:
+        row = db.get(Job, job['id'])
+        row.result = {**row.result, 'progreso': {'hechas': 3}, 'cancelar': True}
+    assert beat_with(client, job['id']).status_code == 200
+    assert expire_now() == []
+    state, result = status(job['id'])
+    assert state == 'running' and result['progreso'] == {'hechas': 3} and result['cancelar'] is True
+    assert datetime.now(timezone.utc) - datetime.fromisoformat(result['claimed_at']) < timedelta(minutes=1)
+
+
+def test_old_heartbeat_without_job_id_does_not_renew_and_job_expires(client):
+    _, job = claimed_job(client)
+    backdate(job['id'], 20)
+    ok = client.post('/api/agent/heartbeat', headers=G, json={'id': 'local', 'capabilities': ['scan_folder']})
+    assert ok.status_code == 200
+    assert expire_now() == [job['id']] and status(job['id'])[0] == 'failed'
+
+
+def test_heartbeat_of_another_agent_does_not_renew(client):
+    _, job = claimed_job(client)
+    backdate(job['id'], 20)
+    assert beat_with(client, job['id'], agent_id='otro').status_code == 200
+    assert expire_now() == [job['id']]
+
+
+def test_heartbeat_does_not_revive_a_finished_job(client):
+    _, job = claimed_job(client)
+    backdate(job['id'], 20)
+    assert expire_now() == [job['id']]
+    assert beat_with(client, job['id']).status_code == 200
+    assert status(job['id'])[0] == 'failed'
+
+
+def test_linked_heartbeat_only_renews_the_users_own_job(office):  # noqa: F811
+    from test_accounts import login
+
+    c, companies, _ = office
+    login(c, 'ana')
+    _, token = pair(c)
+    beat(c, token)
+    created = c.post('/api/jobs', json={'company_id': companies['a'], 'kind': 'scan_folder'})
+    assert created.status_code == 201, created.text
+    job = c.post('/api/agent/pc-ana/claim', headers=bearer(token)).json()
+    assert job['id'] == created.json()['id']
+
+    def renew():
+        backdate(job['id'], 20)
+        body = {'id': 'pc-ana', 'capabilities': ['scan_folder'], 'job_id': job['id']}
+        assert c.post('/api/agent/heartbeat', headers=bearer(token), json=body).status_code == 200
+        return datetime.now(timezone.utc) - datetime.fromisoformat(status(job['id'])[1]['claimed_at'])
+
+    assert renew() < timedelta(minutes=1)  # the user's own job is renewed
+    with SessionLocal.begin() as db:
+        db.get(Job, job['id']).requested_by = 'otra-persona'
+    assert renew() > timedelta(minutes=19)  # a job of another user is not

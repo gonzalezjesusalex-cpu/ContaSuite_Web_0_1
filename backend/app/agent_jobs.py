@@ -48,6 +48,26 @@ def _claimed_at(job):
     return _aware(job.created_at)
 
 
+def renew_claim(db, job_id, agent_id, user_id=None, current=None):
+    """The agent's heartbeat names the job it is working on: restart its clock. Does not commit; True when renewed.
+
+    Only a `running` job of that same agent (and, with a linked agent, of the link's user) is renewed. Every other key
+    of `result` (SAT progress, `cancelar`…) is kept.
+    """
+    job = db.get(Job, job_id) if job_id else None
+    if job is None or job.status != 'running' or job.agent_id != agent_id:
+        return False
+    if user_id is not None and job.requested_by != user_id:
+        return False
+    result = job.result if isinstance(job.result, dict) else {}
+    changed = db.execute(
+        update(Job)
+        .where(Job.id == job.id, Job.status == 'running')  # a result delivered meanwhile wins
+        .values(result={**result, **claim_marker(current)})
+    )
+    return bool(changed.rowcount)
+
+
 def expire_stale_jobs(db, current=None, minutes=None):
     """Mark running jobs older than the timeout as failed. Commits; returns the expired job ids."""
     minutes = timeout_minutes() if minutes is None else timeout_minutes(minutes)
