@@ -5,6 +5,7 @@ import { api, dateLabel, getToken } from '../api';
 import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
 import type { State } from '../types';
+import CfdiExpediente, { INCOHERENCE, OMITTED, type ReviewRow, type SavedItem } from './CfdiExpediente';
 
 type Options = { rfc: string; year: number; months: number[]; kinds: string[]; extensions: string[]; reports: boolean };
 type Run = {
@@ -26,7 +27,14 @@ type RecordItem = {
   reason: string;
   size: number;
 };
-type Detail = { run: Run; records: RecordItem[] };
+type Detail = {
+  run: Run;
+  records: RecordItem[];
+  review?: Record<string, ReviewRow>;
+  omitted?: { path: string; reason: string }[];
+  foreign_rfcs?: string[];
+  items?: SavedItem[];
+};
 const months = [
   'ENERO',
   'FEBRERO',
@@ -82,9 +90,15 @@ export default function Organizador({
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<RecordItem | null>(null);
   const [reload, setReload] = useState(0);
+  const [suggested, setSuggested] = useState('');
   const zip = useRef<HTMLInputElement>(null);
   const folder = useRef<HTMLInputElement>(null);
   const working = busy || ['analyzing', 'generating'].includes(detail?.run.status || '');
+  useEffect(() => {
+    const open = params.get('analisis');
+    if (open) setId(open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     folder.current?.setAttribute('webkitdirectory', '');
     api<Run[]>('/organizador/runs')
@@ -276,8 +290,22 @@ export default function Organizador({
                 value={company}
                 onChange={(e) => {
                   setCompany(e.target.value);
+                  setSuggested('');
                   const c = state.companies.find((c) => c.id === e.target.value);
                   if (c) setOptions((o) => ({ ...o, rfc: c.rfc }));
+                  if (c)
+                    api<{ rfc: string; year: number; months: number[]; last_period: string | null }>(
+                      '/organizador/companies/' + c.id + '/suggestion',
+                    )
+                      .then((s) => {
+                        setOptions((o) => ({ ...o, rfc: s.rfc, year: s.year, months: s.months }));
+                        setSuggested(
+                          s.last_period
+                            ? 'Sugerido tras el último periodo organizado (' + s.last_period + ').'
+                            : 'RFC tomado del expediente; sin periodos organizados todavía.',
+                        );
+                      })
+                      .catch(() => undefined);
                 }}
               >
                 <option value="">Sin vincular</option>
@@ -324,6 +352,12 @@ export default function Organizador({
                 : 'Elige la carpeta base que contiene Emitidos, Recibidos y Reportes.'}
               {ignored > 0 && ` ${ignored} archivos de otros formatos omitidos.`}
             </p>
+            {suggested && <p className="muted">{suggested}</p>}
+            {company && options.rfc !== state.companies.find((c) => c.id === company)?.rfc && (
+              <p className="recopila-warning" role="status">
+                El RFC no es el de la empresa elegida: no se podrá guardar en su expediente con ese RFC.
+              </p>
+            )}
             <Field label="RFC de origen">
               <input
                 value={options.rfc}
@@ -528,6 +562,7 @@ export default function Organizador({
                     <th>Archivo / periodo</th>
                     <th>Tipo</th>
                     <th>Estado</th>
+                    <th>Contenido</th>
                     <th>Destino proyectado</th>
                   </tr>
                 </thead>
@@ -545,6 +580,27 @@ export default function Organizador({
                         <Badge tone={r.state === 'Error' ? 'red' : r.state === 'Copiado' ? 'green' : 'neutral'}>
                           {r.state}
                         </Badge>
+                      </td>
+                      <td>
+                        {detail?.review?.[r.source] ? (
+                          <>
+                            {detail.review[r.source].uuid && <small>{detail.review[r.source].uuid.slice(0, 8)}…</small>}
+                            {detail.review[r.source].incoherence.map((c) => (
+                              <Badge key={c} tone="red">
+                                {INCOHERENCE[c] || c}
+                              </Badge>
+                            ))}
+                            <small>
+                              {detail.review[r.source].pair === 'identificada'
+                                ? 'Pareja XML–PDF identificada'
+                                : 'Sin pareja identificada'}
+                              {detail.review[r.source].warnings.includes('xml_sin_pdf') && ' · XML sin PDF'}
+                              {detail.review[r.source].warnings.includes('pdf_sin_xml') && ' · PDF sin XML'}
+                            </small>
+                          </>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="organizador-path">{r.destination || '—'}</td>
                     </tr>
@@ -586,6 +642,19 @@ export default function Organizador({
                 <p>{selected.reason}</p>
               </div>
             )}
+            {!!detail?.omitted?.length && (
+              <details className="organizador-omitted">
+                <summary>Archivos omitidos ({detail.omitted.length})</summary>
+                <ul>
+                  {detail.omitted.slice(0, 200).map((o) => (
+                    <li key={o.path}>
+                      {o.path} · {OMITTED[o.reason] || o.reason}
+                    </li>
+                  ))}
+                  {detail.omitted.length > 200 && <li>y {detail.omitted.length - 200} más</li>}
+                </ul>
+              </details>
+            )}
             {detail?.run.status === 'generated' && (
               <div className="actions organizador-downloads">
                 <button disabled={working} className={stitchPrimary} onClick={() => download('zip')}>
@@ -601,6 +670,21 @@ export default function Organizador({
           </div>
         </section>
       </div>
+      {detail && ['analyzed', 'generated'].includes(detail.run.status) && (
+        <CfdiExpediente
+          runId={id}
+          companyId={
+            (runs.find((r) => r.id === id) as (Run & { company_id?: string | null }) | undefined)?.company_id ??
+            (company || null)
+          }
+          state={state}
+          items={detail.items || []}
+          companies={state.companies}
+          onChanged={() => setReload((v) => v + 1)}
+          notify={notify}
+          refresh={refresh}
+        />
+      )}
     </div>
   );
 }

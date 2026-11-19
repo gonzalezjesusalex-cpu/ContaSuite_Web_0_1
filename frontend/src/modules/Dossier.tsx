@@ -19,6 +19,7 @@ import CompanyDashboard from './CompanyDashboard';
 import VirtualExplorer from './VirtualExplorer';
 import Credentials from './Credentials';
 import ArchiveActivity from './ArchiveActivity';
+import { CfdiRuns } from './CfdiReview';
 import CompanyHistory from './CompanyHistory';
 import { ResponsibleDialog } from './ResponsibleSelect';
 import { can, csfIsStale, responsibleName } from '../permissions';
@@ -398,6 +399,7 @@ export default function Dossier({
       </div>
       {section === 'Resumen' && <FiscalSummary period={period} companyId={c.id} compact />}
       {section === 'Actividad' && <ArchiveActivity companyId={c.id} available={!!state.archive_available} />}
+      {section === 'Actividad' && can(me, 'cfdi.usar', c.id) && <CfdiRuns companyId={c.id} />}
       <div className="actions" aria-label="Vistas de la sección">
         {(section === 'Obligaciones'
           ? ['Cumplimiento', 'Histórico fiscal']
