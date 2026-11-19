@@ -78,3 +78,37 @@ def test_manual_adjustment_changes_the_generated_file_and_is_audited(client):  #
     assert client.post(base + '/generate', headers=A, json={'by_month': False}).status_code == 202
     third = client.get(base + '/file', headers=A, params={'name': 'RECOPILADOR.pdf'}).content
     assert len(PdfReader(io.BytesIO(third)).pages) == 1
+
+
+def test_save_to_expediente_creates_documents_then_versions_and_never_overwrites(client):  # noqa: F811
+    c = company(client).json()
+    ident = upload(client, archive(), company_id='').json()['id']  # a run without company
+    base = '/api/recopila/runs/' + ident
+    assert client.post(base + '/save', headers=A, json={}).status_code == 409  # nothing generated yet
+    assert client.post(base + '/generate', headers=A, json={'by_month': True}).status_code == 202
+    assert client.post(base + '/save', headers=A, json={}).status_code == 422  # a company must be chosen
+    assert client.post(base + '/save', headers=A, json={'company_id': 'no-existe'}).status_code == 422
+
+    first = client.post(base + '/save', headers=A, json={'company_id': c['id']}).json()
+    assert [f['status'] for f in first['files']] == ['nuevo', 'nuevo']
+    docs = client.get('/api/storage/documents', headers=A, params={'company_id': c['id']}).json()['items']
+    assert {(d['name'], d['document_type'], d['period']) for d in docs} == {
+        ('RECOPILADOR.pdf', 'recopilador', '2026-10'),
+        ('RECOPILADOR_2026-10_OCTUBRE.pdf', 'recopilador', '2026-10'),
+    }
+    again = client.post(base + '/save', headers=A, json={'company_id': c['id']}).json()
+    assert [f['status'] for f in again['files']] == ['ya_registrado', 'ya_registrado']
+
+    proposal = client.get(base, headers=A).json()['enrichment']['proposals'][0]
+    client.post(
+        base + '/adjustments',
+        headers=A,
+        json={'policy_index': proposal['policy_index'], 'action': 'attach', 'target': proposal['pdf']},
+    )
+    assert client.post(base + '/generate', headers=A, json={'by_month': True}).status_code == 202
+    changed = client.post(base + '/save', headers=A, json={'company_id': c['id']}).json()
+    assert [f['status'] for f in changed['files']] == ['version_nueva', 'version_nueva']
+    docs = client.get('/api/storage/documents', headers=A, params={'company_id': c['id']}).json()['items']
+    assert len(docs) == 2  # the same two documents, now with a second version each
+    detail = client.get('/api/storage/documents/' + docs[0]['id'], headers=A).json()
+    assert [v['number'] for v in detail['versions']] == [2, 1] or [v['number'] for v in detail['versions']] == [1, 2]

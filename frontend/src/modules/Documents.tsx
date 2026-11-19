@@ -26,7 +26,10 @@ import VirtualBranch, { type BranchFile } from './VirtualBranch';
 
 const typeNames: Record<string, string> = {
   unknown: 'Sin tipo asignado',
-  cfdi: 'CFDI',
+  cfdi: 'CFDI (XML)',
+  cfdi_pdf: 'Representación PDF de CFDI',
+  sat_report: 'Reportes del SAT',
+  recopilador: 'RECOPILADOR',
   declaration: 'Declaración',
   acknowledgement: 'Acuse',
   certificate: 'Certificado público',

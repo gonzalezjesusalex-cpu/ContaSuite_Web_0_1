@@ -19,6 +19,7 @@ from .models import Company, RecopilaRun, Audit, RecopilaPolicy, RecopilaPolicyC
 from . import recopila_engine as motor
 from . import recopila_enrich as enrich
 
+from .expediente_save import save_file
 from .run_access import RECOPILA
 from .security import Principal, auth
 
@@ -483,6 +484,56 @@ def revoke_adjustment(
         adjustment.revoked_at = now()
         db.commit()
     return adjustments_for(db, ident)
+
+
+class SaveIn(BaseModel):
+    company_id: str = ''
+
+
+@router.post('/runs/{ident}/save')
+def save_to_expediente(ident: str, data: SaveIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Save RECOPILADOR (and the per-month files) into the company's Centro Documental (cambio 4.5)."""
+    run = RECOPILA.check(principal, get_run(db, ident))
+    if run.status != 'generated':
+        raise HTTPException(409, 'Primero genera los archivos.')
+    company_id = run.company_id or data.company_id
+    if not company_id or not db.get(Company, company_id):
+        raise HTTPException(422, 'Elige la empresa del expediente donde se guardará.')
+    if run.company_id and data.company_id and data.company_id != run.company_id:
+        raise HTTPException(422, 'Este análisis pertenece a otra empresa.')
+    RECOPILA.require_company(principal, company_id)
+    out = folder(ident) / 'output'
+    months = sorted(run.summary.get('months_desc') or [], reverse=True)
+    results = []
+    general = out / 'RECOPILADOR.pdf'
+    if general.is_file():
+        # The general file covers every month of the analysis: it is filed under the most recent one.
+        results.append(
+            save_file(
+                principal,
+                company_id,
+                general,
+                'RECOPILADOR.pdf',
+                document_type='recopilador',
+                period=months[0] if months else None,
+            )
+        )
+    monthly = out / 'POR_MESES'
+    for pdf in sorted(monthly.glob('*.pdf')) if monthly.is_dir() else []:
+        period = pdf.name[:7]
+        results.append(
+            save_file(
+                principal,
+                company_id,
+                pdf,
+                'RECOPILADOR_' + pdf.name,
+                document_type='recopilador',
+                period=period if len(period) == 7 and period[4] == '-' else None,
+            )
+        )
+    db.add(Audit(company_id=company_id, actor_id=principal.subject, action='Recopila: guardado en el expediente'))
+    db.commit()
+    return {'company_id': company_id, 'files': results}
 
 
 class GenerateIn(BaseModel):

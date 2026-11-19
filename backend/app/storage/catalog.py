@@ -10,7 +10,18 @@ from .internal import validate_payload
 from .providers import StorageError
 from .schemas import CatalogDocument, CatalogPage, CompanyPublic, LocationPublic, DocumentDetail, VersionPublic
 
-DOCUMENT_TYPES = {'unknown', 'cfdi', 'declaration', 'acknowledgement', 'certificate', 'other'}
+DOCUMENT_TYPES = {
+    'unknown',
+    'cfdi',
+    'declaration',
+    'acknowledgement',
+    'certificate',
+    'other',
+    # Saved from Recopila and CFDI into the expediente (cambios 4.5 and 5.5): a code constant, no migration.
+    'recopilador',
+    'cfdi_pdf',
+    'sat_report',
+}
 
 
 def validate_metadata(category, document_type, period):
