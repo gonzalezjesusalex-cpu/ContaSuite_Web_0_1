@@ -1315,6 +1315,10 @@ from .fiscal_control import router as fiscal_control_router
 
 app.include_router(fiscal_control_router)
 
+from .fiscal_import_api import router as fiscal_import_router
+
+app.include_router(fiscal_import_router)
+
 
 from .credential_api import router as credential_router
 

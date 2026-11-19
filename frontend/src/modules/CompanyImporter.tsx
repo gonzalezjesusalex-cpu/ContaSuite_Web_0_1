@@ -6,6 +6,7 @@ import type { State } from '../types';
 import './company-importer.css';
 import PilotImport from './PilotImport';
 import BatchPilot from './BatchPilot';
+import FiscalExcelPreview from './FiscalExcelPreview';
 type Proposal = {
   number: number;
   revision: number;
@@ -140,6 +141,7 @@ export default function CompanyImporter({ state }: { state: State }) {
       (!filter || (r.status || r.match) === filter) &&
       (r.name + ' ' + r.rfc + ' ' + (r.document_id || '')).toLowerCase().includes(query.toLowerCase()),
   );
+  if (source === 'control') return <FiscalExcelPreview state={state} onBack={() => setSource('obligations')} />;
   if (source === 'batch') return <BatchPilot onBack={() => setSource('obligations')} />;
   if (source === 'local') return <PilotImport onBack={() => setSource('obligations')} />;
   return (
@@ -181,6 +183,7 @@ export default function CompanyImporter({ state }: { state: State }) {
               <option value="batch">Primera carpeta · análisis por lotes</option>
               <option value="local">Desde carpeta local · importar empresas</option>
               <option value="obligations">Excel de obligaciones</option>
+              <option value="control">Excel «Control de obligaciones» · vista previa por periodo</option>
               <option value="fiscal_metadata">Excel de metadatos fiscales</option>
               <option value="inventory">Inventario registrado de CS-Storage</option>
             </select>
