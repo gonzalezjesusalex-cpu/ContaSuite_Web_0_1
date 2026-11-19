@@ -503,6 +503,46 @@ export default function Documents({
             </button>
           )}
         </div>
+        {panel === 'review' && (
+          <div className="documents-subtabs" role="group" aria-label="Secciones por revisar">
+            {canReview && (
+              <button
+                aria-pressed={reviewSection === 'unclassified'}
+                className={stitchButton + (reviewSection === 'unclassified' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'unclassified')}
+              >
+                Sin clasificar <Badge>{catalog?.pending_count ?? '—'}</Badge>
+              </button>
+            )}
+            {canReconcile && (
+              <button
+                aria-pressed={reviewSection === 'reconcile'}
+                className={stitchButton + (reviewSection === 'reconcile' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'reconcile')}
+              >
+                Conciliación documental <Badge>{reconTotal ?? '—'}</Badge>
+              </button>
+            )}
+            {canRecopila && (
+              <button
+                aria-pressed={reviewSection === 'recopila'}
+                className={stitchButton + (reviewSection === 'recopila' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'recopila')}
+              >
+                Recopila <Badge>{recopila.pending}</Badge>
+              </button>
+            )}
+            {canCfdi && (
+              <button
+                aria-pressed={reviewSection === 'cfdi'}
+                className={stitchButton + (reviewSection === 'cfdi' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'cfdi')}
+              >
+                CFDI <Badge>{cfdi.pending.length}</Badge>
+              </button>
+            )}
+          </div>
+        )}
         <div className="documents-filters" hidden={!showTable}>
           <Field label="Buscar nombre, empresa, RFC o periodo">
             <div className="documents-search">
@@ -622,46 +662,6 @@ export default function Documents({
           </div>
         )}
         {!companyId && options?.can_index && <StorageJobs sources={options.sources} onComplete={refreshJobs} />}
-        {panel === 'review' && (
-          <div className="documents-subtabs" role="group" aria-label="Secciones por revisar">
-            {canReview && (
-              <button
-                aria-pressed={reviewSection === 'unclassified'}
-                className={stitchButton + (reviewSection === 'unclassified' ? ' selected' : '')}
-                onClick={() => goPanel('review', 'unclassified')}
-              >
-                Sin clasificar <Badge>{catalog?.pending_count ?? '—'}</Badge>
-              </button>
-            )}
-            {canReconcile && (
-              <button
-                aria-pressed={reviewSection === 'reconcile'}
-                className={stitchButton + (reviewSection === 'reconcile' ? ' selected' : '')}
-                onClick={() => goPanel('review', 'reconcile')}
-              >
-                Conciliación documental <Badge>{reconTotal ?? '—'}</Badge>
-              </button>
-            )}
-            {canRecopila && (
-              <button
-                aria-pressed={reviewSection === 'recopila'}
-                className={stitchButton + (reviewSection === 'recopila' ? ' selected' : '')}
-                onClick={() => goPanel('review', 'recopila')}
-              >
-                Recopila <Badge>{recopila.pending}</Badge>
-              </button>
-            )}
-            {canCfdi && (
-              <button
-                aria-pressed={reviewSection === 'cfdi'}
-                className={stitchButton + (reviewSection === 'cfdi' ? ' selected' : '')}
-                onClick={() => goPanel('review', 'cfdi')}
-              >
-                CFDI <Badge>{cfdi.pending.length}</Badge>
-              </button>
-            )}
-          </div>
-        )}
         {panel === 'classification' && companyId ? (
           <FolderAnalysis
             job={analysisDone ?? analysisJob}
