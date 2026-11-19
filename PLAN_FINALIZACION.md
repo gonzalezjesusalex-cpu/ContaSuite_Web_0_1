@@ -18,6 +18,10 @@ Base sólida: seguridad bien implementada, trazabilidad documental cuidadosa y u
 
 ## 🔴 Prioridad 1 — Defectos a corregir antes de finalizar
 
+> **Estado al 18/11/2026:** los puntos 1 (`document_counts` y sondeo), 2 (`security_retention.py`), 3 (caducidad de trabajos, ahora renovable con el latido) y 4 (agente con una sola ruta) ya están corregidos en el código; el texto de cada uno se conserva como registro. Quedan el 5 (medir en PostgreSQL) y el 6 (revisar `deploy/windows`; `vite.config.ts` y `scripts/dev.mjs` ya usan `CS_PORT`).
+>
+> **Mejoras del análisis estático (18/11/2026):** 1 recorrido incompleto — hecha; 2 renovación del trabajo con el latido — hecha; 3 resultados fuera de `/api/state` y último trabajo por empresa — hecha; 4 acción `trabajadores.ver` — hecha; 5 árbol virtual en SQL — hecha; 6 aviso del lanzador al cerrar con el agente ocupado — hecha, **sin commit** (`scripts/dev_launcher.py` sin confirmar); 7 documentación — esta actualización. Ninguna requiere migración. Verificado con pruebas sintéticas; sin verificar en PostgreSQL, en el navegador ni con el agente real. No se declara v1.0 aprobada.
+
 1. **`/api/state` devuelve TODOS los documentos y se consulta cada 10 s.**
    - `frontend/src/App.tsx` hace `setInterval(refresh, 10000)`; `backend/app/main.py` (`state`) devuelve `documents` sin límite. Con 25.271 documentos son varios MB por pestaña cada 10 s.
    - El frontend sólo usa `state.documents` para contar (`modules/Companies.tsx`, `modules/Dossier.tsx`).

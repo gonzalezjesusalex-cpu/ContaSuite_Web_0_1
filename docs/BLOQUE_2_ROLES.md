@@ -19,7 +19,8 @@ Decisiones aprobadas por el usuario el 14/11/2026 (Apéndice A.1 de [PROMPT_MAES
 | Obligaciones y control fiscal | `obligaciones.ver`, `obligaciones.editar`, `obligaciones.verificar`, `calendario.gestionar` | Apoyo fiscal: ver y editar |
 | Tareas | `tareas.ver`, `tareas.editar` | Captura y Apoyo fiscal: editar |
 | Automatización | `recopila.usar`, `cfdi.usar`, `declara.usar`, `recibos.usar` | Apoyo fiscal: las cuatro |
-| Agente | `carpeta.analizar` | No se concede por plantilla |
+| Agente | `carpeta.analizar`, `carpeta.exportar` | No se conceden por plantilla |
+| Datos personales | `trabajadores.ver` («Ver expedientes de trabajadores (datos personales)») | No se concede por plantilla |
 | Historial | `historial.ver` | Todas |
 
 Plantillas: «Solo consulta», «Captura de documentos», «Apoyo fiscal».
@@ -30,6 +31,19 @@ Aplicación en servidor (punto 2):
 - Contador: todas las acciones en empresas con escritura; sólo las `.ver` en las de lectura.
 - Auxiliar sin acciones registradas en esa empresa (cuentas migradas): conserva lo que permitía su permiso de escritura antes de los roles (subir documentos, tareas, obligaciones y fechas del calendario).
 - Empresa visible sin la acción: 403; empresa fuera de sus permisos: 404.
+
+## Expedientes de trabajadores (`trabajadores.ver`)
+
+Los archivos del grupo Trabajadores (identificaciones, seguridad social) son datos personales. Cualquier acceso de lectura concede `documentos.ver`, pero **no** esta acción:
+
+- El administrador la tiene siempre. El contador con escritura en la empresa la tiene como el resto del catálogo. Un auxiliar sólo la recibe si se le asigna de forma explícita (no está en ninguna plantilla ni en el permiso de escritura heredado). Un contador no puede conceder a un auxiliar una acción que él no tiene.
+- Sin ella, en el índice virtual (`/api/companies/{id}/virtual-index/…`): `files` y `tree` excluyen la sección `trabajadores`, `summary` no la cuenta (ni sus faltantes ni copias) y `files/{id}/content` responde 403 para esos archivos.
+- Sin ella, el resultado del análisis que entrega `GET /api/companies/{id}/jobs/latest` no trae la sección `trabajadores`; su grupo del resumen conserva sólo el conteo, sin ejemplos ni subgrupos, y la lista simple de archivos omite lo clasificado como trabajadores. La interfaz oculta la pestaña «Trabajadores» del inventario.
+- No requiere migración: las acciones se guardan como texto en `user_company_actions`.
+
+## Resultados de los trabajos
+
+`GET /api/state` devuelve los 50 trabajos más recientes con un resumen pequeño del resultado (error, progreso y cancelación de la descarga del SAT, bandera de recorrido incompleto o truncado, avisos, resumen de la copia interna y el número de archivos clasificados), nunca el resultado completo. El resultado completo de un trabajo se pide a `GET /api/companies/{company_id}/jobs/latest?kind=scan_folder|export_virtual|sat_declaraciones[&status=queued|running|completed|failed]`: devuelve el último trabajo de ese tipo de la empresa (o `null`), con la misma visibilidad que `/api/state` (empresa fuera del alcance: 404; el `payload`, que lleva rutas, sólo para administradores). La interfaz lo vuelve a pedir al cambiar el estado del trabajo en `/api/state` y con el evento `contasuite-data-changed`.
 
 **Sólo administrador:** configuración, respaldos, rutas autorizadas y revocación de agentes, migraciones, importadores de cartera, catálogo fiscal, revisión global de clasificación, configuración del emisor de Recibos, alta de contadores y cambio de roles, asignación de responsable.
 
