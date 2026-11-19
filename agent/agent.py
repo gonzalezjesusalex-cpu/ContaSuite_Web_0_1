@@ -92,7 +92,7 @@ def safe_inventory(folder, allowed_roots, rfc='', with_index=False, copy=None):
     extra = {}
     if with_index:
         rows = index_rows(scan)
-        extra = {'_index': rows, '_complete': not scan.truncated}
+        extra = {'_index': rows, '_complete': not scan.incomplete}
         if copy:
             wanted = set(copy)
             extra['_copy'] = {
@@ -107,6 +107,7 @@ def safe_inventory(folder, allowed_roots, rfc='', with_index=False, copy=None):
         'summary': summary,
         **sections,  # one entry per virtual group with its own structure: cfdi, impuestos…
         'truncated': truncated or summary_truncated,
+        'incomplete': scan.incomplete,
         'warnings': list(dict.fromkeys(warnings + summary_warnings))[:10],
         'catalog_imported': False,
         'content_analyzed': False,
@@ -214,10 +215,13 @@ def scan_tree(folder, allowed_roots, rfc=''):
     }
     reconcile, ppd, certs = SatReconcile(), PpdIndex(), CertIndex(rfc)
     warnings, truncated, heads, unreadable, entries, mtimes = [], False, 0, 0, [], {}
+    incomplete = False  # the walk missed something: the server must not treat absent files as removed
     for entry in provider.enumerate():
         if isinstance(entry, ScanIssue):
             warnings.append('Incidencia de recorrido: ' + entry.code)
             truncated = truncated or entry.code == 'scan_limit'
+            if entry.code != 'linked_path':  # links are skipped on purpose; anything else is a hole in the walk
+                incomplete = True
             continue
         tipo = None
         lower = entry.key.lower()
@@ -255,6 +259,7 @@ def scan_tree(folder, allowed_roots, rfc=''):
         summary=summary,
         warnings=warnings,
         truncated=truncated,
+        incomplete=incomplete or truncated,
         heads=heads,
         unreadable=unreadable,
         index=index,
@@ -465,8 +470,9 @@ def export_virtual(payload, allowed_roots):
     if not payload.get('apply'):
         result = preview(plan, destination, shutil.disk_usage(anchor).free)
         result['truncated'] = scan.truncated
+        result['incomplete'] = scan.incomplete
         return result
-    if scan.truncated:
+    if scan.incomplete:
         raise StorageError('read_error')  # an incomplete walk would produce an incomplete copy
     return execute(scan.provider, plan['items'], destination)
 

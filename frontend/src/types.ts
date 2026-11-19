@@ -378,6 +378,7 @@ export interface Job {
       revisar: number;
     };
     truncated?: boolean;
+    incomplete?: boolean;
     error?: string;
     warnings?: string[];
   };

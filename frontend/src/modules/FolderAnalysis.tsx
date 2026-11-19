@@ -36,6 +36,12 @@ export default function FolderAnalysis({ job }: { job?: Job }) {
       {job.result.truncated && (
         <p className="muted">Se alcanzó el límite de recorrido: el conteo puede estar incompleto.</p>
       )}
+      {job.result.incomplete && !job.result.truncated && (
+        <p className="muted" role="alert">
+          El recorrido quedó incompleto (carpetas o archivos sin acceso): el conteo puede ser menor al real y no se
+          marcaron archivos como faltantes.
+        </p>
+      )}
       <div className="folder-groups">
         {summary.groups.map((g) => (
           <details key={g.key} className={g.sensitive ? 'folder-group sensitive' : 'folder-group'}>
