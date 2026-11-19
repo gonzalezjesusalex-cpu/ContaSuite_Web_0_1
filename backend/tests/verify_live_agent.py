@@ -117,6 +117,8 @@ with tempfile.TemporaryDirectory() as folder:
                     break
                 time.sleep(0.2)
             assert result['status'] == 'completed', result
+            # The polled state only carries a summary: the full result is the company's latest job.
+            result = client.get(f"/api/companies/{company.json()['id']}/jobs/latest", params={'kind': 'scan_folder'}).json()
             # Private keys are excluded from the inventory: neither listed nor transmitted.
             assert {f['name'] for f in result['result']['files']} == {'example.xml'}, result['result']
             assert 'LOCAL_ONLY' not in json.dumps(result)
@@ -181,6 +183,7 @@ with tempfile.TemporaryDirectory() as folder:
                     break
                 time.sleep(0.2)
             assert result['status'] == 'completed', result
+            result = client.get(f"/api/companies/{company.json()['id']}/jobs/latest", params={'kind': 'scan_folder'}).json()
             assert {f['name'] for f in result['result']['files']} == {'example.xml'}, result['result']
             # Signing out ends the link: the agent stops working for that user.
             client.post('/api/auth/logout').raise_for_status()

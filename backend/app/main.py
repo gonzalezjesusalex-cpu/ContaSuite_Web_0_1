@@ -37,6 +37,7 @@ from .csf_extract import ocr_available
 from .agent_links import agent_caller
 
 from .agent_jobs import claim_marker, expire_stale_jobs, renew_claim
+from .job_views import KINDS as JOB_KINDS, job_row
 
 from .schemas import BlobCommit, BlobHashes, CompanyIn, TaskIn, ObligationIn, Heartbeat, IndexBatch, JobIn, JobResult
 
@@ -399,9 +400,10 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
             {'id': a.id, 'online': online(a), 'capabilities': a.capabilities, 'last_seen': a.last_seen} for a in agents
         ],
         # Bloque 4: users see the analyses of their companies (administrators, all of them). The payload carries
-        # the folder path, which only administrators see, like the company folder above.
+        # the folder path, which only administrators see, like the company folder above. Their `result` is only a
+        # small summary: the full result of a company's latest job comes from /api/companies/{id}/jobs/latest.
         'jobs': [
-            {c.name: getattr(j, c.name) for c in Job.__table__.columns if principal.admin or c.name != 'payload'}
+            job_row(j, principal)
             for j in db.scalars(
                 select(Job)
                 .where(True if principal.admin else Job.company_id.in_(principal.company_ids))
@@ -911,6 +913,34 @@ def create_job(data: JobIn, db: Session = Depends(session), principal: Principal
     )
     save(db)
     return job
+
+
+@app.get('/api/companies/{company_id}/jobs/latest', dependencies=APP)
+def latest_job(
+    company_id: str,
+    kind: str = Query(..., max_length=30),
+    status: str | None = Query(None, max_length=12),
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    """The company's latest job of one kind WITH its full result (null when there is none).
+
+    With `status` (queued, running, completed or failed) it is the latest one in that status.
+
+    Same visibility as the jobs of /api/state: the company must be visible to the user.
+    """
+    principal.require_company(company_id)
+    if kind not in JOB_KINDS:
+        raise HTTPException(422, 'Tipo de trabajo desconocido.')
+    if status is not None and status not in {'queued', 'running', 'completed', 'failed'}:
+        raise HTTPException(422, 'Estado de trabajo desconocido.')
+    if principal.admin:
+        expire_stale_jobs(db)
+    query = select(Job).where(Job.company_id == company_id, Job.kind == kind)
+    if status:
+        query = query.where(Job.status == status)
+    job = db.scalar(query.order_by(Job.created_at.desc()).limit(1))
+    return job_row(job, principal, job.result if isinstance(job.result, dict) else {}) if job else None
 
 
 @app.post('/api/jobs/{id}/cancel', dependencies=APP)

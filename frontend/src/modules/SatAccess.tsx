@@ -4,6 +4,7 @@ import { api } from '../api';
 import { stitchButton } from '../components/stitch';
 import { can } from '../permissions';
 import type { Job, State } from '../types';
+import { useLatestJob } from '../useLatestJob';
 
 const REASONS: Record<string, string> = {
   descarga_fallida: 'No se pudo descargar',
@@ -76,7 +77,7 @@ export default function SatAccess({
   const agent = state.agents.find((a) => a.id === link?.agent_id);
   const capable = !!agent?.capabilities.includes('sat_declaraciones');
   const online = link?.state === 'online';
-  const job = state.jobs.find((j) => j.kind === 'sat_declaraciones' && j.company_id === company);
+  const job = useLatestJob(state, company, 'sat_declaraciones');
   const active = job?.status === 'queued' || job?.status === 'running';
   // While the download runs, check every 3 s instead of waiting for the 60 s refresh.
   useEffect(() => {

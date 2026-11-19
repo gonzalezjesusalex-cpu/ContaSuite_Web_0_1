@@ -24,7 +24,8 @@ import { ResponsibleDialog } from './ResponsibleSelect';
 import { can, csfIsStale, responsibleName } from '../permissions';
 import FiscalSummary from './FiscalSummary';
 import FiscalControl from './FiscalControl';
-import type { Company, State } from '../types';
+import type { Company, Job, State } from '../types';
+import { useLatestJob } from '../useLatestJob';
 import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../companyNavigation';
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
@@ -81,10 +82,15 @@ export default function Dossier({
   const me = state.current_user;
   const responsible = state.responsibles?.find((r) => r.id === c.accountant_id) || null;
   const allJobs = state.jobs.filter((j) => j.company_id === c.id);
-  // Folder analyses (the inventory) and exports are different jobs: each view reads its own kind.
+  // The polled state only carries a summary of each result: «Análisis recientes» reads that list...
   const jobs = allJobs.filter((j) => j.kind === 'scan_folder');
   const [exporting, setExporting] = useState(false);
   const [copying, setCopying] = useState(false);
+  // ...and the full results (the inventory) are those of this company's latest jobs of each kind.
+  const scanJob = useLatestJob(state, c.id, 'scan_folder');
+  const doneScan = useLatestJob(state, c.id, 'scan_folder', 'completed');
+  const exportJob = useLatestJob(state, c.id, 'export_virtual', undefined, exporting);
+  const dialogJobs = [scanJob, exportJob].filter((j): j is Job => !!j);
   // Why «Analizar carpeta» cannot run now, in plain words (Bloques 3 and 4): it uses the user's own linked agent;
   // the server also checks the folders the administrator authorizes and explains a refusal.
   const link = state.agent_link;
@@ -101,6 +107,7 @@ export default function Dossier({
           ? 'No hay carpetas autorizadas para el agente: las define la administración en Configuración.'
           : null;
   const lastFailure = jobs[0]?.status === 'failed' ? jobs[0].result.error || 'sin detalle' : null;
+  const scanDone = doneScan?.result.summary ? doneScan : undefined;
   async function archiveCompany() {
     if (
       !confirmDiscard() ||
@@ -254,11 +261,11 @@ export default function Dossier({
           <Link to="/configuracion#agentes">Instrucciones del agente</Link>
         </p>
       )}
-      <FolderAnalysis job={jobs[0]} />
+      <FolderAnalysis job={scanJob} />
       {copying && (
         <CopyDialog
           company={c}
-          jobs={allJobs}
+          jobs={dialogJobs}
           agentReady={!scanBlocked}
           blockedReason={scanBlocked}
           refresh={refresh}
@@ -269,7 +276,7 @@ export default function Dossier({
       {exporting && (
         <ExportDialog
           company={c}
-          jobs={allJobs}
+          jobs={dialogJobs}
           agentReady={!scanBlocked}
           blockedReason={scanBlocked}
           refresh={refresh}
@@ -362,7 +369,7 @@ export default function Dossier({
           admin={state.current_user.admin}
           notify={notify}
           refresh={refresh}
-          job={jobs.find((j) => j.status === 'completed' && j.result.summary)}
+          job={scanDone}
         />
       ) : tab === 'Credenciales y Certificados' ? (
         <Credentials state={state} companyId={c.id} />
@@ -495,9 +502,12 @@ export default function Dossier({
                       <small>{dateLabel(j.created_at)}</small>
                     </div>
                     {j.result.error && <p className="red-text">{j.result.error}</p>}
-                    {(j.result.summary || j.result.files) && (
+                    {(j.result.total !== undefined || j.result.summary || j.result.files) && (
                       <p>
-                        {(j.result.summary?.total ?? j.result.files?.length ?? 0).toLocaleString('es-MX')} archivos
+                        {(j.result.total ?? j.result.summary?.total ?? j.result.files?.length ?? 0).toLocaleString(
+                          'es-MX',
+                        )}{' '}
+                        archivos
                         clasificados{j.result.truncated && ' · Se alcanzó el límite de escaneo'}
                       </p>
                     )}
