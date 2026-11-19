@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "note": "Diccionario versionado del Excel «Control de obligaciones». Encabezados normalizados (minúsculas, sin acentos, '/' como espacio, espacios colapsados) -> obligación del catálogo o columna especial. Los valores originales de las celdas se conservan siempre literales.",
+  "months": {
+    "ene": 1, "enero": 1, "feb": 2, "febrero": 2, "mar": 3, "marzo": 3, "abr": 4, "abril": 4,
+    "may": 5, "mayo": 5, "jun": 6, "junio": 6, "jul": 7, "julio": 7, "ago": 8, "agosto": 8,
+    "sep": 9, "sept": 9, "septiembre": 9, "oct": 10, "octubre": 10, "nov": 11, "noviembre": 11,
+    "dic": 12, "diciembre": 12
+  },
+  "special_columns": {
+    "no": "ignore",
+    "no.": "ignore",
+    "empresa": "company",
+    "regimen": "regime",
+    "regimen fiscal": "regime",
+    "ejecuta": "responsible",
+    "pago": "payment",
+    "bimestral rif": "not_added"
+  },
+  "headers": {
+    "contabilidad": "Contabilidad",
+    "isr": "ISR",
+    "iva": "IVA",
+    "retenciones": "Retenciones",
+    "diot": "DIOT",
+    "repse": "REPSE",
+    "impuesto sobre nomina": "Impuesto sobre Nómina",
+    "nomina 1": "Nómina 1",
+    "nomina 2": "Nómina 2",
+    "imss": "IMSS",
+    "imss pagado": "IMSS",
+    "imss enviado": "IMSS",
+    "emisiones imss": "Emisiones IMSS",
+    "pago impuestos fed": "Pago impuestos federales",
+    "pago impuestos federales": "Pago impuestos federales",
+    "buzon tributario": "Buzón tributario / Opinión de cumplimiento",
+    "opinion buzon": "Buzón tributario / Opinión de cumplimiento",
+    "declaracion anual": "Declaración anual",
+    "impuesto cedular": "Impuesto cedular",
+    "expediente": "Expediente físico",
+    "expediente contable fisico": "Expediente físico"
+  },
+  "annual_header_pattern": "^(?:declaracion )?anual (20\\d{2})$",
+  "annual_label": "Declaración anual",
+  "payment_targets": ["ISR", "IVA", "Retenciones"],
+  "payment_date_source": "Pago impuestos federales",
+  "regimes": ["general", "resico", "pfae", "rif", "confianza"],
+  "regime_aliases": {"confianza": "resico"},
+  "values": {
+    "na": "not_applicable",
+    "n/a": "not_applicable",
+    "no aplica": "not_applicable",
+    "ok": "ok",
+    "ok ok ok": "ok",
+    "ceros": "zeros",
+    "sin fiel": "no_fiel",
+    "no se llevaran": "not_carried",
+    "confianza": "trust",
+    "con pago": "with_payment",
+    "sin pago": "without_payment"
+  },
+  "known_other": ["negativo", "positivo", "pendiente", "cancelado"]
+}

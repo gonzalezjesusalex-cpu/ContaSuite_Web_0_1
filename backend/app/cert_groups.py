@@ -134,9 +134,7 @@ class CertIndex:
 
     def result(self):
         urgent = {'vencido', 'critico', 'por_vencer', 'ilegible'}
-        rows = sorted(self.items, key=lambda r: (r['s'] not in urgent, r['hasta']))[
-            :MAX_ROWS
-        ]
+        rows = sorted(self.items, key=lambda r: (r['s'] not in urgent, r['hasta']))[:MAX_ROWS]
         count = lambda state: sum(1 for r in self.items if r['s'] == state)  # noqa: E731
         return {
             'rows': rows,

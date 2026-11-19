@@ -112,7 +112,9 @@ def test_postgresql_ddl_and_import_preview():
         [dict(id='isr', label='ISR')],
     )
     assert 'duplicate_cell' in data[1]['cells'][0]['conflicts']
-    assert 'payment_obligation_required' in data[0]['cells'][1]['conflicts']
+    pago = next(c for c in data[0]['cells'] if c['role'] == 'payment')
+    assert pago['value']['payment'] == 'not_applicable' and 'payment_obligation_required' not in pago['conflicts']
+    assert data[0]['cells'][0]['value']['payment'] == 'not_applicable'
 
 
 def test_evidence_company_scope_and_applicability(fiscal, core, monkeypatch):

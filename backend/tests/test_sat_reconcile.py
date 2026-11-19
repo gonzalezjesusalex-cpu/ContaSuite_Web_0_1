@@ -113,12 +113,15 @@ def test_ppd_invoices_and_their_payments():
     place = {'k': 'E', 'y': 2026, 'm': 7}
     for uuid in (U1, U2, U3):
         ppd.add_invoice(uuid, uuid + '.xml', {'metodo': 'PPD', 'tipo': 'I', 'total': 100.0}, place)
-    ppd.add_invoice('D' * 8 + '-DDDD-4DDD-8DDD-' + 'D' * 12, 'pue.xml', {'metodo': 'PUE', 'tipo': 'I', 'total': 5.0}, place)
+    ppd.add_invoice(
+        'D' * 8 + '-DDDD-4DDD-8DDD-' + 'D' * 12, 'pue.xml', {'metodo': 'PUE', 'tipo': 'I', 'total': 5.0}, place
+    )
     ppd.add_payment('pago1.xml', PAYMENT % U1)
     ppd.add_payment(
         'pago2.xml',
         '<pago20:DoctoRelacionado IdDocumento="%s" NumParcialidad="2" ImpPagado="60.00" ImpSaldoInsoluto="0.00"/>' % U1
-        + '<pago20:DoctoRelacionado IdDocumento="%s" NumParcialidad="1" ImpPagado="10.00" ImpSaldoInsoluto="90.00"/>' % U2
+        + '<pago20:DoctoRelacionado IdDocumento="%s" NumParcialidad="1" ImpPagado="10.00" ImpSaldoInsoluto="90.00"/>'
+        % U2
         + '<pago20:DoctoRelacionado IdDocumento="EEEEEEEE-EEEE-4EEE-8EEE-EEEEEEEEEEEE" NumParcialidad="1" ImpPagado="1" ImpSaldoInsoluto="0"/>',
     )
     out = ppd.result()
@@ -135,7 +138,9 @@ def make_certificate(days_before, days_after, rfc, serial=None):
     from cryptography.x509.oid import NameOID
 
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'EMPRESA PRUEBA'), x509.NameAttribute(NameOID.SERIAL_NUMBER, rfc)])
+    name = x509.Name(
+        [x509.NameAttribute(NameOID.COMMON_NAME, 'EMPRESA PRUEBA'), x509.NameAttribute(NameOID.SERIAL_NUMBER, rfc)]
+    )
     now = datetime.now(timezone.utc)
     cert = (
         x509.CertificateBuilder()
