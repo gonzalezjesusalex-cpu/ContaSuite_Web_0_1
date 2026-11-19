@@ -129,6 +129,15 @@ INITIAL = [
     'IMSS',
     'Emisiones IMSS',
 ]
+# Obligations added for the Excel «Control de obligaciones» (cambio 3A.5); loaded by an explicit migration only.
+# «Pago» is not an obligation: it is an attribute of ISR, IVA and Retenciones. «Bimestral RIF» is not added.
+EXTRA = [
+    ('Declaración anual', 'annual'),
+    ('Impuesto cedular', 'monthly'),
+    ('Buzón tributario / Opinión de cumplimiento', 'monthly'),
+    ('Pago impuestos federales', 'monthly'),
+    ('Expediente físico', 'monthly'),
+]
 router = APIRouter(prefix='/api/fiscal-control', tags=['Control de obligaciones'])
 
 
