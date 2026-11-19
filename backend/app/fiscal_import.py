@@ -66,7 +66,7 @@ def resolve_header(header):
     """What a column header means: obligation (with optional fixed year), special column or unknown."""
     dic = dictionary()
     key = normalize_header(header)
-    if not key:
+    if not key or key.startswith('(sin encabezado'):
         return dict(role='unknown', reason='blank_header')
     special = dic['special_columns'].get(key)
     if special == 'not_added':
@@ -246,7 +246,7 @@ def preview(sheets, companies, catalog, equivalences=None):
                             issues.append('obligation_not_in_catalog')
                         if meaning.get('year'):
                             entry['period'] = f"{meaning['year']}-A"
-                        if pay and meaning['label'] in dic['payment_targets']:
+                        if pay and meaning['label'] in dic['payment_targets'] and 'payment' not in proposal:
                             payment = pay.get('payment')
                             if payment == 'pending' and _date_value(federal):
                                 payment = 'paid'
