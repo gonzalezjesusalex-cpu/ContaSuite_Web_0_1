@@ -182,6 +182,8 @@ def analyze(ident):
                 **result.summary,
                 'months_detail': enrichment['months'],
                 'leftover_categories': enrichment['leftover_categories'],
+                'review_items': len(enrichment['review']),
+                'proposals': len(enrichment['proposals']),
             }
             run.warnings = warnings
             persist_policies(db, ident, result, enrichment)
@@ -348,6 +350,86 @@ async def start(
             await file.close()
 
 
+class FromCompanyIn(BaseModel):
+    company_id: str
+    period: str
+
+
+@router.post('/runs/from-company', status_code=202)
+def start_from_company(
+    data: FromCompanyIn,
+    background: BackgroundTasks,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    """Analyze the originals already registered in the company's Centro Documental for one period (cambio 4.4)."""
+    import re
+
+    from sqlalchemy import or_
+
+    from .models import Document, DocumentCompanyLink
+    from .storage.providers import StorageError
+    from .storage.router import storage_http_error, storage_service
+
+    if not re.fullmatch(r'(20\d{2})-(0[1-9]|1[0-2])', data.period):
+        raise HTTPException(422, 'El periodo debe ser AAAA-MM.')
+    if not db.get(Company, data.company_id):
+        raise HTTPException(404, 'Empresa no encontrada')
+    RECOPILA.require_company(principal, data.company_id)
+    linked = select(DocumentCompanyLink.document_id).where(DocumentCompanyLink.company_id == data.company_id)
+    documents = db.scalars(
+        select(Document)
+        .where(
+            or_(Document.company_id == data.company_id, Document.id.in_(linked)),
+            Document.period == data.period,
+            Document.document_type != 'recopilador',
+        )
+        .order_by(Document.created_at)
+        .limit(MAX_FILES + 1)
+    ).all()
+    documents = [d for d in documents if Path(d.name).suffix.lower() in {'.pdf', '.xml'}]
+    if not documents:
+        raise HTTPException(422, 'La empresa no tiene PDF o XML registrados en ese periodo.')
+    if len(documents) > MAX_FILES:
+        raise HTTPException(422, 'El periodo tiene más de 5,000 documentos.')
+    ident = str(uuid4())
+    root = folder(ident)
+    source = root / 'input'
+    service = storage_service()
+    actor = principal.storage_actor()
+    size = 0
+    try:
+        for doc in documents:
+            target = source / doc.id[:8] / Path(doc.name).name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with service.read(actor, doc.id) as content, target.open('xb') as out:
+                while chunk := content.stream.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > MAX_UPLOAD:
+                        raise HTTPException(413, 'Los documentos del periodo superan 100 MB.')
+                    out.write(chunk)
+        run = RecopilaRun(
+            id=ident,
+            created_by=principal.subject,
+            company_id=data.company_id,
+            name=f'Documentos de la empresa · {data.period}',
+            status='analyzing',
+            message='Preparando documentos.',
+        )
+        db.add(run)
+        db.commit()
+        background.add_task(analyze, ident)
+        return run
+    except StorageError as exc:
+        db.rollback()
+        shutil.rmtree(root, ignore_errors=True)
+        raise storage_http_error(exc) from None
+    except Exception:
+        db.rollback()
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+
+
 @router.get('/runs')
 def runs(db: Session = Depends(session), principal: Principal = Depends(auth)):
     return db.scalars(
@@ -413,6 +495,59 @@ def detail(ident: str, db: Session = Depends(session), principal: Principal = De
             else None
         ),
         'adjustments': adjustments_for(db, ident),
+    }
+
+
+@router.get('/companies/{company_id}/periods')
+def company_periods(company_id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Per period support indicator of a company, from its latest analysis of each period (cambio 4.6)."""
+    if not db.get(Company, company_id):
+        raise HTTPException(404, 'Empresa no encontrada')
+    if not principal.admin:
+        principal.require(RECOPILA.action, company_id)
+    runs_ = db.scalars(
+        select(RecopilaRun)
+        .where(
+            RecopilaRun.company_id == company_id,
+            RecopilaRun.status.in_(('analyzed', 'generated', 'generating')),
+        )
+        .order_by(RecopilaRun.created_at.desc())
+        .limit(100)
+    ).all()
+    periods = {}
+    chosen = {}
+    for run in runs_:
+        for period, row in (run.summary.get('months_detail') or {}).items():
+            if period in periods:
+                continue
+            total = row['policies'] or 0
+            periods[period] = {
+                'period': period,
+                'run_id': run.id,
+                'policies': total,
+                'percent': round(100 * row['Completa'] / total) if total else 0,
+                'parciales': row['Parcial'],
+                'xml_sin_pdf': row['XML sin PDF'],
+                'sin_soporte': row['Sin soporte'],
+                'facturas_sin_poliza': row['facturas_sin_poliza'],
+            }
+            chosen[run.id] = run
+    # One count per analysis that is the latest of some period: what still needs a person's attention.
+    pending_runs = []
+    pending = 0
+    for run in chosen.values():
+        detail = run.summary.get('months_detail') or {}
+        items = (
+            sum(r['policies'] - r['Completa'] for r in detail.values())
+            + run.summary.get('review_items', 0)
+            + run.summary.get('proposals', 0)
+        )
+        pending += items
+        pending_runs.append({'id': run.id, 'name': run.name, 'created_at': run.created_at.isoformat(), 'items': items})
+    return {
+        'periods': sorted(periods.values(), key=lambda r: r['period'], reverse=True),
+        'pending': pending,
+        'runs': pending_runs,
     }
 
 

@@ -20,6 +20,7 @@ import { Badge, Empty, Field, MiddleText, Modal } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
 import type { Job, StorageDetail, StorageDocument, StorageOptions, StoragePage } from '../types';
 import FolderAnalysis from './FolderAnalysis';
+import { RecopilaIndicator, RecopilaReviewSection, useRecopilaPeriods } from './RecopilaReview';
 import StorageReview from './StorageReview';
 import StorageJobs from './StorageJobs';
 import VirtualBranch, { type BranchFile } from './VirtualBranch';
@@ -105,7 +106,7 @@ export default function Documents({
   const [file, setFile] = useState<File | null>(null);
   type Panel = 'explorer' | 'classification' | 'review' | 'branch';
   const [panel, setPanel] = useState<Panel>('explorer');
-  const [reviewSection, setReviewSection] = useState<'unclassified' | 'reconcile'>('unclassified');
+  const [reviewSection, setReviewSection] = useState<'unclassified' | 'reconcile' | 'recopila'>('unclassified');
   const [reconTotal, setReconTotal] = useState<number | null>(null);
   const branch = panel === 'branch';
   const [branchFile, setBranchFile] = useState<BranchFile | null>(null);
@@ -339,7 +340,7 @@ export default function Documents({
     autoPreview.current = true;
     setSelected(f.document_id);
   }
-  function goPanel(next: Panel, section: 'unclassified' | 'reconcile' = reviewSection) {
+  function goPanel(next: Panel, section: 'unclassified' | 'reconcile' | 'recopila' = reviewSection) {
     setPanel(next);
     setReviewSection(section);
     setBranchFile(null);
@@ -354,6 +355,8 @@ export default function Documents({
     if (companyId && initialPanel?.startsWith('clasificacion')) goPanel('classification');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPanel, companyId]);
+  const recopila = useRecopilaPeriods(companyId, reload);
+  const canRecopila = !!companyId && !!recopila;
   const canReview = !!options?.can_review;
   const canReconcile = !!options?.can_classify;
   useEffect(() => {
@@ -447,6 +450,7 @@ export default function Documents({
             </button>
           </div>
         </div>
+        {companyId && <RecopilaIndicator companyId={companyId} data={recopila} />}
         <div className="documents-tabs">
           <button
             aria-pressed={panel === 'explorer'}
@@ -465,14 +469,15 @@ export default function Documents({
               Clasificación de carpeta
             </button>
           )}
-          {(canReview || canReconcile) && (
+          {(canReview || canReconcile || canRecopila) && (
             <button
               aria-pressed={panel === 'review'}
               className={stitchButton + (panel === 'review' ? ' selected' : '')}
-              onClick={() => goPanel('review', canReview ? 'unclassified' : 'reconcile')}
+              onClick={() => goPanel('review', canReview ? 'unclassified' : canReconcile ? 'reconcile' : 'recopila')}
             >
               Por revisar {canReview && <Badge>{(catalog?.pending_count ?? '—') + ' sin clasificar'}</Badge>}
               {canReconcile && <Badge>{(reconTotal ?? '—') + ' conciliación'}</Badge>}
+              {canRecopila && <Badge>{recopila.pending + ' Recopila'}</Badge>}
             </button>
           )}
           {companyId && (
@@ -625,6 +630,15 @@ export default function Documents({
                 Conciliación documental <Badge>{reconTotal ?? '—'}</Badge>
               </button>
             )}
+            {canRecopila && (
+              <button
+                aria-pressed={reviewSection === 'recopila'}
+                className={stitchButton + (reviewSection === 'recopila' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'recopila')}
+              >
+                Recopila <Badge>{recopila.pending}</Badge>
+              </button>
+            )}
           </div>
         )}
         {panel === 'classification' && companyId ? (
@@ -635,6 +649,8 @@ export default function Documents({
             analyzing={analyzing}
             onViewCertificates={onViewCertificates}
           />
+        ) : panel === 'review' && reviewSection === 'recopila' && companyId ? (
+          <RecopilaReviewSection companyId={companyId} data={recopila} />
         ) : (
           <div className={'documents-workspace' + (noDetail ? ' no-detail' : '')}>
             {panel === 'review' && reviewSection === 'reconcile' ? (

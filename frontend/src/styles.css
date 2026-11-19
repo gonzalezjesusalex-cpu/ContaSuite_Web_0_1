@@ -4398,3 +4398,13 @@ textarea:user-invalid {
   color: var(--danger-strong);
 }
 button.header-cert-chip { cursor: pointer; font: inherit; }
+
+.recopila-indicator {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: var(--fs-xs);
+}

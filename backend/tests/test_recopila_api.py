@@ -112,3 +112,50 @@ def test_save_to_expediente_creates_documents_then_versions_and_never_overwrites
     assert len(docs) == 2  # the same two documents, now with a second version each
     detail = client.get('/api/storage/documents/' + docs[0]['id'], headers=A).json()
     assert [v['number'] for v in detail['versions']] == [2, 1] or [v['number'] for v in detail['versions']] == [1, 2]
+
+
+def test_company_period_indicator(client):  # noqa: F811
+    c = company(client).json()
+    assert client.get('/api/recopila/companies/' + c['id'] + '/periods', headers=A).json()['periods'] == []
+    ident = upload(client, archive(), company_id=c['id']).json()['id']
+    data = client.get('/api/recopila/companies/' + c['id'] + '/periods', headers=A).json()
+    assert data['periods'] == [
+        {
+            'period': '2026-10',
+            'run_id': ident,
+            'policies': 1,
+            'percent': 0,
+            'parciales': 0,
+            'xml_sin_pdf': 0,
+            'sin_soporte': 1,
+            'facturas_sin_poliza': 1,
+        }
+    ]
+    # one policy without support + one proposal + one CFDI whose RFC is not the company's
+    assert data['pending'] == 3 and data['runs'][0]['id'] == ident
+    assert client.get('/api/recopila/companies/no-existe/periods', headers=A).status_code == 404
+
+
+def test_run_from_company_documents_of_one_period(client):  # noqa: F811
+    c = company(client).json()
+    base = '/api/recopila/runs/from-company'
+    assert client.post(base, headers=A, json={'company_id': c['id'], 'period': '2026-13'}).status_code == 422
+    assert client.post(base, headers=A, json={'company_id': c['id'], 'period': '2026-10'}).status_code == 422  # none
+    with zipfile.ZipFile(io.BytesIO(archive())) as z:
+        for name in z.namelist():
+            kind = 'application/pdf' if name.endswith('.pdf') else 'application/xml'
+            stored = client.post(
+                '/api/storage/documents',
+                headers=A,
+                files={'file': (name.split('/')[-1], z.read(name), kind)},
+                data={'company_id': c['id'], 'document_type': 'cfdi', 'period': '2026-10', 'category': 'General'},
+            )
+            assert stored.status_code in (200, 201), stored.text
+    other = client.post(base, headers=A, json={'company_id': c['id'], 'period': '2026-11'})
+    assert other.status_code == 422  # another period has nothing
+    made = client.post(base, headers=A, json={'company_id': c['id'], 'period': '2026-10'})
+    assert made.status_code == 202, made.text
+    detail = client.get('/api/recopila/runs/' + made.json()['id'], headers=A).json()
+    assert detail['run']['status'] == 'analyzed' and detail['run']['company_id'] == c['id']
+    assert detail['run']['name'].endswith('2026-10') and len(detail['policies']) == 1
+    assert detail['enrichment']['proposals'][0]['kind'] == 'diario'
