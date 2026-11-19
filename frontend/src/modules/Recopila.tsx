@@ -30,6 +30,9 @@ type Run = {
 type Policy = {
   source: string;
   page: number;
+  index?: number;
+  support?: string;
+  missing?: string[];
   type: string;
   date: string;
   month: string;
@@ -39,7 +42,54 @@ type Policy = {
   status: string;
   section: string;
 };
-type Detail = { run: Run; policies: Policy[]; leftovers: string[]; outputs: { name: string; size: number }[] };
+type Proposal = { id: string; policy_index: number; kind: string; uuid: string; pdf: string };
+type ReviewItem = { kind: string; uuid: string; policy_index: number | null };
+type Adjustment = {
+  id: string;
+  policy_idx: number;
+  action: string;
+  target: string;
+  actor_id: string;
+  created_at: string;
+  revoked_at: string | null;
+};
+type Enrichment = {
+  proposals: Proposal[];
+  review: ReviewItem[];
+  leftover_items: { pdf: string; uuid: string; category: string }[];
+  leftover_categories: Record<string, number>;
+  unsupported: { pages: number; contalink_hint: boolean };
+};
+type Detail = {
+  run: Run;
+  policies: Policy[];
+  leftovers: string[];
+  outputs: { name: string; size: number }[];
+  enrichment?: Enrichment | null;
+  adjustments?: Adjustment[];
+};
+const support: Record<string, string> = {
+  Completa: 'green',
+  Parcial: 'amber',
+  'XML sin PDF': 'amber',
+  'Sin soporte': 'red',
+};
+const proposalKinds: Record<string, string> = {
+  complemento_directo: 'UUID del complemento en la póliza de pago/cobro',
+  diario: 'CFDI citado en una póliza de diario',
+};
+const categories: Record<string, string> = {
+  ingresos: 'Ingresos',
+  egresos: 'Egresos',
+  nomina: 'Nómina',
+  complementos: 'Complementos',
+  otro_periodo: 'Otro periodo',
+  otro: 'Otros',
+};
+const reviewKinds: Record<string, string> = {
+  rfc_ajeno: 'RFC ajeno a la empresa',
+  pareja_no_verificada: 'Pareja XML–PDF no verificada',
+};
 const labels: Record<string, string> = {
   analyzing: 'Analizando',
   analyzed: 'Listo para revisar',
@@ -95,11 +145,20 @@ export default function Recopila({
   const [preview, setPreview] = useState<{ name: string; kind: 'input' | 'output'; page?: number } | null>(null);
   const [pdf, setPdf] = useState('');
   const [pdfError, setPdfError] = useState('');
+  const [supportFilter, setSupportFilter] = useState('');
+  const [period, setPeriod] = useState('');
+  const [savingCompany, setSavingCompany] = useState('');
+  const [saved, setSaved] = useState<{ name: string; status: string }[]>([]);
   const zipRef = useRef<HTMLInputElement>(null);
   const docsRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef('');
   const working = uploading || ['analyzing', 'generating'].includes(detail?.run.status || '');
+  useEffect(() => {
+    const open = params.get('analisis');
+    if (open) setId(open);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     folderRef.current?.setAttribute('webkitdirectory', '');
     api<Run[]>('/recopila/runs')
@@ -205,6 +264,61 @@ export default function Recopila({
       setUploading(false);
     }
   }
+  async function fromCompany() {
+    setError('');
+    setUploading(true);
+    try {
+      const r = await api<Run>('/recopila/runs/from-company', 'POST', { company_id: company, period });
+      setDetail({ run: r, policies: [], leftovers: [], outputs: [] });
+      setId(r.id);
+      setPreview(null);
+      setPolicy(null);
+      notify('Documentos de la empresa cargados. Comenzó el análisis.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+  async function adjust(action: 'attach' | 'remove', policyIndex: number, target: string) {
+    setError('');
+    try {
+      const list = await api<Adjustment[]>('/recopila/runs/' + id + '/adjustments', 'POST', {
+        policy_index: policyIndex,
+        action,
+        target,
+      });
+      setDetail((d) => (d ? { ...d, adjustments: list } : d));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  async function undo(adjustmentId: string) {
+    try {
+      const list = await api<Adjustment[]>('/recopila/runs/' + id + '/adjustments/' + adjustmentId, 'DELETE');
+      setDetail((d) => (d ? { ...d, adjustments: list } : d));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  async function saveToExpediente() {
+    setError('');
+    const target = detail?.run.company_id || savingCompany;
+    if (!target) {
+      setError('Elige la empresa del expediente donde se guardará.');
+      return;
+    }
+    if (!window.confirm('¿Guardar RECOPILADOR en el Centro Documental de esa empresa? No se sobrescribe nada.')) return;
+    try {
+      const r = await api<{ files: { name: string; status: string }[] }>('/recopila/runs/' + id + '/save', 'POST', {
+        company_id: target,
+      });
+      setSaved(r.files);
+      notify('Guardado en el expediente.');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   async function generate() {
     setError('');
     try {
@@ -242,6 +356,7 @@ export default function Recopila({
   const policies = (detail?.policies || []).filter(
     (p) =>
       (!filter || p.status === filter) &&
+      (!supportFilter || p.support === supportFilter) &&
       (!month || p.month === month) &&
       `${p.source} ${p.type} ${p.description} ${p.date} ${p.uuids.join(' ')}`
         .toLowerCase()
@@ -324,6 +439,22 @@ export default function Recopila({
                 e.target.value = '';
               }}
             />
+            <div className="actions">
+              <input
+                type="month"
+                aria-label="Periodo de los documentos de la empresa"
+                value={period}
+                disabled={working}
+                onChange={(e) => setPeriod(e.target.value)}
+              />
+              <button
+                className={stitchButton}
+                disabled={working || !company || !/^20\d\d-(0[1-9]|1[0-2])$/.test(period)}
+                onClick={fromCompany}
+              >
+                Usar documentos de la empresa
+              </button>
+            </div>
             <p className="muted recopila-file-description">
               {files.length
                 ? `${files.length} archivo(s) · ${(files.reduce((n, f) => n + f.size, 0) / 1024 / 1024).toFixed(1)} MB`
@@ -365,6 +496,25 @@ export default function Recopila({
               {w}
             </p>
           ))}
+          {!!detail.enrichment?.unsupported.pages && (
+            <p className="recopila-warning" role="status">
+              {detail.enrichment.unsupported.pages} páginas parecen pólizas en un formato no compatible
+              {detail.enrichment.unsupported.contalink_hint ? ' (Contalink)' : ''}. Aún no se leen: Recopila sólo
+              interpreta el «Impreso de pólizas» de CONTPAQi.
+            </p>
+          )}
+          {!!detail.enrichment?.review.length && (
+            <details className={stitchCard + ' padded'}>
+              <summary>Por revisar ({detail.enrichment.review.length})</summary>
+              <ul>
+                {detail.enrichment.review.map((r, i) => (
+                  <li key={r.kind + r.uuid + i}>
+                    {reviewKinds[r.kind] || r.kind} · <span className="recopila-uuids">{r.uuid}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <div className="kpi-grid four">
             <Kpi
               label="Pólizas detectadas"
@@ -407,6 +557,14 @@ export default function Recopila({
                         <option key={k} value={k}>
                           {v}
                         </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Soporte">
+                    <select value={supportFilter} onChange={(e) => setSupportFilter(e.target.value)}>
+                      <option value="">Todos</option>
+                      {Object.keys(support).map((k) => (
+                        <option key={k}>{k}</option>
                       ))}
                     </select>
                   </Field>
@@ -458,6 +616,12 @@ export default function Recopila({
                             <Badge tone={p.status === 'RELACIONADO' ? 'green' : 'amber'}>
                               {states[p.status] || p.status}
                             </Badge>
+                            {p.support && (
+                              <small>
+                                <Badge tone={support[p.support] || 'neutral'}>{p.support}</Badge>
+                                {!!p.missing?.length && ' · faltan ' + p.missing.length + ' UUID'}
+                              </small>
+                            )}
                             <small>{p.matches.length} documento(s)</small>
                           </td>
                         </tr>
@@ -495,6 +659,39 @@ export default function Recopila({
                   <p className="recopila-uuids">
                     {policy.uuids.length ? policy.uuids.join(' · ') : 'Sin UUID asociado'}
                   </p>
+                  {!!policy.missing?.length && (
+                    <p className="muted">UUID sin documento completo: {policy.missing.join(' · ')}</p>
+                  )}
+                  {policy.index !== undefined &&
+                    detail.enrichment?.proposals
+                      .filter((x) => x.policy_index === policy.index)
+                      .map((x) => (
+                        <p key={x.id}>
+                          <strong>Propuesta:</strong> {proposalKinds[x.kind] || x.kind} · {x.uuid}{' '}
+                          <button
+                            className={stitchButton}
+                            disabled={working || detail.run.status === 'generating'}
+                            onClick={() => adjust('attach', policy.index!, x.pdf)}
+                          >
+                            Aceptar propuesta
+                          </button>
+                        </p>
+                      ))}
+                  {policy.index !== undefined && !!detail.enrichment?.leftover_items.length && (
+                    <details>
+                      <summary>Asociar un sobrante a esta póliza</summary>
+                      <ul>
+                        {detail.enrichment.leftover_items.map((x) => (
+                          <li key={x.pdf}>
+                            {categories[x.category] || x.category} · {x.uuid || x.pdf}{' '}
+                            <button className={stitchButton} onClick={() => adjust('attach', policy.index!, x.pdf)}>
+                              Asociar
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                   <div className="actions">
                     <button
                       className={stitchButton}
@@ -513,7 +710,14 @@ export default function Recopila({
               )}
               {!!detail.leftovers.length && (
                 <details className={stitchCard + ' padded recopila-leftovers'}>
-                  <summary>Documentos sobrantes ({detail.leftovers.length})</summary>
+                  <summary>
+                    Documentos sobrantes ({detail.leftovers.length})
+                    {detail.enrichment &&
+                      ' · ' +
+                        Object.entries(detail.enrichment.leftover_categories)
+                          .map(([k, n]) => (categories[k] || k) + ' ' + n)
+                          .join(' · ')}
+                  </summary>
                   <ul>
                     {detail.leftovers.map((name) => (
                       <li key={name}>
@@ -525,6 +729,26 @@ export default function Recopila({
                     ))}
                   </ul>
                 </details>
+              )}
+              {!!detail.adjustments?.length && (
+                <section className={stitchCard + ' padded'}>
+                  <h2>Ajustes manuales</h2>
+                  <ul>
+                    {detail.adjustments.map((a) => (
+                      <li key={a.id}>
+                        {a.action === 'attach' ? 'Asociar' : 'Quitar'} {a.target.split('/').pop()} · póliza{' '}
+                        {a.policy_idx + 1} · {dateLabel(a.created_at)}
+                        {a.revoked_at ? (
+                          ' · revertido'
+                        ) : (
+                          <button className={stitchButton} onClick={() => undo(a.id)}>
+                            Revertir
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
               <section className={stitchCard + ' padded'}>
                 <h2>Archivos de salida</h2>
@@ -551,6 +775,37 @@ export default function Recopila({
                     </button>
                   )}
                 </div>
+                {detail.run.status === 'generated' && (
+                  <div className="actions">
+                    {!detail.run.company_id && (
+                      <select
+                        aria-label="Empresa del expediente"
+                        value={savingCompany}
+                        onChange={(e) => setSavingCompany(e.target.value)}
+                      >
+                        <option value="">Elegir empresa…</option>
+                        {state.companies.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} · {c.rfc}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button className={stitchButton} onClick={saveToExpediente}>
+                      Guardar en expediente
+                    </button>
+                  </div>
+                )}
+                {saved.map((f) => (
+                  <small key={f.name} className="muted">
+                    {f.name}:{' '}
+                    {{
+                      nuevo: 'documento nuevo',
+                      version_nueva: 'versión nueva',
+                      ya_registrado: 'ya estaba registrado',
+                    }[f.status] || f.status}
+                  </small>
+                ))}
                 {!!detail.outputs.length && (
                   <ul className="recopila-outputs">
                     {detail.outputs.map((f) => (
