@@ -3,6 +3,15 @@ import { dateLabel } from '../api';
 import type { Job } from '../types';
 import { certState } from '../certStatus';
 
+/** Folder groups that match one Centro Documental type (cambio 1.5). A static mapping: groups without an
+ * equivalent (declarations and acknowledgements share two types, IMSS, payroll...) stay informative, and a sensitive
+ * group is never navigable. */
+export const GROUP_TYPE: Record<string, string> = {
+  cfdi_xml: 'cfdi',
+  cfdi_pdf: 'cfdi_pdf',
+  sat_reportes: 'sat_report',
+};
+
 function certSummary(job: Job) {
   const rows = job.result.certificados?.rows;
   if (!rows?.length) return '';
@@ -66,8 +75,10 @@ export default function FolderAnalysis({
   reanalyzeDisabled,
   analyzing,
   onViewCertificates,
+  onOpenType,
 }: {
   job?: Job;
+  onOpenType?: (type: string) => void;
   onViewCertificates?: () => void;
   onReanalyze?: () => void;
   reanalyzeDisabled?: boolean;
@@ -129,6 +140,13 @@ export default function FolderAnalysis({
                 {g.count.toLocaleString('es-MX')} · {size(g.bytes)}
               </span>
             </summary>
+            {!g.sensitive && onOpenType && GROUP_TYPE[g.key] && (
+              <p>
+                <button type="button" className="link-button" onClick={() => onOpenType(GROUP_TYPE[g.key])}>
+                  Ver en el Explorador
+                </button>
+              </p>
+            )}
             <p className="muted">
               {Object.entries(g.extensions)
                 .map(([ext, n]) => ext + ' ×' + n)

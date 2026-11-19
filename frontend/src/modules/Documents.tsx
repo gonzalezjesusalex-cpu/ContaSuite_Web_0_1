@@ -669,6 +669,10 @@ export default function Documents({
             reanalyzeDisabled={reanalyzeDisabled}
             analyzing={analyzing}
             onViewCertificates={onViewCertificates}
+            onOpenType={(t) => {
+              goPanel('explorer');
+              filter('type', t);
+            }}
           />
         ) : panel === 'review' && reviewSection === 'cfdi' && companyId ? (
           <CfdiReviewSection data={cfdi} onChanged={() => setReload((v) => v + 1)} />
