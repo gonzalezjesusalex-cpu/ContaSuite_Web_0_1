@@ -3076,6 +3076,53 @@ dialog[data-closing]::backdrop {
   gap: 20px;
   align-items: start;
 }
+.documents-workspace.no-detail {
+  grid-template-columns: minmax(0, 1fr);
+}
+.documents-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--primary);
+  font-size: var(--fs-xs);
+}
+.filter-chip button {
+  display: inline-flex;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+.documents-filters-more {
+  margin-top: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.documents-filters-more > .field:first-child {
+  grid-column: auto;
+}
+@media (max-width: 900px) {
+  .documents-workspace .documents-detail {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 30;
+    width: min(420px, 100vw);
+    overflow-y: auto;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
+    background: var(--panel);
+  }
+}
 .documents-workspace > div {
   min-width: 0;
 }

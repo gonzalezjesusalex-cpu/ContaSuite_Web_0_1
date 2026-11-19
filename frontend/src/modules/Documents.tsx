@@ -373,6 +373,24 @@ export default function Documents({
   const writableCompanies =
     options?.companies.filter((c) => options.can_index || options.write_company_ids.includes(c.id)) || [];
   const doc = detail?.document;
+  const [moreFilters, setMoreFilters] = useState(false);
+  const activeChips: { key: 'q' | 'company' | 'format' | 'type' | 'year' | 'month' | 'source'; label: string }[] = [];
+  if (filters.q) activeChips.push({ key: 'q', label: 'Búsqueda: ' + filters.q });
+  if (filters.company)
+    activeChips.push({
+      key: 'company',
+      label: 'Empresa: ' + (options?.companies.find((c) => c.id === filters.company)?.name || filters.company),
+    });
+  if (filters.type) activeChips.push({ key: 'type', label: 'Tipo: ' + (typeNames[filters.type] || filters.type) });
+  if (filters.year) activeChips.push({ key: 'year', label: 'Año: ' + filters.year });
+  if (filters.month) activeChips.push({ key: 'month', label: 'Mes: ' + String(filters.month).padStart(2, '0') });
+  if (filters.format) activeChips.push({ key: 'format', label: 'Formato: ' + filters.format.toUpperCase() });
+  if (filters.source)
+    activeChips.push({
+      key: 'source',
+      label: 'Origen: ' + (options?.sources.find((x) => x.id === filters.source)?.label || filters.source),
+    });
+  const noDetail = !branch && !doc && !detailLoading;
   const showTable = panel === 'explorer' || (panel === 'review' && reviewSection === 'unclassified');
   const years = Array.from({ length: 101 }, (_, i) => String(2100 - i));
   return (
@@ -487,16 +505,6 @@ export default function Documents({
               </select>
             </Field>
           )}
-          <Field label="Formato">
-            <select aria-label="Formato" value={filters.format} onChange={(e) => filter('format', e.target.value)}>
-              <option value="">Todos</option>
-              {['pdf', 'xml', 'cer'].map((f) => (
-                <option key={f} value={f}>
-                  {f.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </Field>
           <Field label="Tipo documental">
             <select aria-label="Tipo documental" value={filters.type} onChange={(e) => filter('type', e.target.value)}>
               <option value="">Todos</option>
@@ -529,17 +537,54 @@ export default function Documents({
               ))}
             </select>
           </Field>
-          <Field label="Origen">
-            <select aria-label="Origen" value={filters.source} onChange={(e) => filter('source', e.target.value)}>
-              <option value="">Todos los orígenes</option>
-              {options?.sources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </Field>
         </div>
+        {showTable && (
+          <div className="documents-more">
+            <button
+              type="button"
+              className={stitchButton}
+              aria-expanded={moreFilters}
+              onClick={() => setMoreFilters((v) => !v)}
+            >
+              Más filtros
+              {filters.format || filters.source
+                ? ' (' + [filters.format, filters.source].filter(Boolean).length + ')'
+                : ''}
+            </button>
+            {activeChips.map((c) => (
+              <span className="filter-chip" key={c.key}>
+                {c.label}
+                <button type="button" aria-label={'Quitar filtro ' + c.label} onClick={() => filter(c.key, '')}>
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        {showTable && moreFilters && (
+          <div className="documents-filters documents-filters-more">
+            <Field label="Formato">
+              <select aria-label="Formato" value={filters.format} onChange={(e) => filter('format', e.target.value)}>
+                <option value="">Todos</option>
+                {['pdf', 'xml', 'cer'].map((f) => (
+                  <option key={f} value={f}>
+                    {f.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Origen">
+              <select aria-label="Origen" value={filters.source} onChange={(e) => filter('source', e.target.value)}>
+                <option value="">Todos los orígenes</option>
+                {options?.sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        )}
         {error && (
           <div className="error-banner" role="alert">
             {error}
@@ -554,10 +599,6 @@ export default function Documents({
             </button>
           </div>
         )}
-        <p className="documents-note muted" hidden={!showTable}>
-          Disponibilidad según la última comprobación. La clasificación usa RFC del contenido; los casos ambiguos
-          requieren revisión. Sin OCR ni validación SAT.
-        </p>
         {!companyId && options?.can_index && <StorageJobs sources={options.sources} onComplete={refreshJobs} />}
         {panel === 'review' && (
           <div className="documents-subtabs" role="group" aria-label="Secciones por revisar">
@@ -589,7 +630,7 @@ export default function Documents({
             analyzing={analyzing}
           />
         ) : (
-          <div className="documents-workspace">
+          <div className={'documents-workspace' + (noDetail ? ' no-detail' : '')}>
             {panel === 'review' && reviewSection === 'reconcile' ? (
               <DocumentReconciliation
                 enabled={canReconcile}
@@ -606,7 +647,7 @@ export default function Documents({
                     <thead>
                       <tr>
                         <th>Documento</th>
-                        <th>Empresa / RFC</th>
+                        {!companyId && <th>Empresa / RFC</th>}
                         <th>Periodo</th>
                         <th>Origen / disponibilidad</th>
                         <th>Acciones</th>
@@ -636,18 +677,20 @@ export default function Documents({
                                 </small>
                               </button>
                             </td>
-                            <td>
-                              {d.companies.length ? (
-                                d.companies.map((c) => (
-                                  <div key={c.id}>
-                                    <Link to={'/empresas/' + c.id + '?tab=Documentos'}>{c.name}</Link>
-                                    <small>{c.rfc}</small>
-                                  </div>
-                                ))
-                              ) : (
-                                <Badge tone="amber">Sin clasificar</Badge>
-                              )}
-                            </td>
+                            {!companyId && (
+                              <td>
+                                {d.companies.length ? (
+                                  d.companies.map((c) => (
+                                    <div key={c.id}>
+                                      <Link to={'/empresas/' + c.id + '?tab=Documentos'}>{c.name}</Link>
+                                      <small>{c.rfc}</small>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <Badge tone="amber">Sin clasificar</Badge>
+                                )}
+                              </td>
+                            )}
                             <td>{d.period || 'Sin periodo'}</td>
                             <td>
                               {d.sources.map((s, i) => (
@@ -719,170 +762,192 @@ export default function Documents({
                     Siguiente
                   </button>
                 </div>
+                <p className="documents-note muted">
+                  Disponibilidad según la última comprobación. La clasificación usa RFC del contenido; los casos
+                  ambiguos requieren revisión. Sin OCR ni validación SAT.
+                </p>
               </div>
             )}
-            <aside className="documents-detail">
-              {detailLoading ? (
-                <div role="status" className="documents-loading">
-                  Cargando detalle…
-                </div>
-              ) : doc ? (
-                <>
-                  <h3>{doc.name}</h3>
-                  {branch && branchFile?.document_id === doc.id && (
+            {!noDetail && (
+              <aside className="documents-detail">
+                {!branch && (
+                  <button
+                    type="button"
+                    className="icon-button documents-detail-close"
+                    aria-label="Cerrar detalle"
+                    onClick={() => {
+                      selectedRef.current = '';
+                      setSelected('');
+                      setPreview(false);
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+                {detailLoading ? (
+                  <div role="status" className="documents-loading">
+                    Cargando detalle…
+                  </div>
+                ) : doc ? (
+                  <>
+                    <h3>{doc.name}</h3>
+                    {branch && branchFile?.document_id === doc.id && (
+                      <p className="muted virtual-branch-origin">
+                        <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
+                        {branchFile.revision && branchFile.revision !== doc.revision
+                          ? ` · la carpeta tiene la versión ${branchFile.revision}`
+                          : ''}
+                      </p>
+                    )}
+                    <p className="muted">
+                      {doc.category} · {dateLabel(doc.created_at)}
+                    </p>
+                    <dl>
+                      <div>
+                        <dt>Periodo</dt>
+                        <dd>{doc.period || 'Sin periodo capturado'}</dd>
+                      </div>
+                      <div>
+                        <dt>Clasificación</dt>
+                        <dd>
+                          {doc.classification_status === 'pending'
+                            ? 'Pendiente de revisión'
+                            : doc.classification_status === 'rejected'
+                              ? 'Propuesta rechazada'
+                              : 'Vinculación registrada'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Disponibilidad</dt>
+                        <dd>{availabilityNames[doc.availability] || doc.availability}</dd>
+                      </div>
+                    </dl>
+                    {doc.sources.map((s, i) => (
+                      <p className="muted" key={i}>
+                        {s.label} ·{' '}
+                        {s.kind === 'local_folder'
+                          ? 'Carpeta local de sólo lectura'
+                          : s.kind === 'windows_smb'
+                            ? 'Windows pendiente'
+                            : 'Repositorio privado'}
+                        {s.last_seen_at && ` · Comprobado ${dateLabel(s.last_seen_at)}`}
+                      </p>
+                    ))}
+                    <div className="actions">
+                      <button className={stitchButton} disabled={busy} onClick={verify}>
+                        <RefreshCw size={15} />
+                        Comprobar archivo
+                      </button>
+                      <button
+                        className={stitchButton}
+                        disabled={
+                          busy ||
+                          !['pdf', 'xml'].includes(doc.format) ||
+                          (doc.format === 'xml' && doc.size > 1024 * 1024)
+                        }
+                        onClick={() => setPreview(true)}
+                      >
+                        <Eye size={15} />
+                        Vista previa
+                      </button>
+                      <button className={stitchButton} disabled={busy} onClick={() => download(doc)}>
+                        <Download size={15} />
+                        Descargar
+                      </button>
+                    </div>
+                    {doc.format === 'cer' && (
+                      <small className="muted">
+                        El certificado se verifica como público antes de guardar o descargar. Consulta su vigencia
+                        temporal y declara su uso en el dashboard de empresas.
+                      </small>
+                    )}
+                    {options && (
+                      <StorageReview
+                        key={doc.id + ':' + doc.revision}
+                        document={doc}
+                        options={options}
+                        onChange={classificationChanged}
+                      />
+                    )}
+                    <h3 className="section-subtitle">Versiones y huellas</h3>
+                    {detail.versions.length ? (
+                      <ul className="documents-versions">
+                        {detail.versions.map((v) => (
+                          <li key={v.number}>
+                            <strong>
+                              Versión {v.number} · {(v.size / 1024).toFixed(1)} KB
+                            </strong>
+                            <small>{v.sha256 || 'Huella pendiente: pulsa Comprobar archivo'}</small>
+                            <button className={stitchButton} disabled={busy} onClick={() => download(doc, v.number)}>
+                              Descargar versión {v.number}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="muted">
+                        Adjunto anterior pendiente de primera comprobación. El archivo original se conserva.
+                      </p>
+                    )}
+                    {preview && (
+                      <div className="documents-preview">
+                        <div className="documents-preview-title">
+                          <strong>Vista previa{previewRevision ? ` · versión ${previewRevision}` : ''}</strong>
+                          <button
+                            className="icon-button"
+                            aria-label="Cerrar vista previa"
+                            onClick={() => setPreview(false)}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                        {previewError ? (
+                          <p className="red-text" role="alert">
+                            {previewError}
+                          </p>
+                        ) : previewUrl ? (
+                          <iframe title="Vista previa documental" src={previewUrl + '#toolbar=1&navpanes=0'} />
+                        ) : xml ? (
+                          <pre>{xml}</pre>
+                        ) : (
+                          <p role="status">Cargando vista previa…</p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : branch && branchFile && !branchFile.document_id ? (
+                  <>
+                    <h3>{branchFile.name}</h3>
                     <p className="muted virtual-branch-origin">
                       <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
-                      {branchFile.revision && branchFile.revision !== doc.revision
-                        ? ` · la carpeta tiene la versión ${branchFile.revision}`
-                        : ''}
                     </p>
-                  )}
-                  <p className="muted">
-                    {doc.category} · {dateLabel(doc.created_at)}
-                  </p>
-                  <dl>
-                    <div>
-                      <dt>Periodo</dt>
-                      <dd>{doc.period || 'Sin periodo capturado'}</dd>
-                    </div>
-                    <div>
-                      <dt>Clasificación</dt>
-                      <dd>
-                        {doc.classification_status === 'pending'
-                          ? 'Pendiente de revisión'
-                          : doc.classification_status === 'rejected'
-                            ? 'Propuesta rechazada'
-                            : 'Vinculación registrada'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Disponibilidad</dt>
-                      <dd>{availabilityNames[doc.availability] || doc.availability}</dd>
-                    </div>
-                  </dl>
-                  {doc.sources.map((s, i) => (
-                    <p className="muted" key={i}>
-                      {s.label} ·{' '}
-                      {s.kind === 'local_folder'
-                        ? 'Carpeta local de sólo lectura'
-                        : s.kind === 'windows_smb'
-                          ? 'Windows pendiente'
-                          : 'Repositorio privado'}
-                      {s.last_seen_at && ` · Comprobado ${dateLabel(s.last_seen_at)}`}
-                    </p>
-                  ))}
-                  <div className="actions">
-                    <button className={stitchButton} disabled={busy} onClick={verify}>
-                      <RefreshCw size={15} />
-                      Comprobar archivo
-                    </button>
-                    <button
-                      className={stitchButton}
-                      disabled={
-                        busy || !['pdf', 'xml'].includes(doc.format) || (doc.format === 'xml' && doc.size > 1024 * 1024)
-                      }
-                      onClick={() => setPreview(true)}
-                    >
-                      <Eye size={15} />
-                      Vista previa
-                    </button>
-                    <button className={stitchButton} disabled={busy} onClick={() => download(doc)}>
-                      <Download size={15} />
-                      Descargar
-                    </button>
-                  </div>
-                  {doc.format === 'cer' && (
-                    <small className="muted">
-                      El certificado se verifica como público antes de guardar o descargar. Consulta su vigencia
-                      temporal y declara su uso en el dashboard de empresas.
-                    </small>
-                  )}
-                  {options && (
-                    <StorageReview
-                      key={doc.id + ':' + doc.revision}
-                      document={doc}
-                      options={options}
-                      onChange={classificationChanged}
-                    />
-                  )}
-                  <h3 className="section-subtitle">Versiones y huellas</h3>
-                  {detail.versions.length ? (
-                    <ul className="documents-versions">
-                      {detail.versions.map((v) => (
-                        <li key={v.number}>
-                          <strong>
-                            Versión {v.number} · {(v.size / 1024).toFixed(1)} KB
-                          </strong>
-                          <small>{v.sha256 || 'Huella pendiente: pulsa Comprobar archivo'}</small>
-                          <button className={stitchButton} disabled={busy} onClick={() => download(doc, v.number)}>
-                            Descargar versión {v.number}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="muted">
-                      Adjunto anterior pendiente de primera comprobación. El archivo original se conserva.
-                    </p>
-                  )}
-                  {preview && (
-                    <div className="documents-preview">
-                      <div className="documents-preview-title">
-                        <strong>Vista previa{previewRevision ? ` · versión ${previewRevision}` : ''}</strong>
-                        <button
-                          className="icon-button"
-                          aria-label="Cerrar vista previa"
-                          onClick={() => setPreview(false)}
-                        >
-                          <X size={16} />
-                        </button>
+                    <dl>
+                      <div>
+                        <dt>Ruta original</dt>
+                        <dd>{branchFile.path}</dd>
                       </div>
-                      {previewError ? (
-                        <p className="red-text" role="alert">
-                          {previewError}
-                        </p>
-                      ) : previewUrl ? (
-                        <iframe title="Vista previa documental" src={previewUrl + '#toolbar=1&navpanes=0'} />
-                      ) : xml ? (
-                        <pre>{xml}</pre>
-                      ) : (
-                        <p role="status">Cargando vista previa…</p>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : branch && branchFile && !branchFile.document_id ? (
-                <>
-                  <h3>{branchFile.name}</h3>
-                  <p className="muted virtual-branch-origin">
-                    <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
-                  </p>
-                  <dl>
-                    <div>
-                      <dt>Ruta original</dt>
-                      <dd>{branchFile.path}</dd>
-                    </div>
-                    <div>
-                      <dt>Tamaño</dt>
-                      <dd>{(branchFile.size / 1024).toFixed(1)} KB</dd>
-                    </div>
-                  </dl>
-                  <Empty icon={FileSearch} title="Sin documento registrado con la misma huella">
-                    La vista previa está disponible cuando el original está registrado en el Centro Documental (carga o
-                    indexación de la carpeta). Nada se movió ni se copió.
+                      <div>
+                        <dt>Tamaño</dt>
+                        <dd>{(branchFile.size / 1024).toFixed(1)} KB</dd>
+                      </div>
+                    </dl>
+                    <Empty icon={FileSearch} title="Sin documento registrado con la misma huella">
+                      La vista previa está disponible cuando el original está registrado en el Centro Documental (carga
+                      o indexación de la carpeta). Nada se movió ni se copió.
+                    </Empty>
+                  </>
+                ) : (
+                  <Empty
+                    icon={FileSearch}
+                    title={branch ? 'Selecciona un archivo de la rama' : 'Selecciona un documento'}
+                  >
+                    {branch
+                      ? 'Los archivos enlazados abren aquí la vista previa de su original registrado.'
+                      : 'Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.'}
                   </Empty>
-                </>
-              ) : (
-                <Empty
-                  icon={FileSearch}
-                  title={branch ? 'Selecciona un archivo de la rama' : 'Selecciona un documento'}
-                >
-                  {branch
-                    ? 'Los archivos enlazados abren aquí la vista previa de su original registrado.'
-                    : 'Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.'}
-                </Empty>
-              )}
-            </aside>
+                )}
+              </aside>
+            )}
           </div>
         )}
       </section>
