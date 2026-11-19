@@ -19,6 +19,7 @@ export type Action =
   | 'recibos.usar'
   | 'carpeta.analizar'
   | 'carpeta.exportar'
+  | 'trabajadores.ver'
   | 'historial.ver';
 
 type User = Pick<CurrentUser, 'admin' | 'actions'> & Partial<Pick<CurrentUser, 'role'>>;

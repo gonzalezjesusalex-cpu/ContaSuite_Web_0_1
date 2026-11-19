@@ -22,6 +22,7 @@ WRITE_ACTIONS = frozenset(
         'recibos.usar',
         'carpeta.analizar',
         'carpeta.exportar',
+        'trabajadores.ver',
     }
 )
 ACTIONS = READ_ACTIONS | WRITE_ACTIONS
@@ -32,7 +33,8 @@ LEGACY_WRITE_ACTIONS = frozenset({'documentos.subir', 'obligaciones.editar', 'ca
 
 
 # Quick templates for an auxiliar's actions in one company (always on top of the `.ver` actions).
-# `carpeta.analizar` and `carpeta.exportar` are never part of a template; they can only be chosen explicitly.
+# `carpeta.analizar`, `carpeta.exportar` and `trabajadores.ver` (personal data of workers) are never part of a
+# template; they can only be chosen explicitly. A contador with a write grant has every action, like an administrator.
 TEMPLATES = {
     'consulta': {'label': 'Solo consulta', 'actions': frozenset()},
     'captura': {'label': 'Captura de documentos', 'actions': frozenset({'documentos.subir', 'tareas.editar'})},
@@ -65,6 +67,7 @@ LABELS = {
     'recibos.usar': 'Usar Recibos',
     'carpeta.analizar': 'Analizar carpeta con el agente',
     'carpeta.exportar': 'Exportar una copia ordenada de la carpeta (escribe en tu equipo)',
+    'trabajadores.ver': 'Ver expedientes de trabajadores (datos personales)',
 }
 
 

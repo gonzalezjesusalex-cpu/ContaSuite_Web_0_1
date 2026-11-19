@@ -164,6 +164,14 @@ def mark_copies(db, job, sections):
     return marked
 
 
+WORKERS = 'trabajadores'
+
+
+def hidden_sections(principal, company_id):
+    """Sections of the index this person may not see: the workers' files hold personal data (trabajadores.ver)."""
+    return () if principal.can('trabajadores.ver', company_id) else (WORKERS,)
+
+
 def describe(scan):
     return {
         'id': scan.id,
@@ -191,21 +199,30 @@ def _latest(db, company_id):
 @router.get('/summary')
 def summary(company_id: str, principal: Principal = Depends(auth), db: Session = Depends(session)):
     principal.require('documentos.ver', company_id)
+    hidden = hidden_sections(principal, company_id)
     scans = db.scalars(
         select(VirtualScan).where(VirtualScan.company_id == company_id).order_by(VirtualScan.created_at.desc()).limit(6)
     ).all()
     sections = dict(
         db.execute(
             select(VirtualFile.section, func.count())
-            .where(VirtualFile.company_id == company_id, VirtualFile.missing_since.is_(None))
+            .where(
+                VirtualFile.company_id == company_id,
+                VirtualFile.missing_since.is_(None),
+                VirtualFile.section.not_in(hidden),
+            )
             .group_by(VirtualFile.section)
         ).all()
     )
     missing = db.scalar(
-        select(func.count()).where(VirtualFile.company_id == company_id, VirtualFile.missing_since.is_not(None))
+        select(func.count()).where(
+            VirtualFile.company_id == company_id,
+            VirtualFile.missing_since.is_not(None),
+            VirtualFile.section.not_in(hidden),
+        )
     )
     latest = _latest(db, company_id)
-    present = (VirtualFile.company_id == company_id, VirtualFile.missing_since.is_(None))
+    present = (VirtualFile.company_id == company_id, VirtualFile.missing_since.is_(None), VirtualFile.section.not_in(hidden))
     hashed = db.scalar(select(func.count()).where(*present, VirtualFile.sha256.is_not(None))) or 0
     copied_where = (*present, VirtualFile.copy_sha256 == VirtualFile.sha256)
     copied = db.scalar(select(func.count()).where(*copied_where)) or 0
@@ -237,7 +254,9 @@ def files(
     principal.require('documentos.ver', company_id)
     if change and change not in CHANGES:
         raise HTTPException(422, 'Cambio desconocido.')
-    query = select(VirtualFile).where(VirtualFile.company_id == company_id)
+    query = select(VirtualFile).where(
+        VirtualFile.company_id == company_id, VirtualFile.section.not_in(hidden_sections(principal, company_id))
+    )
     query = query.where(VirtualFile.missing_since.is_not(None) if missing else VirtualFile.missing_since.is_(None))
     if section:
         query = query.where(VirtualFile.section == section)
@@ -289,6 +308,8 @@ def content(
     stored = db.get(VirtualFile, file_id)
     if stored is None or stored.company_id != company_id:
         raise HTTPException(404, 'Registro no encontrado.')
+    if stored.section in hidden_sections(principal, company_id):
+        raise HTTPException(403, 'Los expedientes de trabajadores requieren el permiso «Ver expedientes de trabajadores».')
     if not stored.copy_sha256 or stored.copy_sha256 != stored.sha256 or not virtual_blobs.exists(stored.copy_sha256):
         raise HTTPException(404, 'Este archivo no tiene una copia interna vigente.')
     extension = stored.name.rsplit('.', 1)[-1].lower() if '.' in stored.name else ''
@@ -358,7 +379,11 @@ def tree(
     principal.require('documentos.ver', company_id)
     prefix = prefix.strip('/')
     base = prefix + '/' if prefix else ''
-    query = select(VirtualFile).where(VirtualFile.company_id == company_id, VirtualFile.missing_since.is_(None))
+    query = select(VirtualFile).where(
+        VirtualFile.company_id == company_id,
+        VirtualFile.missing_since.is_(None),
+        VirtualFile.section.not_in(hidden_sections(principal, company_id)),
+    )
     if base:
         query = query.where(VirtualFile.virtual_path.startswith(base, autoescape=True))
     if q:

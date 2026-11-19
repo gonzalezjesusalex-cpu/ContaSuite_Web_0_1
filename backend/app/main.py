@@ -37,7 +37,7 @@ from .csf_extract import ocr_available
 from .agent_links import agent_caller
 
 from .agent_jobs import claim_marker, expire_stale_jobs, renew_claim
-from .job_views import KINDS as JOB_KINDS, job_row
+from .job_views import KINDS as JOB_KINDS, job_row, without_workers
 
 from .schemas import BlobCommit, BlobHashes, CompanyIn, TaskIn, ObligationIn, Heartbeat, IndexBatch, JobIn, JobResult
 
@@ -940,7 +940,12 @@ def latest_job(
     if status:
         query = query.where(Job.status == status)
     job = db.scalar(query.order_by(Job.created_at.desc()).limit(1))
-    return job_row(job, principal, job.result if isinstance(job.result, dict) else {}) if job else None
+    if job is None:
+        return None
+    result = job.result if isinstance(job.result, dict) else {}
+    if not principal.can('trabajadores.ver', company_id):
+        result = without_workers(result)  # personal data of workers needs its own action
+    return job_row(job, principal, result)
 
 
 @app.post('/api/jobs/{id}/cancel', dependencies=APP)

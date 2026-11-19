@@ -66,6 +66,14 @@ export function PayrollInventory({ job }: { job?: Job }) {
 /** One folder per worker with the essential documents each one has. Personal data: handle with care. */
 export function WorkersInventory({ job }: { job?: Job }) {
   const data = job?.result.trabajadores;
+  // The server leaves the section out of an analysis for people without «Ver expedientes de trabajadores».
+  if (job?.result.summary && !data)
+    return (
+      <p className="tax-why revisar">
+        Los expedientes de trabajadores contienen datos personales: para verlos se necesita el permiso «Ver
+        expedientes de trabajadores», que asigna la administración.
+      </p>
+    );
   if (!job || !data)
     return <p className="muted">Aún no hay inventario. Usa «Analizar carpeta» para que tu agente lo genere.</p>;
   if (!data.total) return <p className="muted">No se encontraron expedientes de trabajadores.</p>;

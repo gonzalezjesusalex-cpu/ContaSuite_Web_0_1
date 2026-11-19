@@ -96,12 +96,15 @@ const SECTIONS: Section[] = [
 /** Virtual inventory of the last folder analysis, one section per document group. */
 export default function Inventory({ job, companyId }: { job?: Job; companyId: string }) {
   const [key, setKey] = useState('cfdi');
-  const current = SECTIONS.find((s) => s.key === key) ?? SECTIONS[0];
+  // An analysis delivered without the workers' section (no «Ver expedientes de trabajadores»): the tab is hidden.
+  const noWorkers = !!job?.result.summary && !job.result.trabajadores;
+  const sections = noWorkers ? SECTIONS.filter((s) => s.key !== 'trabajadores') : SECTIONS;
+  const current = sections.find((s) => s.key === key) ?? sections[0];
   const View = current.view;
   return (
     <>
       <div className="inventory-sections" role="group" aria-label="Grupo documental">
-        {SECTIONS.map((s) => {
+        {sections.map((s) => {
           const count = job ? s.count(job.result) : undefined;
           const alert = job ? s.alert(job.result) : 0;
           return (

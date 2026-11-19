@@ -41,6 +41,31 @@ def brief(result):
     return out
 
 
+def without_workers(result):
+    """The result of an analysis without the workers' personal data (names, folders, file paths).
+
+    For people without `trabajadores.ver`: the section is removed, the group of the summary keeps only its count and
+    the plain file list drops what the classification places in the workers' group.
+    """
+    from .folder_groups import classify
+
+    if not isinstance(result, dict):
+        return result
+    out = {k: v for k, v in result.items() if k != 'trabajadores'}
+    summary = out.get('summary')
+    if isinstance(summary, dict) and isinstance(summary.get('groups'), list):
+        groups = [
+            {**g, 'examples': [], 'subgroups': {}, 'sensitive': True} if g.get('key') == 'trabajadores' else g
+            for g in summary['groups']
+        ]
+        out['summary'] = {**summary, 'groups': groups}
+    if isinstance(out.get('files'), list):
+        out['files'] = [
+            f for f in out['files'] if classify(str(f.get('relative_path', '')))[0] != 'trabajadores'
+        ]
+    return out
+
+
 def job_row(job, principal, result=None):
     """A job as the browser sees it. The payload (it carries the folder path) is only for administrators."""
     row = {c.name: getattr(job, c.name) for c in Job.__table__.columns if principal.admin or c.name != 'payload'}
