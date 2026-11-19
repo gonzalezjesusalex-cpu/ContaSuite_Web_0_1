@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { stitchButton, stitchCard } from '../components/stitch';
+import { stitchButton } from '../components/stitch';
 type Item = {
   review_id: string;
   document_id: string;
@@ -48,8 +48,8 @@ export default function DocumentReconciliation({
   }, [enabled, companyId, page, reload]);
   if (!enabled) return null;
   return (
-    <section className={stitchCard + ' padded reconciliation-panel'} aria-labelledby="reconciliation-heading">
-      <h2 id="reconciliation-heading">Conciliación documental</h2>
+    <section className="reconciliation-panel" aria-labelledby="reconciliation-heading">
+      <h3 id="reconciliation-heading">Conciliación documental</h3>
       <p>
         Revisa identidad, versión y vínculos por empresa. Una asociación no acredita cumplimiento fiscal. Los originales
         se conservan.

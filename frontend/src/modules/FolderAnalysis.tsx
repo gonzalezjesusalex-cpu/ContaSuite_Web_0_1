@@ -2,14 +2,69 @@ import { FolderSearch, LoaderCircle } from 'lucide-react';
 import { dateLabel } from '../api';
 import type { Job } from '../types';
 
+function ReanalyzeButton({
+  onClick,
+  disabled,
+  analyzing,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  analyzing?: boolean;
+}) {
+  return (
+    <button type="button" className="btn" disabled={disabled} onClick={onClick}>
+      <FolderSearch size={15} aria-hidden="true" />
+      {analyzing ? 'Analizando…' : 'Volver a analizar'}
+    </button>
+  );
+}
+
 function size(bytes: number) {
   if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   return Math.max(1, Math.round(bytes / 1024)) + ' KB';
 }
 
-/** Result of «Analizar carpeta» grouped by document type, visible from every tab of the expediente. */
-export default function FolderAnalysis({ job }: { job?: Job }) {
-  if (!job) return null;
+/** One-line status shown in the header of the expediente (cambio 1.1): the detail lives in the Documentos tab. */
+export function FolderAnalysisLine({ job, doneJob, onView }: { job?: Job; doneJob?: Job; onView: () => void }) {
+  if (job && (job.status === 'queued' || job.status === 'running'))
+    return (
+      <p className="folder-analysis-line" role="status" aria-live="polite">
+        <LoaderCircle size={15} className="spin" aria-hidden="true" />{' '}
+        {job.status === 'queued' ? 'Análisis en cola…' : 'Clasificando…'}
+      </p>
+    );
+  const done = doneJob?.result.summary ? doneJob : job?.status === 'completed' && job.result.summary ? job : undefined;
+  if (!done?.result.summary) return null;
+  return (
+    <p className="folder-analysis-line">
+      <FolderSearch size={15} aria-hidden="true" /> Última clasificación:{' '}
+      {done.result.summary.total.toLocaleString('es-MX')} archivos · {dateLabel(done.created_at)} ·{' '}
+      <button type="button" className="link-button" onClick={onView}>
+        Ver
+      </button>
+    </p>
+  );
+}
+
+/** Full result of «Analizar carpeta» grouped by document type: the «Clasificación de carpeta» tab (cambio 1.2). */
+export default function FolderAnalysis({
+  job,
+  onReanalyze,
+  reanalyzeDisabled,
+  analyzing,
+}: {
+  job?: Job;
+  onReanalyze?: () => void;
+  reanalyzeDisabled?: boolean;
+  analyzing?: boolean;
+}) {
+  if (!job)
+    return (
+      <p className="muted">
+        Aún no hay una clasificación de la carpeta.{' '}
+        {onReanalyze && <ReanalyzeButton onClick={onReanalyze} disabled={reanalyzeDisabled} analyzing={analyzing} />}
+      </p>
+    );
   if (job.status === 'queued' || job.status === 'running')
     return (
       <section className="folder-analysis" role="status" aria-live="polite">
@@ -22,7 +77,13 @@ export default function FolderAnalysis({ job }: { job?: Job }) {
       </section>
     );
   const summary = job.result.summary;
-  if (job.status !== 'completed' || !summary) return null;
+  if (job.status !== 'completed' || !summary)
+    return (
+      <p className="muted">
+        El último análisis no produjo clasificación.{' '}
+        {onReanalyze && <ReanalyzeButton onClick={onReanalyze} disabled={reanalyzeDisabled} analyzing={analyzing} />}
+      </p>
+    );
   return (
     <section className="folder-analysis" aria-label="Clasificación de la carpeta">
       <header>
@@ -30,8 +91,10 @@ export default function FolderAnalysis({ job }: { job?: Job }) {
           <FolderSearch size={17} aria-hidden="true" /> Clasificación de la carpeta
         </h3>
         <small>
-          {summary.total.toLocaleString('es-MX')} archivos · {size(summary.bytes)} · {dateLabel(job.created_at)}
+          {summary.total.toLocaleString('es-MX')} archivos · {size(summary.bytes)} · Último análisis:{' '}
+          {dateLabel(job.created_at)}
         </small>
+        {onReanalyze && <ReanalyzeButton onClick={onReanalyze} disabled={reanalyzeDisabled} analyzing={analyzing} />}
       </header>
       {job.result.truncated && (
         <p className="muted">Se alcanzó el límite de recorrido: el conteo puede estar incompleto.</p>

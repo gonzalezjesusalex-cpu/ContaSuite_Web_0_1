@@ -29,7 +29,7 @@ import { useLatestJob } from '../useLatestJob';
 import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../companyNavigation';
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
-import FolderAnalysis from './FolderAnalysis';
+import { FolderAnalysisLine } from './FolderAnalysis';
 import ExportDialog from './ExportDialog';
 import CopyDialog from './CopyDialog';
 import { CompanySwitcher, CompanyViews, MoreMenu } from './CompanyHeader';
@@ -133,6 +133,7 @@ export default function Dossier({
     const q = new URLSearchParams(params);
     q.set('tab', section);
     q.set('view', value);
+    q.delete('panel');
     q.set('period', period);
     setParams(q);
   }
@@ -159,7 +160,29 @@ export default function Dossier({
       setBusy(false);
     }
   }
-  const documentPanel = <Documents key={c.id} companyId={c.id} notify={notify} refresh={refresh} />;
+  function showClassification() {
+    if (!confirmDiscard()) return;
+    const q = new URLSearchParams(params);
+    q.set('tab', 'Documentos');
+    q.set('view', 'Documentos');
+    q.set('period', period);
+    q.set('panel', 'clasificacion.' + Date.now());
+    setParams(q);
+  }
+  const documentPanel = (
+    <Documents
+      key={c.id}
+      companyId={c.id}
+      notify={notify}
+      refresh={refresh}
+      analysisJob={scanJob}
+      analysisDone={scanDone}
+      onReanalyze={canScan ? () => void scan() : undefined}
+      reanalyzeDisabled={busy || scanning || !!scanBlocked}
+      analyzing={scanning}
+      initialPanel={params.get('panel') || undefined}
+    />
+  );
   return (
     <>
       <div className="dossier-topbar">
@@ -261,7 +284,7 @@ export default function Dossier({
           <Link to="/configuracion#agentes">Instrucciones del agente</Link>
         </p>
       )}
-      <FolderAnalysis job={scanJob} />
+      <FolderAnalysisLine job={scanJob} doneJob={scanDone} onView={showClassification} />
       {copying && (
         <CopyDialog
           company={c}
@@ -334,6 +357,7 @@ export default function Dossier({
                 q.set('tab', t);
                 q.set('period', period);
                 q.delete('view');
+                q.delete('panel');
                 setParams(q);
               }
             }}
@@ -507,8 +531,7 @@ export default function Dossier({
                         {(j.result.total ?? j.result.summary?.total ?? j.result.files?.length ?? 0).toLocaleString(
                           'es-MX',
                         )}{' '}
-                        archivos
-                        clasificados{j.result.truncated && ' · Se alcanzó el límite de escaneo'}
+                        archivos clasificados{j.result.truncated && ' · Se alcanzó el límite de escaneo'}
                       </p>
                     )}
                     {j.result.warnings?.map((w, i) => (

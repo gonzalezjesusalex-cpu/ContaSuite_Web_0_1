@@ -8,6 +8,7 @@ import {
   FileSearch,
   FileText,
   FolderOpen,
+  FolderSearch,
   FolderTree,
   RefreshCw,
   Search,
@@ -17,7 +18,8 @@ import {
 import { api, dateLabel, getToken } from '../api';
 import { Badge, Empty, Field, MiddleText, Modal } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
-import type { StorageDetail, StorageDocument, StorageOptions, StoragePage } from '../types';
+import type { Job, StorageDetail, StorageDocument, StorageOptions, StoragePage } from '../types';
+import FolderAnalysis from './FolderAnalysis';
 import StorageReview from './StorageReview';
 import StorageJobs from './StorageJobs';
 import VirtualBranch, { type BranchFile } from './VirtualBranch';
@@ -55,10 +57,24 @@ export default function Documents({
   companyId,
   notify,
   refresh,
+  analysisJob,
+  analysisDone,
+  onReanalyze,
+  reanalyzeDisabled,
+  analyzing,
+  initialPanel,
 }: {
   companyId?: string;
   notify: (message: string) => void;
   refresh: () => Promise<void>;
+  /** Latest «Analizar carpeta» job of the company (cambio 1.2). */
+  analysisJob?: Job;
+  analysisDone?: Job;
+  onReanalyze?: () => void;
+  reanalyzeDisabled?: boolean;
+  analyzing?: boolean;
+  /** `clasificacion.<nonce>` opens the «Clasificación de carpeta» tab (the header «Ver» link). */
+  initialPanel?: string;
 }) {
   const [options, setOptions] = useState<StorageOptions | null>(null);
   const [filters, setFilters] = useState<Filters>(initial);
@@ -82,7 +98,11 @@ export default function Documents({
   const [type, setType] = useState('unknown');
   const [period, setPeriod] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [branch, setBranch] = useState(false);
+  type Panel = 'explorer' | 'classification' | 'review' | 'branch';
+  const [panel, setPanel] = useState<Panel>('explorer');
+  const [reviewSection, setReviewSection] = useState<'unclassified' | 'reconcile'>('unclassified');
+  const [reconTotal, setReconTotal] = useState<number | null>(null);
+  const branch = panel === 'branch';
   const [branchFile, setBranchFile] = useState<BranchFile | null>(null);
   const [previewRevision, setPreviewRevision] = useState<number | null>(null);
   const autoPreview = useRef(false);
@@ -314,14 +334,36 @@ export default function Documents({
     autoPreview.current = true;
     setSelected(f.document_id);
   }
-  function showBranch(on: boolean) {
-    setBranch(on);
+  function goPanel(next: Panel, section: 'unclassified' | 'reconcile' = reviewSection) {
+    setPanel(next);
+    setReviewSection(section);
     setBranchFile(null);
     setPreviewRevision(null);
     selectedRef.current = '';
     setSelected('');
     setPreview(false);
+    setPage(0);
+    setFilters((f) => ({ ...f, pending: next === 'review' && section === 'unclassified' }));
   }
+  useEffect(() => {
+    if (companyId && initialPanel?.startsWith('clasificacion')) goPanel('classification');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPanel, companyId]);
+  const canReview = !!options?.can_review;
+  const canReconcile = !!options?.can_classify;
+  useEffect(() => {
+    if (!canReconcile) {
+      setReconTotal(null);
+      return;
+    }
+    const abort = new AbortController();
+    const q = new URLSearchParams({ offset: '0', limit: '1' });
+    if (companyId) q.set('company_id', companyId);
+    api<{ total: number }>('/storage/reconciliation?' + q, 'GET', undefined, abort.signal)
+      .then((d) => setReconTotal(d.total))
+      .catch(() => undefined);
+    return () => abort.abort();
+  }, [canReconcile, companyId, reload]);
   const canUpload =
     !!options?.can_write &&
     (!companyId ||
@@ -331,15 +373,10 @@ export default function Documents({
   const writableCompanies =
     options?.companies.filter((c) => options.can_index || options.write_company_ids.includes(c.id)) || [];
   const doc = detail?.document;
+  const showTable = panel === 'explorer' || (panel === 'review' && reviewSection === 'unclassified');
   const years = Array.from({ length: 101 }, (_, i) => String(2100 - i));
   return (
     <div className="documents-module stitch-live-module">
-      <DocumentReconciliation
-        enabled={!!options?.can_classify}
-        companyId={companyId}
-        onSelect={chooseDocument}
-        reload={reload}
-      />
       <section className={stitchCard + ' padded'}>
         <div className="documents-header">
           <div>
@@ -389,39 +426,44 @@ export default function Documents({
         </div>
         <div className="documents-tabs">
           <button
-            aria-pressed={!branch && !filters.pending}
-            className={stitchButton + (!branch && !filters.pending ? ' selected' : '')}
-            onClick={() => {
-              if (branch) showBranch(false);
-              filter('pending', false);
-            }}
+            aria-pressed={panel === 'explorer'}
+            className={stitchButton + (panel === 'explorer' ? ' selected' : '')}
+            onClick={() => goPanel('explorer')}
           >
             Explorador
           </button>
-          {options?.can_review && (
+          {companyId && (
             <button
-              aria-pressed={!branch && filters.pending}
-              className={stitchButton + (!branch && filters.pending ? ' selected' : '')}
-              onClick={() => {
-                if (branch) showBranch(false);
-                filter('pending', true);
-              }}
+              aria-pressed={panel === 'classification'}
+              className={stitchButton + (panel === 'classification' ? ' selected' : '')}
+              onClick={() => goPanel('classification')}
             >
-              Sin clasificar <Badge>{loading ? '…' : (catalog?.pending_count ?? '—')}</Badge>
+              <FolderSearch size={16} />
+              Clasificación de carpeta
+            </button>
+          )}
+          {(canReview || canReconcile) && (
+            <button
+              aria-pressed={panel === 'review'}
+              className={stitchButton + (panel === 'review' ? ' selected' : '')}
+              onClick={() => goPanel('review', canReview ? 'unclassified' : 'reconcile')}
+            >
+              Por revisar {canReview && <Badge>{(catalog?.pending_count ?? '—') + ' sin clasificar'}</Badge>}
+              {canReconcile && <Badge>{(reconTotal ?? '—') + ' conciliación'}</Badge>}
             </button>
           )}
           {companyId && (
             <button
               aria-pressed={branch}
               className={stitchButton + (branch ? ' selected' : '')}
-              onClick={() => showBranch(true)}
+              onClick={() => goPanel('branch')}
             >
               <FolderTree size={16} />
               Rama virtual
             </button>
           )}
         </div>
-        <div className="documents-filters" hidden={branch}>
+        <div className="documents-filters" hidden={!showTable}>
           <Field label="Buscar nombre, empresa, RFC o periodo">
             <div className="documents-search">
               <Search size={16} />
@@ -512,296 +554,337 @@ export default function Documents({
             </button>
           </div>
         )}
-        <p className="documents-note muted" hidden={branch}>
+        <p className="documents-note muted" hidden={!showTable}>
           Disponibilidad según la última comprobación. La clasificación usa RFC del contenido; los casos ambiguos
           requieren revisión. Sin OCR ni validación SAT.
         </p>
         {!companyId && options?.can_index && <StorageJobs sources={options.sources} onComplete={refreshJobs} />}
-        <div className="documents-workspace">
-          {branch && companyId ? (
-            <VirtualBranch companyId={companyId} selected={branchFile?.id || ''} onSelect={openBranchFile} />
-          ) : (
-            <div>
-              <div className="receipt-table scroll sticky-actions" aria-busy={loading}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Documento</th>
-                      <th>Empresa / RFC</th>
-                      <th>Periodo</th>
-                      <th>Origen / disponibilidad</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {!loading &&
-                      catalog?.items.map((d) => (
-                        <tr key={d.id} className={selected === d.id ? 'receipt-selected' : ''}>
-                          <td>
-                            <button
-                              className="receipt-text-button"
-                              onClick={() => {
-                                if (!busy) {
-                                  setPreviewRevision(null);
-                                  setSelected(d.id);
-                                  setPreview(false);
+        {panel === 'review' && (
+          <div className="documents-subtabs" role="group" aria-label="Secciones por revisar">
+            {canReview && (
+              <button
+                aria-pressed={reviewSection === 'unclassified'}
+                className={stitchButton + (reviewSection === 'unclassified' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'unclassified')}
+              >
+                Sin clasificar <Badge>{catalog?.pending_count ?? '—'}</Badge>
+              </button>
+            )}
+            {canReconcile && (
+              <button
+                aria-pressed={reviewSection === 'reconcile'}
+                className={stitchButton + (reviewSection === 'reconcile' ? ' selected' : '')}
+                onClick={() => goPanel('review', 'reconcile')}
+              >
+                Conciliación documental <Badge>{reconTotal ?? '—'}</Badge>
+              </button>
+            )}
+          </div>
+        )}
+        {panel === 'classification' && companyId ? (
+          <FolderAnalysis
+            job={analysisDone ?? analysisJob}
+            onReanalyze={onReanalyze}
+            reanalyzeDisabled={reanalyzeDisabled}
+            analyzing={analyzing}
+          />
+        ) : (
+          <div className="documents-workspace">
+            {panel === 'review' && reviewSection === 'reconcile' ? (
+              <DocumentReconciliation
+                enabled={canReconcile}
+                companyId={companyId}
+                onSelect={chooseDocument}
+                reload={reload}
+              />
+            ) : branch && companyId ? (
+              <VirtualBranch companyId={companyId} selected={branchFile?.id || ''} onSelect={openBranchFile} />
+            ) : (
+              <div>
+                <div className="receipt-table scroll sticky-actions" aria-busy={loading}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Documento</th>
+                        <th>Empresa / RFC</th>
+                        <th>Periodo</th>
+                        <th>Origen / disponibilidad</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!loading &&
+                        catalog?.items.map((d) => (
+                          <tr key={d.id} className={selected === d.id ? 'receipt-selected' : ''}>
+                            <td>
+                              <button
+                                className="receipt-text-button"
+                                onClick={() => {
+                                  if (!busy) {
+                                    setPreviewRevision(null);
+                                    setSelected(d.id);
+                                    setPreview(false);
+                                  }
+                                }}
+                              >
+                                <strong>
+                                  <MiddleText value={d.name} />
+                                </strong>
+                                <small>
+                                  {d.format.toUpperCase()} · {typeNames[d.document_type] || d.document_type} ·{' '}
+                                  {(d.size / 1024).toFixed(1)} KB
+                                </small>
+                              </button>
+                            </td>
+                            <td>
+                              {d.companies.length ? (
+                                d.companies.map((c) => (
+                                  <div key={c.id}>
+                                    <Link to={'/empresas/' + c.id + '?tab=Documentos'}>{c.name}</Link>
+                                    <small>{c.rfc}</small>
+                                  </div>
+                                ))
+                              ) : (
+                                <Badge tone="amber">Sin clasificar</Badge>
+                              )}
+                            </td>
+                            <td>{d.period || 'Sin periodo'}</td>
+                            <td>
+                              {d.sources.map((s, i) => (
+                                <small key={s.source_id + i}>{s.label}</small>
+                              ))}
+                              <Badge
+                                tone={
+                                  d.availability === 'available'
+                                    ? 'green'
+                                    : d.availability === 'unchecked'
+                                      ? 'neutral'
+                                      : 'amber'
                                 }
-                              }}
-                            >
-                              <strong>
-                                <MiddleText value={d.name} />
-                              </strong>
-                              <small>
-                                {d.format.toUpperCase()} · {typeNames[d.document_type] || d.document_type} ·{' '}
-                                {(d.size / 1024).toFixed(1)} KB
-                              </small>
-                            </button>
-                          </td>
-                          <td>
-                            {d.companies.length ? (
-                              d.companies.map((c) => (
-                                <div key={c.id}>
-                                  <Link to={'/empresas/' + c.id + '?tab=Documentos'}>{c.name}</Link>
-                                  <small>{c.rfc}</small>
-                                </div>
-                              ))
-                            ) : (
-                              <Badge tone="amber">Sin clasificar</Badge>
-                            )}
-                          </td>
-                          <td>{d.period || 'Sin periodo'}</td>
-                          <td>
-                            {d.sources.map((s, i) => (
-                              <small key={s.source_id + i}>{s.label}</small>
-                            ))}
-                            <Badge
-                              tone={
-                                d.availability === 'available'
-                                  ? 'green'
-                                  : d.availability === 'unchecked'
-                                    ? 'neutral'
-                                    : 'amber'
-                              }
-                            >
-                              {availabilityNames[d.availability] || d.availability}
-                            </Badge>
-                          </td>
-                          <td>
-                            <button
-                              className="icon-button"
-                              aria-label={'Descargar ' + d.name}
-                              disabled={busy}
-                              onClick={() => download(d)}
-                            >
-                              <Download size={16} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-                {loading ? (
-                  <div className="documents-loading" role="status">
-                    <RefreshCw size={20} className="recopila-spinner" />
-                    Cargando documentos…
-                  </div>
-                ) : (
-                  !catalog?.items.length && (
-                    <Empty
-                      icon={FileText}
-                      title={
-                        filters.pending
-                          ? 'Sin documentos pendientes de clasificar'
-                          : 'Sin documentos para estos filtros'
-                      }
-                    >
-                      Carga un documento o ajusta la búsqueda.
-                    </Empty>
-                  )
-                )}
-              </div>
-              <div className="recopila-pagination">
-                <button
-                  className={stitchButton}
-                  disabled={loading || busy || page === 0}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Anterior
-                </button>
-                <span>
-                  {loading ? '…' : (catalog?.total ?? '—')} documentos · {page + 1} /{' '}
-                  {Math.max(1, Math.ceil((catalog?.total || 0) / 25))}
-                </span>
-                <button
-                  className={stitchButton}
-                  disabled={loading || busy || (page + 1) * 25 >= (catalog?.total || 0)}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          )}
-          <aside className="documents-detail">
-            {detailLoading ? (
-              <div role="status" className="documents-loading">
-                Cargando detalle…
-              </div>
-            ) : doc ? (
-              <>
-                <h3>{doc.name}</h3>
-                {branch && branchFile?.document_id === doc.id && (
-                  <p className="muted virtual-branch-origin">
-                    <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
-                    {branchFile.revision && branchFile.revision !== doc.revision
-                      ? ` · la carpeta tiene la versión ${branchFile.revision}`
-                      : ''}
-                  </p>
-                )}
-                <p className="muted">
-                  {doc.category} · {dateLabel(doc.created_at)}
-                </p>
-                <dl>
-                  <div>
-                    <dt>Periodo</dt>
-                    <dd>{doc.period || 'Sin periodo capturado'}</dd>
-                  </div>
-                  <div>
-                    <dt>Clasificación</dt>
-                    <dd>
-                      {doc.classification_status === 'pending'
-                        ? 'Pendiente de revisión'
-                        : doc.classification_status === 'rejected'
-                          ? 'Propuesta rechazada'
-                          : 'Vinculación registrada'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Disponibilidad</dt>
-                    <dd>{availabilityNames[doc.availability] || doc.availability}</dd>
-                  </div>
-                </dl>
-                {doc.sources.map((s, i) => (
-                  <p className="muted" key={i}>
-                    {s.label} ·{' '}
-                    {s.kind === 'local_folder'
-                      ? 'Carpeta local de sólo lectura'
-                      : s.kind === 'windows_smb'
-                        ? 'Windows pendiente'
-                        : 'Repositorio privado'}
-                    {s.last_seen_at && ` · Comprobado ${dateLabel(s.last_seen_at)}`}
-                  </p>
-                ))}
-                <div className="actions">
-                  <button className={stitchButton} disabled={busy} onClick={verify}>
-                    <RefreshCw size={15} />
-                    Comprobar archivo
-                  </button>
+                              >
+                                {availabilityNames[d.availability] || d.availability}
+                              </Badge>
+                            </td>
+                            <td>
+                              <button
+                                className="icon-button"
+                                aria-label={'Descargar ' + d.name}
+                                disabled={busy}
+                                onClick={() => download(d)}
+                              >
+                                <Download size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                  {loading ? (
+                    <div className="documents-loading" role="status">
+                      <RefreshCw size={20} className="recopila-spinner" />
+                      Cargando documentos…
+                    </div>
+                  ) : (
+                    !catalog?.items.length && (
+                      <Empty
+                        icon={FileText}
+                        title={
+                          filters.pending
+                            ? 'Sin documentos pendientes de clasificar'
+                            : 'Sin documentos para estos filtros'
+                        }
+                      >
+                        Carga un documento o ajusta la búsqueda.
+                      </Empty>
+                    )
+                  )}
+                </div>
+                <div className="recopila-pagination">
                   <button
                     className={stitchButton}
-                    disabled={
-                      busy || !['pdf', 'xml'].includes(doc.format) || (doc.format === 'xml' && doc.size > 1024 * 1024)
-                    }
-                    onClick={() => setPreview(true)}
+                    disabled={loading || busy || page === 0}
+                    onClick={() => setPage((p) => p - 1)}
                   >
-                    <Eye size={15} />
-                    Vista previa
+                    Anterior
                   </button>
-                  <button className={stitchButton} disabled={busy} onClick={() => download(doc)}>
-                    <Download size={15} />
-                    Descargar
+                  <span>
+                    {loading ? '…' : (catalog?.total ?? '—')} documentos · {page + 1} /{' '}
+                    {Math.max(1, Math.ceil((catalog?.total || 0) / 25))}
+                  </span>
+                  <button
+                    className={stitchButton}
+                    disabled={loading || busy || (page + 1) * 25 >= (catalog?.total || 0)}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Siguiente
                   </button>
                 </div>
-                {doc.format === 'cer' && (
-                  <small className="muted">
-                    El certificado se verifica como público antes de guardar o descargar. Consulta su vigencia temporal
-                    y declara su uso en el dashboard de empresas.
-                  </small>
-                )}
-                {options && (
-                  <StorageReview
-                    key={doc.id + ':' + doc.revision}
-                    document={doc}
-                    options={options}
-                    onChange={classificationChanged}
-                  />
-                )}
-                <h3 className="section-subtitle">Versiones y huellas</h3>
-                {detail.versions.length ? (
-                  <ul className="documents-versions">
-                    {detail.versions.map((v) => (
-                      <li key={v.number}>
-                        <strong>
-                          Versión {v.number} · {(v.size / 1024).toFixed(1)} KB
-                        </strong>
-                        <small>{v.sha256 || 'Huella pendiente: pulsa Comprobar archivo'}</small>
-                        <button className={stitchButton} disabled={busy} onClick={() => download(doc, v.number)}>
-                          Descargar versión {v.number}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="muted">
-                    Adjunto anterior pendiente de primera comprobación. El archivo original se conserva.
-                  </p>
-                )}
-                {preview && (
-                  <div className="documents-preview">
-                    <div className="documents-preview-title">
-                      <strong>Vista previa{previewRevision ? ` · versión ${previewRevision}` : ''}</strong>
-                      <button
-                        className="icon-button"
-                        aria-label="Cerrar vista previa"
-                        onClick={() => setPreview(false)}
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    {previewError ? (
-                      <p className="red-text" role="alert">
-                        {previewError}
-                      </p>
-                    ) : previewUrl ? (
-                      <iframe title="Vista previa documental" src={previewUrl + '#toolbar=1&navpanes=0'} />
-                    ) : xml ? (
-                      <pre>{xml}</pre>
-                    ) : (
-                      <p role="status">Cargando vista previa…</p>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : branch && branchFile && !branchFile.document_id ? (
-              <>
-                <h3>{branchFile.name}</h3>
-                <p className="muted virtual-branch-origin">
-                  <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
-                </p>
-                <dl>
-                  <div>
-                    <dt>Ruta original</dt>
-                    <dd>{branchFile.path}</dd>
-                  </div>
-                  <div>
-                    <dt>Tamaño</dt>
-                    <dd>{(branchFile.size / 1024).toFixed(1)} KB</dd>
-                  </div>
-                </dl>
-                <Empty icon={FileSearch} title="Sin documento registrado con la misma huella">
-                  La vista previa está disponible cuando el original está registrado en el Centro Documental (carga o
-                  indexación de la carpeta). Nada se movió ni se copió.
-                </Empty>
-              </>
-            ) : (
-              <Empty icon={FileSearch} title={branch ? 'Selecciona un archivo de la rama' : 'Selecciona un documento'}>
-                {branch
-                  ? 'Los archivos enlazados abren aquí la vista previa de su original registrado.'
-                  : 'Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.'}
-              </Empty>
+              </div>
             )}
-          </aside>
-        </div>
+            <aside className="documents-detail">
+              {detailLoading ? (
+                <div role="status" className="documents-loading">
+                  Cargando detalle…
+                </div>
+              ) : doc ? (
+                <>
+                  <h3>{doc.name}</h3>
+                  {branch && branchFile?.document_id === doc.id && (
+                    <p className="muted virtual-branch-origin">
+                      <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
+                      {branchFile.revision && branchFile.revision !== doc.revision
+                        ? ` · la carpeta tiene la versión ${branchFile.revision}`
+                        : ''}
+                    </p>
+                  )}
+                  <p className="muted">
+                    {doc.category} · {dateLabel(doc.created_at)}
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>Periodo</dt>
+                      <dd>{doc.period || 'Sin periodo capturado'}</dd>
+                    </div>
+                    <div>
+                      <dt>Clasificación</dt>
+                      <dd>
+                        {doc.classification_status === 'pending'
+                          ? 'Pendiente de revisión'
+                          : doc.classification_status === 'rejected'
+                            ? 'Propuesta rechazada'
+                            : 'Vinculación registrada'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Disponibilidad</dt>
+                      <dd>{availabilityNames[doc.availability] || doc.availability}</dd>
+                    </div>
+                  </dl>
+                  {doc.sources.map((s, i) => (
+                    <p className="muted" key={i}>
+                      {s.label} ·{' '}
+                      {s.kind === 'local_folder'
+                        ? 'Carpeta local de sólo lectura'
+                        : s.kind === 'windows_smb'
+                          ? 'Windows pendiente'
+                          : 'Repositorio privado'}
+                      {s.last_seen_at && ` · Comprobado ${dateLabel(s.last_seen_at)}`}
+                    </p>
+                  ))}
+                  <div className="actions">
+                    <button className={stitchButton} disabled={busy} onClick={verify}>
+                      <RefreshCw size={15} />
+                      Comprobar archivo
+                    </button>
+                    <button
+                      className={stitchButton}
+                      disabled={
+                        busy || !['pdf', 'xml'].includes(doc.format) || (doc.format === 'xml' && doc.size > 1024 * 1024)
+                      }
+                      onClick={() => setPreview(true)}
+                    >
+                      <Eye size={15} />
+                      Vista previa
+                    </button>
+                    <button className={stitchButton} disabled={busy} onClick={() => download(doc)}>
+                      <Download size={15} />
+                      Descargar
+                    </button>
+                  </div>
+                  {doc.format === 'cer' && (
+                    <small className="muted">
+                      El certificado se verifica como público antes de guardar o descargar. Consulta su vigencia
+                      temporal y declara su uso en el dashboard de empresas.
+                    </small>
+                  )}
+                  {options && (
+                    <StorageReview
+                      key={doc.id + ':' + doc.revision}
+                      document={doc}
+                      options={options}
+                      onChange={classificationChanged}
+                    />
+                  )}
+                  <h3 className="section-subtitle">Versiones y huellas</h3>
+                  {detail.versions.length ? (
+                    <ul className="documents-versions">
+                      {detail.versions.map((v) => (
+                        <li key={v.number}>
+                          <strong>
+                            Versión {v.number} · {(v.size / 1024).toFixed(1)} KB
+                          </strong>
+                          <small>{v.sha256 || 'Huella pendiente: pulsa Comprobar archivo'}</small>
+                          <button className={stitchButton} disabled={busy} onClick={() => download(doc, v.number)}>
+                            Descargar versión {v.number}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="muted">
+                      Adjunto anterior pendiente de primera comprobación. El archivo original se conserva.
+                    </p>
+                  )}
+                  {preview && (
+                    <div className="documents-preview">
+                      <div className="documents-preview-title">
+                        <strong>Vista previa{previewRevision ? ` · versión ${previewRevision}` : ''}</strong>
+                        <button
+                          className="icon-button"
+                          aria-label="Cerrar vista previa"
+                          onClick={() => setPreview(false)}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      {previewError ? (
+                        <p className="red-text" role="alert">
+                          {previewError}
+                        </p>
+                      ) : previewUrl ? (
+                        <iframe title="Vista previa documental" src={previewUrl + '#toolbar=1&navpanes=0'} />
+                      ) : xml ? (
+                        <pre>{xml}</pre>
+                      ) : (
+                        <p role="status">Cargando vista previa…</p>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : branch && branchFile && !branchFile.document_id ? (
+                <>
+                  <h3>{branchFile.name}</h3>
+                  <p className="muted virtual-branch-origin">
+                    <FolderTree size={13} /> Rama virtual: {branchFile.virtual_path}
+                  </p>
+                  <dl>
+                    <div>
+                      <dt>Ruta original</dt>
+                      <dd>{branchFile.path}</dd>
+                    </div>
+                    <div>
+                      <dt>Tamaño</dt>
+                      <dd>{(branchFile.size / 1024).toFixed(1)} KB</dd>
+                    </div>
+                  </dl>
+                  <Empty icon={FileSearch} title="Sin documento registrado con la misma huella">
+                    La vista previa está disponible cuando el original está registrado en el Centro Documental (carga o
+                    indexación de la carpeta). Nada se movió ni se copió.
+                  </Empty>
+                </>
+              ) : (
+                <Empty
+                  icon={FileSearch}
+                  title={branch ? 'Selecciona un archivo de la rama' : 'Selecciona un documento'}
+                >
+                  {branch
+                    ? 'Los archivos enlazados abren aquí la vista previa de su original registrado.'
+                    : 'Consulta su origen, versiones y vista previa sin mostrar rutas físicas del servidor.'}
+                </Empty>
+              )}
+            </aside>
+          </div>
+        )}
       </section>
       {uploadOpen && (
         <Modal

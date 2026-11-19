@@ -3031,6 +3031,13 @@ dialog[data-closing]::backdrop {
   flex-wrap: wrap;
   margin: 22px 0 18px;
 }
+.documents-subtabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+.documents-subtabs .selected,
 .documents-tabs .selected {
   color: var(--primary);
   background: var(--blue-soft);
@@ -3793,6 +3800,15 @@ textarea:user-invalid {
   align-items: center;
   gap: 6px;
   margin: 0;
+}
+.folder-analysis-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
 }
 .folder-groups {
   margin-top: 10px;
