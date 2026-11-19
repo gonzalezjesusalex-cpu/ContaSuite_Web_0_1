@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Field, Modal, Kpi } from '../components/ui';
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
-import type { State } from '../types';
+import type { Job, State } from '../types';
+import DetectedCertificates from './DetectedCertificates';
 type Secret = { id: string; service_id: string; label: string; revision: number; archived: boolean };
 type Cert = {
   id: string;
@@ -29,7 +30,15 @@ const statuses: Record<string, string> = {
   unknown: 'Sin información',
   pending_verification: 'Pendiente de verificación',
 };
-export default function Credentials({ state, companyId }: { state: State; companyId?: string }) {
+export default function Credentials({
+  state,
+  companyId,
+  scanJob,
+}: {
+  state: State;
+  companyId?: string;
+  scanJob?: Job;
+}) {
   const [company, setCompany] = useState(companyId || ''),
     [data, setData] = useState<Snapshot | null>(null),
     [error, setError] = useState(''),
@@ -168,6 +177,14 @@ export default function Credentials({ state, companyId }: { state: State; compan
             certificates={data.certificates}
             canWrite={can('certificates')}
             archived={!!state.companies.find((c) => c.id === company)?.archived}
+          />
+          <DetectedCertificates
+            job={scanJob}
+            canRegister={can('certificates')}
+            onRegister={(k) => {
+              setCertKind(k);
+              setCertOpen(true);
+            }}
           />
           <div className="tabs">
             {['Resumen', 'Accesos fiscales', 'FIEL', 'CSD', 'IMSS e INFONAVIT', 'Otros servicios', 'Historial'].map(

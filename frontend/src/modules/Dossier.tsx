@@ -396,7 +396,7 @@ export default function Dossier({
           job={scanDone}
         />
       ) : tab === 'Credenciales y Certificados' ? (
-        <Credentials state={state} companyId={c.id} />
+        <Credentials state={state} companyId={c.id} scanJob={scanDone} />
       ) : tab === 'Declaraciones' && can(me, 'declara.usar', c.id) ? (
         <section className="card padded">
           <h2>Declaraciones y acuses</h2>
