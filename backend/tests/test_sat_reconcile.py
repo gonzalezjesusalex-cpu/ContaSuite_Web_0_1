@@ -128,7 +128,7 @@ def test_ppd_invoices_and_their_payments():
     assert next(r for r in out['rows'] if r['u'] == U1)['pagado'] == 100.0
 
 
-def make_certificate(days_before, days_after, rfc):
+def make_certificate(days_before, days_after, rfc, serial=None):
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import rsa
@@ -142,7 +142,7 @@ def make_certificate(days_before, days_after, rfc):
         .subject_name(name)
         .issuer_name(name)
         .public_key(key.public_key())
-        .serial_number(1)
+        .serial_number(serial or x509.random_serial_number())
         .not_valid_before(now - timedelta(days=days_before))
         .not_valid_after(now + timedelta(days=days_after))
         .sign(key, hashes.SHA256())
@@ -153,7 +153,8 @@ def make_certificate(days_before, days_after, rfc):
 def test_certificate_validity_states_and_holder_kind():
     now = datetime.now(timezone.utc)
     assert certificate_info(make_certificate(10, 400, 'ABC010101AB1'), now)['s'] == 'vigente'
-    assert certificate_info(make_certificate(10, 10, 'ABC010101AB1'), now)['s'] == 'por_vencer'
+    assert certificate_info(make_certificate(10, 10, 'ABC010101AB1'), now)['s'] == 'critico'
+    assert certificate_info(make_certificate(10, 60, 'ABC010101AB1'), now)['s'] == 'por_vencer'
     assert certificate_info(make_certificate(400, -5, 'ABC010101AB1'), now)['s'] == 'vencido'
     assert certificate_info(make_certificate(-5, 400, 'ABC010101AB1'), now)['s'] == 'aun_no'
     with pytest.raises(ValueError):
@@ -175,3 +176,29 @@ def test_certificate_index_flags_only_foreign_sello_and_unreadable_files():
     assert by_name['ajeno.cer']['why'] == 'rfc_ajeno'
     assert by_name['persona.cer']['why'] == '' and not by_name['persona.cer']['emp']
     assert by_name['roto.cer']['s'] == 'ilegible' and out['revisar'] == 2
+
+
+def test_certificate_status_boundaries():
+    from app.cert_groups import certificate_status
+
+    now = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    assert certificate_status(now + timedelta(days=90), now) == ('por_vencer', 90)
+    assert certificate_status(now + timedelta(days=90, seconds=1), now) == ('por_vencer', 90)  # floor: still 90 days
+    assert certificate_status(now + timedelta(days=91), now)[0] == 'vigente'
+    assert certificate_status(now + timedelta(days=30), now) == ('por_vencer', 30)
+    assert certificate_status(now + timedelta(days=30) - timedelta(seconds=1), now) == ('critico', 29)
+    assert certificate_status(now + timedelta(days=29, hours=23), now) == ('critico', 29)
+    assert certificate_status(now, now)[0] == 'critico'  # the very instant is still valid
+    assert certificate_status(now - timedelta(seconds=1), now)[0] == 'vencido'
+
+
+def test_certificate_index_dedups_by_serial_and_exposes_public_data():
+    index = CertIndex('ABC010101AB1')
+    cert = make_certificate(1, 400, 'ABC010101AB1', serial=int('30303030303030303030', 16))
+    index.add('FIEL/a.cer', cert)
+    index.add('Respaldo/copia.cer', cert)
+    index.add('SELLO DIGITAL/otro.cer', make_certificate(1, 60, 'ABC010101AB1'))
+    out = index.result()
+    assert out['total'] == 2 and out['por_vencer'] == 1
+    first = next(r for r in out['rows'] if r['k'] == 'FIEL')
+    assert first['serie'] == '0000000000' and first['hasta_ts'].endswith('+00:00')

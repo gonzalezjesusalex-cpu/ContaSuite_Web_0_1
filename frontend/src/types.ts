@@ -198,11 +198,16 @@ export interface PpdRow {
 }
 export interface CertRow {
   p: string;
+  /** Public data of the .cer (cambio 2.1); optional for results created before it. */
+  serie?: string;
+  emisor?: string;
+  desde_ts?: string;
+  hasta_ts?: string;
   k: 'FIEL' | 'CSD' | 'RL' | '';
   desde: string;
   hasta: string;
   dias: number | null;
-  s: 'vigente' | 'por_vencer' | 'vencido' | 'aun_no' | 'ilegible';
+  s: 'vigente' | 'por_vencer' | 'critico' | 'vencido' | 'aun_no' | 'ilegible';
   rfcs: string[];
   emp: boolean;
   why: string;
@@ -347,6 +352,7 @@ export interface Job {
       total: number;
       vigentes: number;
       por_vencer: number;
+      criticos?: number;
       vencidos: number;
       revisar: number;
     };

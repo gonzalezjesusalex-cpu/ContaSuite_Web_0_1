@@ -75,7 +75,11 @@ const SECTIONS: Section[] = [
     label: 'e.firma y sello',
     view: CertInventory,
     count: (r) => r.certificados?.total,
-    alert: (r) => (r.certificados?.por_vencer ?? 0) + (r.certificados?.vencidos ?? 0) + (r.certificados?.revisar ?? 0),
+    alert: (r) =>
+      (r.certificados?.por_vencer ?? 0) +
+      (r.certificados?.criticos ?? 0) +
+      (r.certificados?.vencidos ?? 0) +
+      (r.certificados?.revisar ?? 0),
   },
   {
     key: 'cambios',

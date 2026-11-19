@@ -10,6 +10,7 @@ const KIND: Record<string, string> = {
 const STATE: Record<string, string> = {
   vigente: 'Vigente',
   por_vencer: 'Por vencer',
+  critico: 'Crítico',
   vencido: 'Vencido',
   aun_no: 'Aún no vigente',
   ilegible: 'No se pudo leer',
@@ -26,7 +27,7 @@ export default function CertInventory({ job }: { job?: Job }) {
     <div className="cert-inventory">
       <p>
         <strong>e.firma y sello digital</strong> · {data.total} certificados · {data.vigentes} vigentes ·{' '}
-        {data.por_vencer} por vencer · {data.vencidos} vencidos
+        {data.por_vencer} por vencer · {data.criticos ?? 0} críticos · {data.vencidos} vencidos
       </p>
       <p className="tax-why">
         Sólo se lee el certificado público (.cer). Las llaves privadas y las contraseñas no se abren. Las fechas son las
