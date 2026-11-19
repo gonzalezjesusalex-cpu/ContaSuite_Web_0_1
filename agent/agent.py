@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 import threading
 
 MAX_FILES = 3000
-CAPABILITIES = ['scan_folder', 'export_virtual']
+CAPABILITIES = ['scan_folder', 'export_virtual', 'write_cfdi']
 
 
 def capabilities(config):
@@ -47,6 +47,16 @@ def put_bytes(url, token, path, data):
     )
     with opener(req, timeout=120) as response:
         return json.load(response)
+
+
+def get_bytes(url, token, path):
+    """GET one file's content from the API (the server only serves what the running job lists)."""
+    req = Request(url.rstrip('/') + '/api' + path, headers={'Authorization': 'Bearer ' + token}, method='GET')
+    opener = (
+        build_opener(ProxyHandler({})).open if urlparse(url).hostname in {'localhost', '127.0.0.1', '::1'} else urlopen
+    )
+    with opener(req, timeout=120) as response:
+        return response.read()
 
 
 def safe_inventory(folder, allowed_roots, rfc='', with_index=False, copy=None):
@@ -477,6 +487,36 @@ def export_virtual(payload, allowed_roots):
     return execute(scan.provider, plan['items'], destination)
 
 
+def write_cfdi(payload, allowed_roots, fetch, notify=None):
+    """Write the accepted CFDI files into the company folder: only copies, never overwriting, SHA-256 verified.
+
+    The destination is checked by its text (inside the company folder and an authorized root) and on disk (the nearest
+    existing folder is a real path, without links, inside an authorized root).
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+    from app.cfdi_write import destination_problem, write_files
+    from app.storage.paths import check_no_links
+    from app.storage.providers import StorageError
+
+    folder, destination = payload['folder'], str(payload.get('destination') or '')
+    problem = destination_problem(destination, folder, allowed_roots)
+    if problem:
+        raise StorageError(problem)
+    target = Path(destination)
+    anchor = next(p for p in (target, *target.parents) if p.exists())
+    try:
+        check_no_links(anchor)
+    except StorageError:
+        raise StorageError('invalid_path') from None
+    if not any(anchor.resolve().is_relative_to(Path(r).resolve()) for r in allowed_roots):
+        raise StorageError('destino_fuera_de_raices')
+    result = write_files(payload['files'], destination, fetch, getattr(notify, 'cancelled', None), notify)
+    result['destino'] = destination
+    return result
+
+
 def sat_download(payload, options, notify=None):
     """Open the browser for the user, download the declarations' PDFs into a private temporary folder and report them.
 
@@ -535,20 +575,25 @@ def send_sat_pdfs(put_fn, job_id, agent_id, result, notify=None):
     result['no_entregados'] = failed
 
 
-def progress_reporter(post_fn, job_id, agent_id):
+def progress_reporter(post_fn, job_id, agent_id, kind=None):
     """Best-effort reports of a SAT download's phase: a lost report never fails the job."""
     import time
 
     last = {'fase': None, 'at': 0.0}
     cancelled = threading.Event()
+    path = '/cfdi-progress' if kind == 'write_cfdi' else '/progress'
 
     def report(event):
         now = time.time()
-        if event.get('fase') == last['fase'] and event.get('fase') != 'descargando' and now - last['at'] < 9:
+        if (
+            event.get('fase') == last['fase']
+            and event.get('fase') not in ('descargando', 'escribiendo')
+            and now - last['at'] < 9
+        ):
             return
         last.update(fase=event.get('fase'), at=now)
         try:
-            reply = post_fn('/agent/jobs/' + job_id + '/progress', {'agent_id': agent_id, **event})
+            reply = post_fn('/agent/jobs/' + job_id + path, {'agent_id': agent_id, **event})
             if isinstance(reply, dict) and reply.get('cancelar'):
                 cancelled.set()  # cancelled from ContaSuite: the download stops before its next row
         except Exception:  # noqa: BLE001 - progress is informative only
@@ -558,7 +603,7 @@ def progress_reporter(post_fn, job_id, agent_id):
     return report
 
 
-def run_job(job, roots, options=None, notify=None):
+def run_job(job, roots, options=None, notify=None, fetch=None):
     """(status, result) of one claimed job. Never raises: every failure becomes its data-free reason."""
     try:
         payload = job['payload']
@@ -568,6 +613,8 @@ def run_job(job, roots, options=None, notify=None):
             )
         if job['kind'] == 'export_virtual':
             return 'completed', export_virtual(payload, roots)
+        if job['kind'] == 'write_cfdi':
+            return 'completed', write_cfdi(payload, roots, fetch, notify)
         if job['kind'] == 'sat_declaraciones':
             return 'completed', sat_download(payload, options or {}, notify)
         raise ValueError('Operación no admitida')
@@ -609,8 +656,11 @@ def run(config, stop_event=None, request_fn=request):
             if job:
                 logging.info('Procesando trabajo %s', job['id'])
                 post_fn = lambda path, data: request_fn(url, token, path, data)  # noqa: E731
-                notify = progress_reporter(post_fn, job['id'], agent_id)
-                status, result = run_job(job, roots, config, notify)
+                notify = progress_reporter(post_fn, job['id'], agent_id, job['kind'])
+                fetch = lambda item, job_id=job['id']: get_bytes(  # noqa: E731
+                    url, token, '/agent/jobs/' + job_id + '/cfdi/' + item + '?agent_id=' + agent_id
+                )
+                status, result = run_job(job, roots, config, notify, fetch)
                 send_index(lambda path, data: request_fn(url, token, path, data), job['id'], agent_id, result)
                 send_copies(
                     lambda path, data: request_fn(url, token, path, data),
@@ -646,6 +696,8 @@ REASONS = {
     'sat_sin_controles': 'La tabla de declaraciones no tiene PDF descargables que se puedan identificar. No se hizo ningún clic.',
     'sat_cancelado': 'La descarga se canceló.',
     'sat_navegador_cerrado': 'Se cerró la ventana del navegador antes de terminar la descarga.',
+    'destino_invalido': 'La empresa no tiene una carpeta de destino válida.',
+    'destino_fuera_de_raices': 'El destino está fuera de las carpetas autorizadas o de la carpeta de la empresa.',
 }
 
 
@@ -737,9 +789,12 @@ class LinkedAgent:
 
         def work():
             notify = progress_reporter(
-                lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id
+                lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id, job['kind']
             )
-            status, result = run_job(job, job['payload'].get('roots') or [], self.config, notify)
+            fetch = lambda item: get_bytes(  # noqa: E731
+                self.url, token, '/agent/jobs/' + job['id'] + '/cfdi/' + item + '?agent_id=' + self.agent_id
+            )
+            status, result = run_job(job, job['payload'].get('roots') or [], self.config, notify, fetch)
             send_index(lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id, result)
             send_copies(
                 lambda path, data: self.post(self.url, path, data, token),

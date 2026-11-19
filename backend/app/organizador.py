@@ -606,6 +606,109 @@ def suggestion(company_id: str, db: Session = Depends(session), principal: Princ
     return {'rfc': company.rfc, 'year': year, 'months': [month], 'last_period': last_period}
 
 
+def accepted_for_write(db, run):
+    """Files accepted in 5.5 (saved or already registered) that belong to the run's year, and the ones left out."""
+    year = run.options['year']
+    included, left_out = [], []
+    for i in db.scalars(select(OrganizadorItem).where(OrganizadorItem.run_id == run.id)).all():
+        if i.state not in ('saved', 'ya_registrado'):
+            continue
+        period = i.decided_period or i.folder_period
+        entry = {'id': i.id, 'name': i.name, 'kind': i.kind, 'period': period, 'sha256': i.sha256}
+        (included if period.startswith(f'{year}-') else left_out).append(entry)
+    return included, left_out
+
+
+def write_target(db, principal, run):
+    """(company, destination, link) or an HTTPException saying why the agent cannot write now."""
+    from pathlib import PureWindowsPath
+
+    from .agent_links import active_link_for, inside_roots, online as link_online, roots
+
+    if not run.company_id:
+        raise HTTPException(422, 'El análisis no pertenece a una empresa: guárdalo primero en un expediente.')
+    company = db.get(Company, run.company_id)
+    CFDI.require_company(principal, company.id)
+    principal.require('carpeta.exportar', company.id)
+    if not company.folder:
+        raise HTTPException(422, 'La empresa no tiene ruta de carpeta: agrégala en Editar › Expediente digital.')
+    allowed = roots(db)
+    link = active_link_for(db, principal.subject)
+    if link is None:
+        raise HTTPException(409, 'Tu agente local no está vinculado: inicia sesión en ContaSuite en el equipo Windows.')
+    if not link_online(link):
+        raise HTTPException(409, 'Tu agente local está desconectado: revisa que esté en ejecución.')
+    if not allowed or not inside_roots(company.folder, allowed):
+        raise HTTPException(409, 'La ruta de la empresa está fuera de las carpetas autorizadas para el agente.')
+    destination = str(PureWindowsPath(company.folder) / str(run.options['year']))
+    return company, destination, link
+
+
+@router.get('/runs/{ident}/write-folder-preview')
+def write_folder_preview(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Destination and list of the files that would be written into the company's folder (cambio 5.7)."""
+    run = CFDI.check(principal, get_run(db, ident))
+    included, left_out = accepted_for_write(db, run)
+    company, destination, link = write_target(db, principal, run)
+    return {
+        'destination': destination,
+        'machine': link.machine,
+        'files': [{k: v for k, v in f.items() if k != 'sha256'} for f in included],
+        'left_out': [{'name': f['name'], 'period': f['period']} for f in left_out],
+        'structure': 'MM.- MES / EMITIDOS o RECIBIDOS',
+    }
+
+
+class WriteIn(BaseModel):
+    confirm: bool = False
+
+
+@router.post('/runs/{ident}/write-folder', status_code=201)
+def write_folder(ident: str, data: WriteIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Queue the agent job. It needs the explicit confirmation the user gave on screen."""
+    from .models import Job
+
+    if not data.confirm:
+        raise HTTPException(422, 'Confirma de forma explícita la escritura en la carpeta de la empresa.')
+    run = CFDI.check(principal, get_run(db, ident))
+    included, _left_out = accepted_for_write(db, run)
+    if not included:
+        raise HTTPException(422, 'No hay archivos aceptados para escribir. Guarda primero en el expediente.')
+    company, destination, link = write_target(db, principal, run)
+    busy = db.scalar(
+        select(Job.id).where(
+            Job.company_id == company.id, Job.kind == 'write_cfdi', Job.status.in_(('queued', 'running'))
+        )
+    )
+    if busy:
+        raise HTTPException(409, 'Ya hay una escritura en curso para esta empresa.')
+    job = Job(
+        company_id=company.id,
+        agent_id=link.agent_id,
+        kind='write_cfdi',
+        payload={
+            'folder': company.folder,
+            'rfc': company.rfc,
+            'destination': destination,
+            'run_id': run.id,
+            'files': included,
+        },
+        requested_by=principal.subject,
+        link_id=link.id,
+        machine=link.machine,
+    )
+    db.add(job)
+    db.add(
+        Audit(
+            company_id=company.id,
+            actor_id=principal.subject,
+            action=f'Escritura de CFDI en la carpeta de la empresa solicitada ({len(included)} archivos)',
+        )
+    )
+    db.commit()
+    return {'id': job.id, 'destination': destination, 'files': len(included)}
+
+
 @router.post('/runs/{ident}/generate', status_code=202)
 def start_generate(
     ident: str, background: BackgroundTasks, db: Session = Depends(session), principal: Principal = Depends(auth)

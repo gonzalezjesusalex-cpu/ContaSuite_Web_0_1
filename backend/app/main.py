@@ -814,7 +814,7 @@ def delete_document(id: str, db: Session = Depends(session), principal: Principa
 
 def job_action(kind):
     """The permission a job needs, by kind: exporting and downloading from the SAT are their own permissions."""
-    if kind == 'export_virtual':
+    if kind in ('export_virtual', 'write_cfdi'):
         return 'carpeta.exportar'
     return 'declara.usar' if kind == 'sat_declaraciones' else 'carpeta.analizar'
 
@@ -953,7 +953,11 @@ def cancel_job(id: str, db: Session = Depends(session), principal: Principal = D
     """Stop a SAT download. Queued: ends now. Running: flagged, and the agent stops at its next report, keeping the
     PDFs it already delivered."""
     job = db.get(Job, id)
-    if not job or job.kind != 'sat_declaraciones' or not (principal.admin or job.requested_by == principal.subject):
+    if (
+        not job
+        or job.kind not in ('sat_declaraciones', 'write_cfdi')
+        or not (principal.admin or job.requested_by == principal.subject)
+    ):
         raise HTTPException(404, 'Descarga no encontrada')
     principal.require(job_action(job.kind), job.company_id)
     if job.status == 'queued':
@@ -1065,6 +1069,8 @@ def audit_text(kind, status):
         return 'Exportación ordenada ' + ('completada' if done else 'fallida')
     if kind == 'sat_declaraciones':
         return 'Descarga de declaraciones ' + ('completada' if done else 'fallida')
+    if kind == 'write_cfdi':
+        return 'Escritura de CFDI en la carpeta de la empresa ' + ('completada' if done else 'fallida')
     return 'Análisis local ' + ('completado' if done else 'fallido')
 
 
@@ -1307,8 +1313,10 @@ app.include_router(virtual_index_router)
 
 
 from .sat_declaraciones import router as sat_declaraciones_router
+from .cfdi_write import router as cfdi_write_router
 
 app.include_router(sat_declaraciones_router)
+app.include_router(cfdi_write_router)
 
 
 from .fiscal_control import router as fiscal_control_router

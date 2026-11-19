@@ -185,6 +185,59 @@ with tempfile.TemporaryDirectory() as folder:
             assert result['status'] == 'completed', result
             result = client.get(f"/api/companies/{company.json()['id']}/jobs/latest", params={'kind': 'scan_folder'}).json()
             assert {f['name'] for f in result['result']['files']} == {'example.xml'}, result['result']
+            # Cambio 5.7: write the accepted CFDI files into the company folder through the linked agent.
+            import io
+            import zipfile
+
+            rfc = 'LAT261109AA1'
+            cfdi = (
+                '<c:Comprobante xmlns:c="http://www.sat.gob.mx/cfd/4" '
+                'xmlns:t="http://www.sat.gob.mx/TimbreFiscalDigital" TipoDeComprobante="I" Fecha="2026-04-10T10:00:00">'
+                f'<c:Emisor Rfc="{rfc}"/><c:Receptor Rfc="BBB010101BBB"/><c:Complemento>'
+                '<t:TimbreFiscalDigital UUID="11111111-2222-3333-4444-555555555555"/></c:Complemento></c:Comprobante>'
+            ).encode()
+            archive = io.BytesIO()
+            with zipfile.ZipFile(archive, 'w') as z:
+                z.writestr(f'Base/Emitidos/{rfc}/2026-04/factura.xml', cfdi)
+            company_id = company.json()['id']
+            run = client.post(
+                '/api/organizador/runs',
+                files={'files': ('entrada.zip', archive.getvalue(), 'application/zip')},
+                data={
+                    'rfc': rfc,
+                    'year': '2026',
+                    'months': '4',
+                    'kinds': 'Emitidos,Recibidos',
+                    'extensions': '.xml,.pdf',
+                    'company_id': company_id,
+                },
+            )
+            run.raise_for_status()
+            run_url = '/api/organizador/runs/' + run.json()['id']
+            for _ in range(100):
+                if client.get(run_url).json()['run']['status'] == 'analyzed':
+                    break
+                time.sleep(0.2)
+            else:
+                raise AssertionError('El análisis del Organizador no terminó')
+            assert client.post(run_url + '/save', json={}).json()['counts']['nuevo'] == 1
+            assert client.post(run_url + '/write-folder', json={}).status_code == 422  # needs the explicit confirmation
+            preview = client.get(run_url + '/write-folder-preview').json()
+            assert preview['destination'].endswith('2026') and len(preview['files']) == 1, preview
+            for expected, label in ((1, 'escritos'), (1, 'duplicados')):
+                started = client.post(run_url + '/write-folder', json={'confirm': True})
+                started.raise_for_status()
+                write_id = started.json()['id']
+                for _ in range(100):
+                    written = next(j for j in client.get('/api/state').json()['jobs'] if j['id'] == write_id)
+                    if written['status'] in ['completed', 'failed']:
+                        break
+                    time.sleep(0.2)
+                assert written['status'] == 'completed' and written['result'][label] == expected, written
+            target = allowed / '2026' / '04.- ABRIL' / 'EMITIDOS' / 'factura.xml'
+            assert target.read_bytes() == cfdi  # copied byte by byte; the second run never overwrote it
+            assert not list((allowed / '2026').rglob('*.part'))
+            print('PASS: CFDI written into the company folder by the linked agent; a second run reports Duplicado.')
             # Signing out ends the link: the agent stops working for that user.
             client.post('/api/auth/logout').raise_for_status()
             with httpx.Client(base_url=local, trust_env=False, timeout=3) as agent_http:
