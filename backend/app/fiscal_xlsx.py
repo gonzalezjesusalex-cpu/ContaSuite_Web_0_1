@@ -80,7 +80,7 @@ def read_workbook(payload):
             if total > MAX_ROWS_TOTAL or number > MAX_ROWS_PER_SHEET:
                 raise InvalidWorkbook('row_limit')
             cells = {}
-            for header, value in zip(headers, values):
+            for header, value in zip(headers, values, strict=False):
                 if isinstance(value, str) and value.startswith('='):
                     formulas += 1
                     value = None
