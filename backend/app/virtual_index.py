@@ -379,26 +379,36 @@ def tree(
     principal.require('documentos.ver', company_id)
     prefix = prefix.strip('/')
     base = prefix + '/' if prefix else ''
-    query = select(VirtualFile).where(
+    where = [
         VirtualFile.company_id == company_id,
         VirtualFile.missing_since.is_(None),
         VirtualFile.section.not_in(hidden_sections(principal, company_id)),
-    )
+    ]
     if base:
-        query = query.where(VirtualFile.virtual_path.startswith(base, autoescape=True))
+        where.append(VirtualFile.virtual_path.startswith(base, autoescape=True))
     if q:
-        query = query.where(
+        where.append(
             or_(VirtualFile.virtual_path.contains(q, autoescape=True), VirtualFile.path.contains(q, autoescape=True))
         )
-    rows = db.scalars(query.order_by(VirtualFile.virtual_path, VirtualFile.path)).all()
-    folders, here = Counter(), []
-    for f in rows:
-        rest = f.virtual_path[len(base) :].strip('/')
-        if not q and '/' in rest:
-            folders[rest.split('/', 1)[0]] += 1
-        else:
-            here.append(f)
+    total = db.scalar(select(func.count()).select_from(VirtualFile).where(*where)) or 0
+    folders = Counter()
+    here_where = list(where)
+    if not q:
+        # Folders of this level: only the path column is read (never whole rows), counted per first segment.
+        for virtual_path in db.scalars(select(VirtualFile.virtual_path).where(*where)):
+            rest = virtual_path[len(base) :].strip('/')
+            if '/' in rest:
+                folders[rest.split('/', 1)[0]] += 1
+        # The files of this level are the ones with no further folder below the prefix.
+        deeper = base.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%/%'
+        here_where.append(VirtualFile.virtual_path.not_like(deeper, escape='\\'))
     limit = 500
+    here = db.scalars(
+        select(VirtualFile)
+        .where(*here_where)
+        .order_by(VirtualFile.virtual_path, VirtualFile.path)
+        .limit(limit + 1)  # one more than shown tells whether there are more
+    ).all()
     links = _links(db, company_id, [f.sha256 for f in here[:limit]])
     return {
         'prefix': prefix,
@@ -419,5 +429,5 @@ def tree(
             for f in here[:limit]
         ],
         'more': len(here) > limit,
-        'total': len(rows),
+        'total': total,
     }
