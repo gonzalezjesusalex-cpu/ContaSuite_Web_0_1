@@ -301,6 +301,48 @@ class RecopilaRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class RecopilaPolicy(Base):
+    """One policy page found by a Recopila analysis (cs_0016)."""
+
+    __tablename__ = 'recopila_policies'
+    __table_args__ = (UniqueConstraint('run_id', 'idx', name='uq_recopila_policies_run_idx'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    run_id: Mapped[str] = mapped_column(ForeignKey('recopila_runs.id', ondelete='CASCADE'), index=True)
+    idx: Mapped[int] = mapped_column(Integer)
+    policy_type: Mapped[str] = mapped_column(String(40))
+    policy_date: Mapped[str] = mapped_column(String(10), default='')
+    period: Mapped[str] = mapped_column(String(7), default='', index=True)
+    status: Mapped[str] = mapped_column(String(20))
+    uuids: Mapped[list] = mapped_column(JSON, default=list)
+
+
+class RecopilaPolicyCfdi(Base):
+    """Policy-CFDI relation with its origin: the engine, an accepted proposal or a manual decision (cs_0016)."""
+
+    __tablename__ = 'recopila_policy_cfdis'
+    policy_id: Mapped[str] = mapped_column(ForeignKey('recopila_policies.id', ondelete='CASCADE'), primary_key=True)
+    cfdi_uuid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    origin: Mapped[str] = mapped_column(String(10))
+    state: Mapped[str] = mapped_column(String(10))
+    decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RecopilaAdjustment(Base):
+    """Manual adjustment made before generating, with who and when (cs_0016)."""
+
+    __tablename__ = 'recopila_adjustments'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    run_id: Mapped[str] = mapped_column(ForeignKey('recopila_runs.id', ondelete='CASCADE'), index=True)
+    policy_idx: Mapped[int] = mapped_column(Integer)
+    action: Mapped[str] = mapped_column(String(10))
+    target: Mapped[str] = mapped_column(String(1000))
+    cfdi_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    actor_id: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class OrganizadorRun(Base):
     __tablename__ = 'organizador_runs'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)

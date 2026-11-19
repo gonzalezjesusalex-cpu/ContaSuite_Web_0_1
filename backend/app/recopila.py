@@ -7,6 +7,7 @@ import stat
 import zipfile
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
+from typing import Literal
 from uuid import uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -14,8 +15,9 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from .database import DATA, SessionLocal, session
-from .models import Company, RecopilaRun, Audit
+from .models import Company, RecopilaRun, Audit, RecopilaPolicy, RecopilaPolicyCfdi, RecopilaAdjustment, now
 from . import recopila_engine as motor
+from . import recopila_enrich as enrich
 
 from .run_access import RECOPILA
 from .security import Principal, auth
@@ -156,16 +158,88 @@ def analyze(ident):
             )
         (root / 'analysis.json').write_text(json.dumps(asdict(result), ensure_ascii=False), encoding='utf-8')
         with SessionLocal() as db:
+            company_id = get_run(db, ident).company_id
+            company = db.get(Company, company_id) if company_id else None
+            rfc = company.rfc if company else ''
+        enrichment = enrich.build(result, rfc)
+        (root / 'enrichment.json').write_text(json.dumps(enrichment, ensure_ascii=False), encoding='utf-8')
+        if enrichment['unsupported']['pages']:
+            warnings.append(
+                f"{enrichment['unsupported']['pages']} páginas parecen pólizas en un formato no compatible"
+                + (' (Contalink)' if enrichment['unsupported']['contalink_hint'] else '')
+                + '. Recopila sólo lee el «Impreso de pólizas» de CONTPAQi; esas páginas no se incluyen.'
+            )
+        if any(r['kind'] == 'rfc_ajeno' for r in enrichment['review']):
+            warnings.append('Hay CFDI con un RFC distinto al de la empresa: revísalos antes de generar.')
+        if any(r['kind'] == 'pareja_no_verificada' for r in enrichment['review']):
+            warnings.append('Hay PDF emparejados por nombre cuyo UUID no aparece en su texto (pareja no verificada).')
+        with SessionLocal() as db:
             run = get_run(db, ident)
             run.status = 'analyzed'
             run.message = 'Análisis terminado. Revisa las coincidencias antes de generar.'
-            run.summary = result.summary
+            run.summary = {
+                **result.summary,
+                'months_detail': enrichment['months'],
+                'leftover_categories': enrichment['leftover_categories'],
+            }
             run.warnings = warnings
+            persist_policies(db, ident, result, enrichment)
             db.add(Audit(company_id=run.company_id, actor_id=run.created_by, action='Recopila: análisis terminado'))
             db.commit()
     except Exception as exc:  # noqa: BLE001 - background job: logged and reported on the run
         logger.exception('Recopila: falló el análisis %s', ident)
         progress(ident, 'error', 'No se pudo analizar: ' + str(exc))
+
+
+def persist_policies(db, ident, result, enrichment):
+    """Store the policies and their CFDI relations (origin: engine) for later queries (cs_0016)."""
+    by_pdf = {c.pdf_path: c.uuid for c in result.cfdis if c.pdf_path}
+    db.query(RecopilaPolicy).filter(RecopilaPolicy.run_id == ident).delete()
+    for index, pol in enumerate(result.policies):
+        row = RecopilaPolicy(
+            id=str(uuid4()),
+            run_id=ident,
+            idx=index,
+            policy_type=pol.policy_type,
+            policy_date=pol.date,
+            period=pol.month,
+            status=enrichment['policies'][index]['status'],
+            uuids=pol.uuids,
+        )
+        db.add(row)
+        for pdf in pol.matched_pdfs:
+            if pdf in by_pdf:
+                db.merge(RecopilaPolicyCfdi(policy_id=row.id, cfdi_uuid=by_pdf[pdf], origin='motor', state='active'))
+
+
+def load_enrichment(ident):
+    path = folder(ident) / 'enrichment.json'
+    return json.loads(path.read_text(encoding='utf-8')) if path.exists() else None
+
+
+def adjustments_for(db, ident):
+    return [
+        {
+            'id': a.id,
+            'policy_idx': a.policy_idx,
+            'action': a.action,
+            'target': a.target,
+            'cfdi_uuid': a.cfdi_uuid,
+            'actor_id': a.actor_id,
+            'created_at': a.created_at.isoformat(),
+            'revoked_at': a.revoked_at.isoformat() if a.revoked_at else None,
+        }
+        for a in db.scalars(
+            select(RecopilaAdjustment).where(RecopilaAdjustment.run_id == ident).order_by(RecopilaAdjustment.created_at)
+        )
+    ]
+
+
+def _relative(root, path):
+    try:
+        return str(Path(path).relative_to(root)).replace(chr(92), '/')
+    except ValueError:
+        return Path(path).name
 
 
 def output_files(ident):
@@ -187,6 +261,9 @@ def generate(ident, by_month):
     try:
         shutil.rmtree(temporary, ignore_errors=True)
         result = load_analysis(ident)
+        with SessionLocal() as db:
+            confirmed = adjustments_for(db, ident)
+        enrich.apply_adjustments(result, confirmed)
         motor.generate_all(result, temporary, lambda m: progress(ident, 'generating', m), generate_by_month=by_month)
         if target.exists():
             shutil.rmtree(target)
@@ -308,12 +385,104 @@ def detail(ident: str, db: Session = Depends(session), principal: Principal = De
                 }
             )
         leftovers = [rel(p) for p in result.leftovers]
+    extra = load_enrichment(ident)
+    if extra and policies:
+        position = {id(p): i for i, p in enumerate(result.policies)}
+        for item, pol in zip(policies, motor.sorted_policies(result), strict=True):
+            index = position[id(pol)]
+            item['index'] = index
+            item['support'] = extra['policies'][index]['status']
+            item['missing'] = extra['policies'][index]['missing']
     return {
         'run': run,
         'policies': policies,
         'leftovers': leftovers,
         'outputs': output_files(ident) if run.status == 'generated' else [],
+        'enrichment': (
+            {
+                'proposals': extra['proposals'],
+                'review': extra['review'],
+                'leftover_items': extra['leftovers'],
+                'leftover_categories': extra['leftover_categories'],
+                'unsupported': extra['unsupported'],
+                'months': extra['months'],
+                'cfdis': extra['cfdis'],
+            }
+            if extra
+            else None
+        ),
+        'adjustments': adjustments_for(db, ident),
     }
+
+
+class AdjustmentIn(BaseModel):
+    policy_index: int
+    action: Literal['attach', 'remove']
+    target: str
+
+
+@router.post('/runs/{ident}/adjustments', status_code=201)
+def add_adjustment(
+    ident: str,
+    data: AdjustmentIn,
+    db: Session = Depends(session),
+    principal: Principal = Depends(auth),
+):
+    """Associate a leftover/proposed PDF with a policy, or drop a proposal, before generating (cambio 4.2)."""
+    run = RECOPILA.check(principal, get_run(db, ident))
+    extra = load_enrichment(ident)
+    if run.status not in ('analyzed', 'generated') or not extra:
+        raise HTTPException(409, 'Primero termina el análisis.')
+    if not 0 <= data.policy_index < len(extra['policies']):
+        raise HTTPException(422, 'Póliza no encontrada.')
+    known = {i['pdf']: i['uuid'] for i in extra['leftovers']} | {p['pdf']: p['uuid'] for p in extra['proposals']}
+    analysis = load_analysis(ident)
+    matched = {_relative(analysis.root, pdf) for pol in analysis.policies for pdf in pol.matched_pdfs}
+    if data.target not in known and data.target not in matched:
+        raise HTTPException(422, 'El documento no pertenece a este análisis.')
+    from_proposal = any(p['pdf'] == data.target and p['policy_index'] == data.policy_index for p in extra['proposals'])
+    adjustment = RecopilaAdjustment(
+        id=str(uuid4()),
+        run_id=ident,
+        policy_idx=data.policy_index,
+        action=data.action,
+        target=data.target,
+        cfdi_uuid=known.get(data.target),
+        actor_id=principal.subject,
+        created_at=now(),
+    )
+    db.add(adjustment)
+    policy = db.scalar(
+        select(RecopilaPolicy).where(RecopilaPolicy.run_id == ident, RecopilaPolicy.idx == data.policy_index)
+    )
+    if policy and adjustment.cfdi_uuid:
+        db.merge(
+            RecopilaPolicyCfdi(
+                policy_id=policy.id,
+                cfdi_uuid=adjustment.cfdi_uuid,
+                origin='propuesta' if from_proposal else 'manual',
+                state='active' if data.action == 'attach' else 'removed',
+                decided_by=principal.subject,
+                decided_at=adjustment.created_at,
+            )
+        )
+    db.add(Audit(company_id=run.company_id, actor_id=principal.subject, action='Recopila: ajuste manual de póliza'))
+    db.commit()
+    return adjustments_for(db, ident)
+
+
+@router.delete('/runs/{ident}/adjustments/{adjustment_id}')
+def revoke_adjustment(
+    ident: str, adjustment_id: str, db: Session = Depends(session), principal: Principal = Depends(auth)
+):
+    RECOPILA.check(principal, get_run(db, ident))
+    adjustment = db.get(RecopilaAdjustment, adjustment_id)
+    if not adjustment or adjustment.run_id != ident:
+        raise HTTPException(404, 'Ajuste no encontrado.')
+    if not adjustment.revoked_at:
+        adjustment.revoked_at = now()
+        db.commit()
+    return adjustments_for(db, ident)
 
 
 class GenerateIn(BaseModel):

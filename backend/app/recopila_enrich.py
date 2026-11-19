@@ -226,7 +226,7 @@ def build(result, company_rfc=''):
         )
         row['policies'] += 1
         row[entry['status']] += 1
-    for item, pdf in zip(leftovers, result.leftovers, strict=True):
+    for pdf in result.leftovers:
         record = by_pdf.get(pdf)
         period = ((details.get(record.uuid, {}) if record else {}).get('fecha') or '')[:7]
         if period in month_detail:
