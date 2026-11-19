@@ -183,3 +183,30 @@ def test_linked_heartbeat_only_renews_the_users_own_job(office):  # noqa: F811
     with SessionLocal.begin() as db:
         db.get(Job, job['id']).requested_by = 'otra-persona'
     assert renew() > timedelta(minutes=19)  # a job of another user is not
+
+
+def test_closing_interrupts_running_jobs_as_failed_with_the_message(client):
+    from app.agent_jobs import INTERRUPTED, interrupt_running_jobs, running_jobs
+
+    c, job = claimed_job(client)
+    with SessionLocal() as db:
+        assert running_jobs(db) == [{'id': job['id'], 'kind': 'scan_folder', 'company_id': c['id']}]
+        assert interrupt_running_jobs(db, ['otro-id']) == []  # only the jobs asked for
+    assert status(job['id'])[0] == 'running'
+    with SessionLocal() as db:
+        assert interrupt_running_jobs(db, [job['id']]) == [job['id']]
+        assert running_jobs(db) == []
+    state, result = status(job['id'])
+    assert state == 'failed' and result['error'] == INTERRUPTED == 'Interrumpido al cerrar ContaSuite'
+    assert 'claimed_at' in result and 'interrupted_at' in result
+    with SessionLocal() as db:
+        assert db.scalar(select(Audit).where(Audit.company_id == c['id'], Audit.action.like('%interrumpido%')))
+    # A late result from the agent is refused, and a finished job is never touched again.
+    late = client.post(
+        '/api/agent/jobs/' + job['id'] + '/result',
+        headers=G,
+        json={'agent_id': 'local', 'status': 'completed', 'result': {'files': []}},
+    )
+    assert late.status_code == 409
+    with SessionLocal() as db:
+        assert interrupt_running_jobs(db) == []

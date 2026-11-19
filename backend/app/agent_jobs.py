@@ -93,3 +93,39 @@ def expire_stale_jobs(db, current=None, minutes=None):
     if expired:
         db.commit()
     return expired
+
+
+INTERRUPTED = 'Interrumpido al cerrar ContaSuite'
+
+
+def running_jobs(db):
+    """The jobs an agent is working on right now: [{'id', 'kind', 'company_id'}]. Used by the development launcher."""
+    return [
+        {'id': job.id, 'kind': job.kind, 'company_id': job.company_id}
+        for job in db.scalars(select(Job).where(Job.status == 'running').order_by(Job.created_at)).all()
+    ]
+
+
+def interrupt_running_jobs(db, ids=None, message=INTERRUPTED, current=None):
+    """Mark `running` jobs (only those in `ids`, when given) as failed because ContaSuite is closing.
+
+    Internal path of the development launcher (it opens the instance's own database with its protected
+    configuration): there is no endpoint for this. Commits; returns the ids that were interrupted.
+    """
+    current = current or datetime.now(timezone.utc)
+    interrupted = []
+    query = select(Job).where(Job.status == 'running')
+    if ids is not None:
+        query = query.where(Job.id.in_(list(ids)))
+    for job in db.scalars(query).all():
+        claimed = _claimed_at(job)
+        result = {'error': message, 'claimed_at': claimed.isoformat(), 'interrupted_at': current.isoformat()}
+        changed = db.execute(  # a result delivered concurrently wins, as in the expiry
+            update(Job).where(Job.id == job.id, Job.status == 'running').values(status='failed', result=result)
+        )
+        if changed.rowcount:
+            db.add(Audit(action='Análisis local interrumpido al cerrar ContaSuite', company_id=job.company_id))
+            interrupted.append(job.id)
+    if interrupted:
+        db.commit()
+    return interrupted
