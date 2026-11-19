@@ -4397,3 +4397,4 @@ textarea:user-invalid {
   border-color: var(--danger);
   color: var(--danger-strong);
 }
+button.header-cert-chip { cursor: pointer; font: inherit; }

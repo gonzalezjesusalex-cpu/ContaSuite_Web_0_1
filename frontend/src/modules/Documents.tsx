@@ -63,7 +63,9 @@ export default function Documents({
   reanalyzeDisabled,
   analyzing,
   initialPanel,
+  onViewCertificates,
 }: {
+  onViewCertificates?: () => void;
   companyId?: string;
   notify: (message: string) => void;
   refresh: () => Promise<void>;
@@ -628,6 +630,7 @@ export default function Documents({
             onReanalyze={onReanalyze}
             reanalyzeDisabled={reanalyzeDisabled}
             analyzing={analyzing}
+            onViewCertificates={onViewCertificates}
           />
         ) : (
           <div className={'documents-workspace' + (noDetail ? ' no-detail' : '')}>

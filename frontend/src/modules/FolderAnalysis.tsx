@@ -1,6 +1,19 @@
 import { FolderSearch, LoaderCircle } from 'lucide-react';
 import { dateLabel } from '../api';
 import type { Job } from '../types';
+import { certState } from '../certStatus';
+
+function certSummary(job: Job) {
+  const rows = job.result.certificados?.rows;
+  if (!rows?.length) return '';
+  const states = rows.map((r) => certState(r).state);
+  const count = (...s: string[]) => states.filter((x) => s.includes(x)).length;
+  const parts = [rows.length + (rows.length === 1 ? ' certificado único' : ' certificados únicos')];
+  if (count('por_vencer')) parts.push(count('por_vencer') + ' por vencer');
+  if (count('critico')) parts.push(count('critico') + (count('critico') === 1 ? ' crítico' : ' críticos'));
+  if (count('vencido')) parts.push(count('vencido') + (count('vencido') === 1 ? ' vencido' : ' vencidos'));
+  return parts.join(' · ');
+}
 
 function ReanalyzeButton({
   onClick,
@@ -52,8 +65,10 @@ export default function FolderAnalysis({
   onReanalyze,
   reanalyzeDisabled,
   analyzing,
+  onViewCertificates,
 }: {
   job?: Job;
+  onViewCertificates?: () => void;
   onReanalyze?: () => void;
   reanalyzeDisabled?: boolean;
   analyzing?: boolean;
@@ -127,7 +142,22 @@ export default function FolderAnalysis({
               </p>
             )}
             {g.sensitive ? (
-              <p className="muted">Sólo se cuentan: no se abren ni se muestran sus nombres.</p>
+              <>
+                <p className="muted">Sólo se cuentan: no se abren ni se muestran sus nombres.</p>
+                {g.key === 'credenciales' && certSummary(job) && (
+                  <p>
+                    {certSummary(job)}
+                    {onViewCertificates && (
+                      <>
+                        {' · '}
+                        <button type="button" className="link-button" onClick={onViewCertificates}>
+                          Ver en FIEL/CSD
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
+              </>
             ) : (
               <ul>
                 {g.examples.map((path) => (

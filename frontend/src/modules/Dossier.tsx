@@ -30,6 +30,7 @@ import { dossierSections, dossierSection, dossierUrl, directoryUrl } from '../co
 import { confirmDiscard } from '../navigationGuard';
 import { OriginalIcon } from '../components/OriginalIcon';
 import { FolderAnalysisLine } from './FolderAnalysis';
+import { urgentCertificate } from '../certStatus';
 import ExportDialog from './ExportDialog';
 import CopyDialog from './CopyDialog';
 import { CompanySwitcher, CompanyViews, MoreMenu } from './CompanyHeader';
@@ -169,6 +170,16 @@ export default function Dossier({
     q.set('panel', 'clasificacion.' + Date.now());
     setParams(q);
   }
+  function showCertificates() {
+    if (!confirmDiscard()) return;
+    const q = new URLSearchParams(params);
+    q.set('tab', 'FIEL/CSD');
+    q.set('view', 'Credenciales y Certificados');
+    q.set('period', period);
+    q.delete('panel');
+    setParams(q);
+  }
+  const urgentCert = urgentCertificate(scanDone?.result.certificados?.rows);
   const documentPanel = (
     <Documents
       key={c.id}
@@ -181,6 +192,7 @@ export default function Dossier({
       reanalyzeDisabled={busy || scanning || !!scanBlocked}
       analyzing={scanning}
       initialPanel={params.get('panel') || undefined}
+      onViewCertificates={showCertificates}
     />
   );
   return (
@@ -332,6 +344,21 @@ export default function Dossier({
         <Badge>Sin consulta SAT</Badge>
         {csfIsStale(c) === true && (
           <Badge tone="amber">Constancia con más de 3 meses ({dateLabel(c.csf_issued_on!)})</Badge>
+        )}
+        {urgentCert && (
+          <button
+            type="button"
+            className="badge amber header-cert-chip"
+            onClick={showCertificates}
+            title="Vigencia según el archivo .cer; no confirma revocación ni validación SAT"
+          >
+            {urgentCert.row.k === 'CSD' ? 'CSD' : 'e.firma'}{' '}
+            {urgentCert.state === 'vencido'
+              ? urgentCert.row.k === 'CSD'
+                ? 'vencido'
+                : 'vencida'
+              : 'vence en ' + urgentCert.days + (urgentCert.days === 1 ? ' día' : ' días')}
+          </button>
         )}
         {csfIsStale(c) === false && <Badge>Constancia del {dateLabel(c.csf_issued_on!)}</Badge>}
       </div>
