@@ -208,3 +208,43 @@ def against_expediente(db, company_id, rows, source):
                 entry.update(state='revision', reason='uuid_contenido_distinto')
         result[rel] = entry
     return result
+
+
+EXTRA_FIELDS = ['uuid', 'incoherencia', 'pareja', 'guardado']
+SAVED = {
+    'saved': 'guardado',
+    'ya_registrado': 'ya registrado',
+    'revision': 'en revisión',
+    'bloqueado': 'bloqueado',
+    'descartado': 'descartado',
+}
+
+
+def export_csv_extended(path, records, rows, items):
+    """The engine's audit CSV plus UUID, incoherence, pair and saved state (cambio 5.5). Formulas stay neutralized."""
+    import csv
+
+    fields = ['state', 'date', 'kind', 'uuid', 'source', 'destination', 'reason', *EXTRA_FIELDS[1:]]
+    with Path(path).open('w', encoding='utf-8-sig', newline='') as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields, extrasaction='ignore')
+        writer.writeheader()
+        for record in records:
+            row = rows.get(record['source'], {})
+            extra = {
+                'uuid': row.get('uuid', ''),
+                'incoherencia': ' | '.join(row.get('incoherence', [])),
+                'pareja': (
+                    row.get('partner', '')
+                    if row.get('pair') == 'identificada'
+                    else ('sin pareja identificada' if row else '')
+                ),
+                'guardado': SAVED.get(items.get(record['source'], ''), 'sin guardar' if row else ''),
+            }
+            merged = {**record, **extra}
+            writer.writerow(
+                {
+                    k: ("'" + str(v) if str(v).startswith(('=', '+', '-', '@')) else v)
+                    for k, v in merged.items()
+                    if k in fields
+                }
+            )

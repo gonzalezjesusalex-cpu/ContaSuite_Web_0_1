@@ -357,6 +357,31 @@ class OrganizadorRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class OrganizadorItem(Base):
+    """A CFDI file reviewed against a company's expediente and what became of it (cs_0017)."""
+
+    __tablename__ = 'organizador_items'
+    __table_args__ = (UniqueConstraint('run_id', 'rel_path', name='uq_organizador_items_run_path'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    run_id: Mapped[str] = mapped_column(ForeignKey('organizador_runs.id', ondelete='CASCADE'), index=True)
+    company_id: Mapped[str | None] = mapped_column(ForeignKey('companies.id'), nullable=True, index=True)
+    rel_path: Mapped[str] = mapped_column(String(700))
+    name: Mapped[str] = mapped_column(String(255))
+    ext: Mapped[str] = mapped_column(String(8))
+    kind: Mapped[str] = mapped_column(String(10))
+    sha256: Mapped[str] = mapped_column(String(64))
+    uuid: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    folder_period: Mapped[str] = mapped_column(String(7))
+    xml_period: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    state: Mapped[str] = mapped_column(String(14))
+    reasons: Mapped[list] = mapped_column(JSON, default=list)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_period: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class DeclaraRun(Base):
     __tablename__ = 'declara_runs'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)

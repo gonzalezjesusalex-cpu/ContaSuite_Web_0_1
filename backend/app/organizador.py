@@ -8,15 +8,19 @@ import stat
 import zipfile
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from .database import DATA, SessionLocal, session
-from .models import Audit, Company, OrganizadorRun
+from .models import Audit, Company, OrganizadorItem, OrganizadorRun, now
 from . import organizador_engine as motor
+from . import organizador_review as content
+from .expediente_save import save_file
 from .run_access import CFDI
 from .security import Principal, auth
 
@@ -159,7 +163,31 @@ def analyze(ident):
             warnings.append(
                 'No hay archivos listos. Revisa RFC, ejercicio, meses y estructura de origen. Se pueden generar las carpetas vacías del periodo.'
             )
+        rows = content.review(plan)
+        omitted = content.omitted_files(plan)
+        foreign = content.foreign_rfc_folders(source, plan.options.rfc)
+        (root / 'review.json').write_text(
+            json.dumps({'rows': rows, 'omitted': omitted, 'foreign_rfcs': foreign}, ensure_ascii=False),
+            encoding='utf-8',
+        )
+        with SessionLocal() as db:
+            company_id = get_run(db, ident).company_id
+            company = db.get(Company, company_id) if company_id else None
+        if company and company.rfc != plan.options.rfc:
+            warnings.append(
+                'El RFC capturado no es el de la empresa elegida: no se podrá guardar en su expediente con ese RFC.'
+            )
+        if foreign:
+            warnings.append('La entrada trae carpetas de otro RFC (' + ', '.join(foreign) + '); no se organizan.')
+        blocked = sum(bool(r['incoherence']) for r in rows.values())
+        if blocked:
+            warnings.append(
+                f'{blocked} archivos tienen una incoherencia con su carpeta (RFC o fecha); no se guardarán en el expediente sin revisión.'
+            )
         summary = {
+            'incoherent': blocked,
+            'unpaired': sum(r['pair'] != 'identificada' for r in rows.values()),
+            'omitted_files': len(omitted),
             'ready': len(plan.ready),
             'omitted': sum(i.state == 'Omitido' for i in plan.items),
             'unselected': unselected,
@@ -324,7 +352,258 @@ def detail(ident: str, db: Session = Depends(session), principal: Principal = De
         records = public_records(plan, [asdict(i) for i in plan.items])
     if run.status == 'generated':
         records = json.loads((folder(ident) / 'result.json').read_text(encoding='utf-8'))
-    return {'run': run, 'records': records}
+    review_data = {}
+    if (folder(ident) / 'review.json').exists():
+        review_data = json.loads((folder(ident) / 'review.json').read_text(encoding='utf-8'))
+    items = [public_item(i) for i in db.scalars(select(OrganizadorItem).where(OrganizadorItem.run_id == ident)).all()]
+    return {
+        'run': run,
+        'records': records,
+        'review': review_data.get('rows', {}),
+        'omitted': review_data.get('omitted', []),
+        'foreign_rfcs': review_data.get('foreign_rfcs', []),
+        'items': items,
+    }
+
+
+def public_item(i):
+    return {
+        'id': i.id,
+        'run_id': i.run_id,
+        'company_id': i.company_id,
+        'path': i.rel_path,
+        'name': i.name,
+        'kind': i.kind,
+        'ext': i.ext,
+        'uuid': i.uuid,
+        'folder_period': i.folder_period,
+        'xml_period': i.xml_period,
+        'state': i.state,
+        'reasons': i.reasons,
+        'document_id': i.document_id,
+        'decided_by': i.decided_by,
+        'decided_at': i.decided_at.isoformat() if i.decided_at else None,
+        'decided_period': i.decided_period,
+    }
+
+
+def load_review(ident):
+    path = folder(ident) / 'review.json'
+    if not path.exists():
+        raise HTTPException(409, 'Primero termina el análisis.')
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def input_source(ident):
+    return Path(load_plan(ident).options.source)
+
+
+def decide_states(db, ident, company_id):
+    """For each XML/PDF of the run: nuevo | ya_registrado | revision | bloqueado, with the reasons (cambios 5.4, 5.5)."""
+    rows = load_review(ident)['rows']
+    source = input_source(ident)
+    clean = {k: r for k, r in rows.items() if not r['incoherence']}
+    against = content.against_expediente(db, company_id, clean, source)
+    out = {}
+    for rel, row in rows.items():
+        if row['incoherence']:
+            out[rel] = {'state': 'bloqueado', 'reasons': row['incoherence'], 'sha256': ''}
+        else:
+            a = against[rel]
+            out[rel] = {'state': a['state'], 'reasons': [a['reason']] if a['reason'] else [], 'sha256': a['sha256']}
+    return out
+
+
+def company_for_save(db, principal, run, requested):
+    company_id = run.company_id or requested
+    if not company_id or not db.get(Company, company_id):
+        raise HTTPException(422, 'Elige la empresa del expediente donde se guardará.')
+    if run.company_id and requested and requested != run.company_id:
+        raise HTTPException(422, 'Este análisis pertenece a otra empresa.')
+    CFDI.require_company(principal, company_id)
+    company = db.get(Company, company_id)
+    if company.rfc != run.options['rfc']:
+        raise HTTPException(422, 'El RFC del análisis no es el de la empresa: no se guarda en su expediente.')
+    return company_id
+
+
+def summarize_states(states):
+    counts = {'nuevo': 0, 'ya_registrado': 0, 'revision': 0, 'bloqueado': 0}
+    for item in states.values():
+        counts[item['state']] += 1
+    return counts
+
+
+@router.get('/runs/{ident}/save-preview')
+def save_preview(
+    ident: str, company_id: str = '', db: Session = Depends(session), principal: Principal = Depends(auth)
+):
+    """Summary before saving: nuevos, ya registrados, en revisión y bloqueados (cambio 5.5)."""
+    run = CFDI.check(principal, get_run(db, ident))
+    if run.status not in ('analyzed', 'generated'):
+        raise HTTPException(409, 'Primero termina el análisis.')
+    target = company_for_save(db, principal, run, company_id)
+    states = decide_states(db, ident, target)
+    return {'company_id': target, 'counts': summarize_states(states), 'files': states}
+
+
+class SaveIn(BaseModel):
+    company_id: str = ''
+
+
+@router.post('/runs/{ident}/save')
+def save_to_expediente(ident: str, data: SaveIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Save the clean files; the blocked and conflicting ones go to «Por revisar» (CFDI). Cambio 5.5."""
+    run = CFDI.check(principal, get_run(db, ident))
+    if run.status not in ('analyzed', 'generated'):
+        raise HTTPException(409, 'Primero termina el análisis.')
+    company_id = company_for_save(db, principal, run, data.company_id)
+    rows = load_review(ident)['rows']
+    source = input_source(ident)
+    states = decide_states(db, ident, company_id)
+    existing = {i.rel_path: i for i in db.scalars(select(OrganizadorItem).where(OrganizadorItem.run_id == ident)).all()}
+    for rel, decided in states.items():
+        row = rows[rel]
+        item = existing.get(rel)
+        if item and item.state in ('saved', 'descartado'):
+            continue
+        digest = decided['sha256'] or content.sha256_of(source / rel)
+        document_id = None
+        state = decided['state']
+        if state == 'nuevo':
+            result = save_file(
+                principal,
+                company_id,
+                source / rel,
+                row['name'],
+                document_type='cfdi' if row['ext'] == '.xml' else 'cfdi_pdf',
+                period=row['period'],
+                category='CFDI ' + row['kind'].lower(),
+            )
+            document_id = result['document_id']
+            state = 'saved'
+        values = dict(
+            company_id=company_id,
+            name=row['name'][:255],
+            ext=row['ext'],
+            kind=row['kind'],
+            sha256=digest,
+            uuid=row['uuid'] or None,
+            folder_period=row['period'],
+            xml_period=(row['fecha'][:7] or None),
+            state=state,
+            reasons=decided['reasons'],
+            document_id=document_id,
+        )
+        if item:
+            for key, value in values.items():
+                setattr(item, key, value)
+        else:
+            db.add(OrganizadorItem(id=str(uuid4()), run_id=ident, rel_path=rel, **values))
+    db.add(
+        Audit(company_id=company_id, actor_id=principal.subject, action='Organizador CFDI: guardado en el expediente')
+    )
+    db.commit()
+    items = db.scalars(select(OrganizadorItem).where(OrganizadorItem.run_id == ident)).all()
+    return {'company_id': company_id, 'counts': summarize_states(states), 'items': [public_item(i) for i in items]}
+
+
+class ResolveIn(BaseModel):
+    action: Literal['save', 'dismiss']
+    period: Literal['folder', 'xml'] = 'folder'
+
+
+@router.get('/companies/{company_id}/review')
+def company_review(company_id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Files waiting for a person («Por revisar › CFDI») and the saved totals by period (cambios 5.5 and 5.6)."""
+    if not db.get(Company, company_id):
+        raise HTTPException(404, 'Empresa no encontrada')
+    if not principal.admin:
+        principal.require(CFDI.action, company_id)
+    rows = db.scalars(select(OrganizadorItem).where(OrganizadorItem.company_id == company_id)).all()
+    pending = [public_item(i) for i in rows if i.state in ('revision', 'bloqueado')]
+    periods = {}
+    for i in rows:
+        if i.state not in ('saved', 'ya_registrado'):
+            continue
+        period = i.decided_period or i.folder_period
+        row = periods.setdefault(period, {'period': period, 'xml': 0, 'pdf': 0})
+        row['xml' if i.ext == '.xml' else 'pdf'] += 1
+    for item in pending:
+        periods.setdefault(item['folder_period'], {'period': item['folder_period'], 'xml': 0, 'pdf': 0})
+    for row in periods.values():
+        row['en_revision'] = sum(1 for p in pending if p['folder_period'] == row['period'])
+    return {'pending': pending, 'periods': sorted(periods.values(), key=lambda r: r['period'], reverse=True)}
+
+
+# A reviewer may decide the period of a file whose folder and XML disagree; any other reason is only dismissable.
+RESOLVABLE = {'periodo_distinto'}
+
+
+@router.post('/items/{item_id}/resolve')
+def resolve_item(item_id: str, data: ResolveIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    item = db.get(OrganizadorItem, item_id)
+    if not item or item.state not in ('revision', 'bloqueado'):
+        raise HTTPException(404, 'Archivo no encontrado o ya resuelto.')
+    run = CFDI.check(principal, get_run(db, item.run_id))
+    CFDI.require_company(principal, item.company_id)
+    stamp = now()
+    if data.action == 'dismiss':
+        item.state = 'descartado'
+    else:
+        if not set(item.reasons) <= RESOLVABLE or not item.xml_period:
+            raise HTTPException(
+                422,
+                'Este archivo no se puede guardar: su incoherencia no es sólo de periodo. Descártalo o corrige el origen.',
+            )
+        period = item.folder_period if data.period == 'folder' else item.xml_period
+        path = input_source(run.id) / item.rel_path if (folder(run.id) / 'plan.json').exists() else None
+        if not path or not path.is_file() or content.sha256_of(path) != item.sha256:
+            raise HTTPException(410, 'El archivo original ya no está disponible o cambió. Vuelve a cargar la entrada.')
+        result = save_file(
+            principal,
+            item.company_id,
+            path,
+            item.name,
+            document_type='cfdi' if item.ext == '.xml' else 'cfdi_pdf',
+            period=period,
+            category='CFDI ' + item.kind.lower(),
+        )
+        item.document_id = result['document_id']
+        item.state = 'saved'
+        item.decided_period = period
+    item.decided_by = principal.subject
+    item.decided_at = stamp
+    db.add(
+        Audit(company_id=item.company_id, actor_id=principal.subject, action='Organizador CFDI: revisión de archivo')
+    )
+    db.commit()
+    return public_item(item)
+
+
+@router.get('/companies/{company_id}/suggestion')
+def suggestion(company_id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """RFC of the expediente and the year/months to propose after the last organized period (cambio 5.1)."""
+    company = db.get(Company, company_id)
+    if not company:
+        raise HTTPException(404, 'Empresa no encontrada')
+    if not principal.admin:
+        principal.require(CFDI.action, company_id)
+    last = db.scalars(
+        select(OrganizadorRun)
+        .where(OrganizadorRun.company_id == company_id, OrganizadorRun.status == 'generated')
+        .order_by(OrganizadorRun.created_at.desc())
+        .limit(1)
+    ).first()
+    from datetime import date
+
+    today = date.today()
+    year, month, last_period = today.year, today.month, None
+    if last and last.options.get('months'):
+        last_year, last_month = last.options['year'], max(last.options['months'])
+        last_period = f'{last_year}-{last_month:02d}'
+        year, month = (last_year, last_month + 1) if last_month < 12 else (last_year + 1, 1)
+    return {'rfc': company.rfc, 'year': year, 'months': [month], 'last_period': last_period}
 
 
 @router.post('/runs/{ident}/generate', status_code=202)
@@ -351,6 +630,19 @@ def download(ident: str, kind: str = 'zip', db: Session = Depends(session), prin
         raise HTTPException(409, 'Los resultados aún no están listos.')
     if kind not in ('zip', 'csv'):
         raise HTTPException(422, 'Selecciona ZIP o CSV.')
+    if kind == 'csv' and (folder(ident) / 'review.json').exists():
+        # The audit CSV adds UUID, incoherence, pair and saved state, which change after saving.
+        review_data = load_review(ident)
+        states = {
+            i.rel_path: i.state for i in db.scalars(select(OrganizadorItem).where(OrganizadorItem.run_id == ident))
+        }
+        records = json.loads((folder(ident) / 'result.json').read_text(encoding='utf-8'))
+        content.export_csv_extended(folder(ident) / 'auditoria_extendida.csv', records, review_data['rows'], states)
+        return FileResponse(
+            folder(ident) / 'auditoria_extendida.csv',
+            filename=f'ORGANIZADOR_{run.options["rfc"]}_{run.options["year"]}.csv',
+            media_type='text/csv; charset=utf-8',
+        )
     return FileResponse(
         folder(ident) / ('result.zip' if kind == 'zip' else 'auditoria.csv'),
         filename=f'ORGANIZADOR_{run.options["rfc"]}_{run.options["year"]}.{kind}',
