@@ -49,8 +49,9 @@ export function RecopilaIndicator({ companyId, data }: { companyId: string; data
       {data.periods.slice(0, 4).map((p) => (
         <li key={p.period}>
           <Link to={link(companyId, p.run_id)}>
-            {periodLabel(p.period)}: {p.percent} % con soporte · {p.parciales} parciales · {p.facturas_sin_poliza}{' '}
-            facturas sin póliza
+            {periodLabel(p.period)}: {p.percent} % con soporte · {p.parciales}{' '}
+            {p.parciales === 1 ? 'parcial' : 'parciales'} · {p.facturas_sin_poliza}{' '}
+            {p.facturas_sin_poliza === 1 ? 'factura sin póliza' : 'facturas sin póliza'}
           </Link>
         </li>
       ))}
