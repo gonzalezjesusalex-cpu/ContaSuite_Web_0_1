@@ -498,7 +498,10 @@ export default function Recopila({
           ))}
           {!!detail.enrichment?.unsupported.pages && (
             <p className="recopila-warning" role="status">
-              {detail.enrichment.unsupported.pages} páginas parecen pólizas en un formato no compatible
+              {detail.enrichment.unsupported.pages === 1
+                ? '1 página parece una póliza'
+                : detail.enrichment.unsupported.pages + ' páginas parecen pólizas'}{' '}
+              en un formato no compatible
               {detail.enrichment.unsupported.contalink_hint ? ' (Contalink)' : ''}. Aún no se leen: Recopila sólo
               interpreta el «Impreso de pólizas» de CONTPAQi.
             </p>
