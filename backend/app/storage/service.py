@@ -292,6 +292,9 @@ class StorageService(DocumentCatalog, ClassificationService):
         try:
             actor.require('write', company_id)
             validate_metadata(category, document_type, period)
+            if Path(name).suffix.lower() == '.xlsx' and document_type != 'sat_report':
+                # Excel workbooks are admitted only as SAT reports saved from CFDI (cambio 5.5), never as free uploads.
+                raise StorageError('unsupported_format')
             if not company_id and not document_id:
                 actor.require('review')
             # Authorize before consuming or storing the payload.

@@ -82,7 +82,7 @@ Los puntos 1.1–1.3 comparten `Documents.tsx` y se confirmaron juntos; 2.1/2.2 
 - Bloqueados o en revisión (incoherencia, mismo SHA ligado a otra empresa o a ninguna, mismo UUID con contenido distinto) van a «Por revisar › CFDI». Quien revisa **sólo puede guardar** un archivo cuya única incoherencia sea el periodo (elige carpeta o XML y queda con usuario y fecha); en cualquier otro motivo sólo puede descartarlo.
 - El RFC del análisis debe ser el de la empresa para guardar en su expediente.
 - 5.7: destino = carpeta de la empresa + ejercicio del análisis (`<carpeta>\AAAA\MM.- MES\EMITIDOS|RECIBIDOS`). Se escriben sólo los archivos aceptados (guardados o ya registrados) del ejercicio del análisis. Requiere agente vinculado, `cfdi.usar` y `carpeta.exportar`, y la casilla de confirmación explícita en pantalla.
-- El tipo «Reportes del SAT» existe, pero **los reportes Excel no se guardan en el expediente**: el Centro Documental sólo admite PDF, XML y CER. El CSV de auditoría añade UUID, incoherencia, pareja y estado de guardado.
+- El tipo «Reportes del SAT» existe. En la ejecución original los reportes Excel no se guardaban porque el Centro Documental sólo admitía PDF, XML y CER; **ya se guardan** (ver «Reportes Excel del SAT en el expediente»). El CSV de auditoría añade UUID, incoherencia, pareja y estado de guardado.
 
 ## Migraciones creadas (ninguna aplicada a una base real)
 
@@ -95,7 +95,6 @@ Los puntos 1.1–1.3 comparten `Documents.tsx` y se confirmaron juntos; 2.1/2.2 
 - **3B:** importación definitiva, exportación XLSX y doble captura.
 - **Panel global de certificados en Inicio** (fuera de alcance).
 - **Lectura directa con el agente** (sin subir archivos) para Recopila y CFDI.
-- **Reportes Excel del SAT en el expediente:** requiere ampliar los formatos del Centro Documental.
 - **Tema de alto contraste:** sin conmutador en la barra; sólo verificado por la prueba de contraste AA.
 - Sin verificar: los flujos de Recopila/CFDI con el agente real de punta a punta en el navegador (sí hay prueba viva del agente para 5.7), PostgreSQL y las migraciones sobre bases reales. Los flujos con datos sintéticos sí se verificaron: ver «Verificación posterior».
 
@@ -120,7 +119,18 @@ Pasada de verificación con datos sintéticos, sin tocar datos ni instancias rea
 - 4.7 lector de Contalink: espera una muestra del formato.
 - 3B (importación definitiva, exportación XLSX, doble captura) y panel global de certificados en Inicio: fuera de alcance de este prompt.
 - Lectura directa con el agente para Recopila y CFDI.
-- Reportes Excel del SAT en el expediente: requiere ampliar los formatos del Centro Documental.
 - Conmutador de alto contraste en la barra.
 - Escritura en la carpeta con el agente desde el navegador (sólo tiene prueba viva del agente).
 - PostgreSQL y las migraciones 0016/0017/fiscal_002/003 sobre bases reales (requieren autorización: `scripts/schema_admin.py --apply --backup`).
+
+## Reportes Excel del SAT en el expediente (2026-11-19)
+
+Los reportes `.xlsx` de la carpeta `Reportes/` (`EMITIDOS-RFC-AAAAMM.xlsx`) ahora se guardan en el Centro Documental como «Reportes del SAT» al usar «Guardar en expediente» de CFDI.
+
+- **Almacenamiento:** el repositorio interno admite `.xlsx` y sólo con el tipo `sat_report`: cualquier otra carga de Excel se rechaza. La carpeta externa indexada sigue admitiendo sólo PDF, XML y CER. Validación estructural del paquete: ZIP con `[Content_Types].xml` y `xl/workbook.xml`, sin macros (`vbaProject.bin`), objetos incrustados ni vínculos externos; tope de 2,000 entradas y 200 MB descomprimidos. `.xls` y `.xlsm` no se admiten (el motor los lista, pero no se guardan).
+- **Contenido:** no se lee ni se interpreta; se guarda tal cual. En la auditoría aparece «Reporte del SAT: se guarda tal cual, sin leer su contenido».
+- **Estados:** nuevo / ya registrado (mismo SHA-256 ligado a la empresa) / en revisión (mismo SHA en otra empresa), igual que XML y PDF. Un reporte con el mismo nombre y periodo pero contenido distinto es una versión nueva; nunca se sobrescribe.
+- **Descarga:** verificada y con los mismos bytes; no tiene vista previa (415).
+- **Fuera de «Escribir en carpeta de la empresa» (5.7):** la carpeta física no define dónde van los reportes, así que sólo se escriben XML y PDF.
+- **Indicador por periodo:** «CFDI Abr 2026: 2 XML · 1 PDF · 1 reporte · 2 en revisión».
+- **Pruebas:** `backend/tests/test_sat_reports.py` (admisión, rechazos, guardado, ya registrado, versión nueva, exclusión de la escritura) y el E2E de CFDI con un reporte. Backend `-m "not slow"`: 435 aprobadas, 10 omitidas.

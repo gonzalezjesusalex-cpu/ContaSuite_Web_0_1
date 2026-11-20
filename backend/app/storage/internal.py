@@ -8,19 +8,49 @@ from .local import LocalFolderProvider
 from .paths import check_no_links, safe_key, supported
 from .providers import Availability, StorageError, StoredFile
 
-OBJECT_KEY = re.compile(r'^objects/[a-f0-9]{32}\.(pdf|xml|cer)$')
+OBJECT_KEY = re.compile(r'^objects/[a-f0-9]{32}\.(pdf|xml|cer|xlsx)$')
+XLSX_MEDIA_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+REPORT_EXTENSIONS = frozenset({'.xlsx'})
 
 
-def validate_payload(stream, name, *, allow_public_cer=False):
+def validate_workbook(stream):
+    """A plain .xlsx package (no macros, embedded objects or external links). Only its structure is checked."""
+    import zipfile
+
+    stream.seek(0)
+    try:
+        with zipfile.ZipFile(stream) as package:
+            infos = package.infolist()
+            names = {i.filename for i in infos}
+            if len(infos) > 2000 or sum(i.file_size for i in infos) > 200 * 1024 * 1024:
+                raise StorageError('invalid_format')
+            if '[Content_Types].xml' not in names or 'xl/workbook.xml' not in names:
+                raise StorageError('invalid_format')
+            if any(
+                n.lower().endswith('vbaproject.bin') or n.startswith(('xl/embeddings/', 'xl/externalLinks/'))
+                for n in names
+            ):
+                raise StorageError('protected_file')
+    except zipfile.BadZipFile:
+        raise StorageError('invalid_format') from None
+    finally:
+        stream.seek(0)
+
+
+def validate_payload(stream, name, *, allow_public_cer=False, allow_report=False):
     """PDF/XML validation; public CER validation is explicit and never accepts private-key containers."""
     safe_key(name)
     certificate = allow_public_cer and Path(name).suffix.lower() == '.cer'
-    if '/' in name or (not supported(name) and not certificate):
+    report = allow_report and Path(name).suffix.lower() in REPORT_EXTENSIONS
+    if '/' in name or (not supported(name) and not certificate and not report):
         raise StorageError('unsupported_format')
     stream.seek(0)
     prefix = stream.read(4096)
     if b'PRIVATE KEY' in prefix.upper():
         raise StorageError('protected_file')
+    if report:
+        validate_workbook(stream)
+        return XLSX_MEDIA_TYPE
     if certificate:
         from cryptography import x509
         from cryptography.hazmat.primitives.serialization import Encoding
@@ -88,7 +118,11 @@ class InternalStorageProvider:
 
     def _reader(self):
         return LocalFolderProvider(
-            self.root, (self.root,), max_file_bytes=self.max_file_bytes, exclusions=('.staging',)
+            self.root,
+            (self.root,),
+            max_file_bytes=self.max_file_bytes,
+            exclusions=('.staging',),
+            extra_extensions=REPORT_EXTENSIONS,
         )
 
     def availability(self):
@@ -112,7 +146,7 @@ class InternalStorageProvider:
 
     def put(self, stream, name):
         safe_key(name)
-        if '/' in name or not supported(name):
+        if '/' in name or not (supported(name) or Path(name).suffix.lower() in REPORT_EXTENSIONS):
             raise StorageError('unsupported_format')
         self._prepare()
         token = uuid4().hex
@@ -134,7 +168,7 @@ class InternalStorageProvider:
                     out.write(chunk)
                 if not size:
                     raise StorageError('empty_file')
-                media_type = validate_payload(out, name, allow_public_cer=True)
+                media_type = validate_payload(out, name, allow_public_cer=True, allow_report=True)
                 out.flush()
                 os.fsync(out.fileno())
             # Atomic publication without replacing any existing object (NTFS and POSIX).

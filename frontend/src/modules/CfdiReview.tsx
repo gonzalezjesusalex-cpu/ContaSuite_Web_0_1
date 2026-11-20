@@ -15,7 +15,7 @@ export type CfdiPending = {
   folder_period: string;
   xml_period: string | null;
 };
-export type CfdiPeriod = { period: string; xml: number; pdf: number; en_revision: number };
+export type CfdiPeriod = { period: string; xml: number; pdf: number; reports?: number; en_revision: number };
 export type CfdiReviewData = { pending: CfdiPending[]; periods: CfdiPeriod[] };
 
 /** Files of the company's saved CFDI by period and those waiting for a person; `null` without CFDI access. */
@@ -40,7 +40,8 @@ export function CfdiIndicator({ data }: { data: CfdiReviewData | null }) {
     <ul className="recopila-indicator" aria-label="CFDI guardados por periodo">
       {data.periods.slice(0, 4).map((p) => (
         <li key={p.period}>
-          CFDI {periodLabel(p.period)}: {p.xml} XML · {p.pdf} PDF · {p.en_revision} en revisión
+          CFDI {periodLabel(p.period)}: {p.xml} XML · {p.pdf} PDF
+          {p.reports ? ` · ${p.reports} ${p.reports === 1 ? 'reporte' : 'reportes'}` : ''} · {p.en_revision} en revisión
         </li>
       ))}
     </ul>

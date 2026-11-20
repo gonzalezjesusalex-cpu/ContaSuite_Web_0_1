@@ -50,3 +50,5 @@ La tarea usa el proceso FastAPI. Un reinicio marca las tareas pendientes como er
 - Compilación TypeScript y Vite con las versiones del `package-lock.json` original.
 - Flujo verificado en Edge sin ventana con datos aislados: carga ZIP, análisis, tres copias verificadas, detalle, CSV y capturas de los tres temas. Sin errores JavaScript ni desbordamiento horizontal de página a 390 px. Descarga real repetida en Edge: ZIP completo de 875 bytes con tres documentos cuyos bytes coinciden con los originales; CSV de 459 bytes con tres registros Copiado. La respuesta vacía anterior era causada por el agente de descargas que interceptaba el enlace, según confirmó el usuario; la incidencia quedó resuelta. La interfaz conserva la detección de descargas vacías.
 - El frontend compilado se actualiza para el lanzador existente. No se ha creado un ZIP de entrega nuevo.
+
+- Reportes Excel del SAT (`Reportes/*.xlsx`): «Guardar en expediente» los guarda como «Reportes del SAT» sin leer su contenido (sólo `.xlsx`, sin macros); no se escriben en la carpeta física de la empresa.

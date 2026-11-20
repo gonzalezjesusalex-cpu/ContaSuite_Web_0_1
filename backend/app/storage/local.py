@@ -31,6 +31,7 @@ class LocalFolderProvider:
         max_seconds=60,
         max_file_bytes=25 * 1024 * 1024,
         allow_legacy_public_cer=False,
+        extra_extensions=(),
     ):
         self.root = self._authorize_root(root, allowed_roots)
         self.exclusions = tuple(exclusions)
@@ -38,6 +39,8 @@ class LocalFolderProvider:
         self.max_seconds = max_seconds
         self.max_file_bytes = max_file_bytes
         self.allow_legacy_public_cer = allow_legacy_public_cer
+        # Extra formats the owner of this provider accepts (only the internal repository admits .xlsx reports).
+        self.extra_extensions = frozenset(extra_extensions)
 
     allow_unc_handle = False
 
@@ -45,7 +48,8 @@ class LocalFolderProvider:
         return authorized_root(root, allowed_roots)
 
     def _supported(self, key):
-        return supported(key) or (self.allow_legacy_public_cer and Path(key).suffix.lower() == '.cer')
+        suffix = Path(key).suffix.lower()
+        return supported(key) or suffix in self.extra_extensions or (self.allow_legacy_public_cer and suffix == '.cer')
 
     def _excluded(self, key):
         parts = key.split('/')

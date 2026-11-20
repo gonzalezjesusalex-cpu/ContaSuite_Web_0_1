@@ -174,9 +174,9 @@ export default function CfdiExpediente({
     <section className={stitchCard + ' padded'} aria-labelledby="cfdi-expediente-title">
       <h2 id="cfdi-expediente-title">Expediente</h2>
       <p className="muted">
-        Guarda en el Centro Documental los XML y PDF de este análisis. Los archivos con incoherencia (RFC o fecha),
-        conflicto de contenido o que ya existan ligados a otra empresa se envían a Por revisar › CFDI; nada se
-        sobrescribe ni se fusiona.
+        Guarda en el Centro Documental los XML, PDF y reportes Excel (.xlsx) de este análisis; los reportes se guardan
+        tal cual, sin leer su contenido. Los archivos con incoherencia (RFC o fecha), conflicto de contenido o que ya
+        existan ligados a otra empresa se envían a Por revisar › CFDI; nada se sobrescribe ni se fusiona.
       </p>
       {error && (
         <p role="alert" className="error-banner">

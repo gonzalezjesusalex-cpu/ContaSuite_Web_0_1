@@ -15,6 +15,11 @@ test('CFDI: analizar, contrastar con el expediente, guardar y revisar bloqueados
     [emitidos + 'mes.xml']: cfdi(uuid(2), company.rfc, other, '2026-05-02'), // fechado en mayo, archivado en abril
     [recibidos + 'ajena.xml']: cfdi(uuid(3), other, other, '2026-04-10'), // el receptor no es la empresa
     [recibidos + 'sinpdf.xml']: cfdi(uuid(4), other, company.rfc, '2026-04-10'),
+    // Reporte Excel del SAT: se guarda tal cual como «Reportes del SAT», sin leer su contenido.
+    [`Base/Reportes/EMITIDOS-${company.rfc}-202604.xlsx`]: zip({
+      '[Content_Types].xml': Buffer.from('<Types/>'),
+      'xl/workbook.xml': Buffer.from('<workbook/>'),
+    }),
   });
 
   await login(page);
@@ -51,7 +56,7 @@ test('CFDI: analizar, contrastar con el expediente, guardar y revisar bloqueados
   await page.getByRole('button', { name: /^Por revisar/ }).click();
   await page.getByRole('button', { name: /^CFDI 2$/ }).click();
   await expect(page.getByRole('heading', { name: 'CFDI', exact: true })).toBeVisible();
-  await expect(page.getByText('CFDI Abr 2026: 2 XML · 1 PDF · 2 en revisión')).toBeVisible();
+  await expect(page.getByText('CFDI Abr 2026: 2 XML · 1 PDF · 1 reporte · 2 en revisión')).toBeVisible();
   await expectNoOverflow(page, 'cfdi-por-revisar');
   if (shots) await page.screenshot({ path: shots + '/cfdi-4-por-revisar.png', fullPage: true });
 });

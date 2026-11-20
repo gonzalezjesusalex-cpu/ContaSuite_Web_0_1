@@ -591,9 +591,11 @@ export default function Organizador({
                               </Badge>
                             ))}
                             <small>
-                              {detail.review[r.source].pair === 'identificada'
-                                ? 'Pareja XML–PDF identificada'
-                                : 'Sin pareja identificada'}
+                              {detail.review[r.source].pair === 'no_aplica'
+                                ? 'Reporte del SAT: se guarda tal cual, sin leer su contenido'
+                                : detail.review[r.source].pair === 'identificada'
+                                  ? 'Pareja XML–PDF identificada'
+                                  : 'Sin pareja identificada'}
                               {detail.review[r.source].warnings.includes('xml_sin_pdf') && ' · XML sin PDF'}
                               {detail.review[r.source].warnings.includes('pdf_sin_xml') && ' · PDF sin XML'}
                             </small>

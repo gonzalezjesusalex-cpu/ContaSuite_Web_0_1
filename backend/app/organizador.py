@@ -398,6 +398,9 @@ def input_source(ident):
     return Path(load_plan(ident).options.source)
 
 
+DOCUMENT_TYPES = {'.xml': 'cfdi', '.pdf': 'cfdi_pdf', '.xlsx': 'sat_report'}
+
+
 def decide_states(db, ident, company_id):
     """For each XML/PDF of the run: nuevo | ya_registrado | revision | bloqueado, with the reasons (cambios 5.4, 5.5)."""
     rows = load_review(ident)['rows']
@@ -476,7 +479,7 @@ def save_to_expediente(ident: str, data: SaveIn, db: Session = Depends(session),
                 company_id,
                 source / rel,
                 row['name'],
-                document_type='cfdi' if row['ext'] == '.xml' else 'cfdi_pdf',
+                document_type=DOCUMENT_TYPES[row['ext']],
                 period=row['period'],
                 category='CFDI ' + row['kind'].lower(),
             )
@@ -527,10 +530,10 @@ def company_review(company_id: str, db: Session = Depends(session), principal: P
         if i.state not in ('saved', 'ya_registrado'):
             continue
         period = i.decided_period or i.folder_period
-        row = periods.setdefault(period, {'period': period, 'xml': 0, 'pdf': 0})
-        row['xml' if i.ext == '.xml' else 'pdf'] += 1
+        row = periods.setdefault(period, {'period': period, 'xml': 0, 'pdf': 0, 'reports': 0})
+        row[{'.xml': 'xml', '.pdf': 'pdf'}.get(i.ext, 'reports')] += 1
     for item in pending:
-        periods.setdefault(item['folder_period'], {'period': item['folder_period'], 'xml': 0, 'pdf': 0})
+        periods.setdefault(item['folder_period'], {'period': item['folder_period'], 'xml': 0, 'pdf': 0, 'reports': 0})
     for row in periods.values():
         row['en_revision'] = sum(1 for p in pending if p['folder_period'] == row['period'])
     return {'pending': pending, 'periods': sorted(periods.values(), key=lambda r: r['period'], reverse=True)}
@@ -565,7 +568,7 @@ def resolve_item(item_id: str, data: ResolveIn, db: Session = Depends(session), 
             item.company_id,
             path,
             item.name,
-            document_type='cfdi' if item.ext == '.xml' else 'cfdi_pdf',
+            document_type=DOCUMENT_TYPES[item.ext],
             period=period,
             category='CFDI ' + item.kind.lower(),
         )
@@ -611,7 +614,8 @@ def accepted_for_write(db, run):
     year = run.options['year']
     included, left_out = [], []
     for i in db.scalars(select(OrganizadorItem).where(OrganizadorItem.run_id == run.id)).all():
-        if i.state not in ('saved', 'ya_registrado'):
+        if i.state not in ('saved', 'ya_registrado') or i.ext not in ('.xml', '.pdf'):
+            # Reports stay in the expediente: the physical folder has no defined place for them (cambio 5.7).
             continue
         period = i.decided_period or i.folder_period
         entry = {'id': i.id, 'name': i.name, 'kind': i.kind, 'period': period, 'sha256': i.sha256}

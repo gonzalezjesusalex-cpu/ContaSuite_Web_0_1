@@ -67,7 +67,8 @@ def review(plan):
     for item in plan.ready:
         path = Path(item.source)
         ext = path.suffix.lower()
-        if ext not in ('.xml', '.pdf'):
+        # Excel reports (.xlsx) are saved as «Reportes del SAT» as they are; their content is not read.
+        if ext not in ('.xml', '.pdf', '.xlsx'):
             continue
         rel = path.relative_to(source).as_posix()
         row = {
@@ -98,9 +99,11 @@ def review(plan):
                     row['incoherence'].append('receptor_distinto')
                 if header['fecha'][:7] != item.date:
                     row['incoherence'].append('periodo_distinto')
-        else:
+        elif ext == '.pdf':
             found, _text = shared.pdf_uuids(path, PDF_PAGES)
             row['pdf_uuids'] = sorted(found)
+        else:
+            row['pair'] = 'no_aplica'
         rows[rel] = row
     xml_by_uuid = {r['uuid']: r for r in rows.values() if r['ext'] == '.xml' and r['uuid']}
     paired = set()
