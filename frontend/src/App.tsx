@@ -154,6 +154,13 @@ const MODULE_ACTIONS: Record<string, Action> = {
   '/recibos': 'recibos.usar',
 };
 
+/** Themes in the order the top-bar button cycles through them (Configuración › Apariencia lists the same three). */
+const THEMES = [
+  { id: 'light', name: 'Claro' },
+  { id: 'dark', name: 'Oscuro' },
+  { id: 'contrast', name: 'Alto contraste' },
+];
+
 export default function App() {
   const [token, setToken] = useState('');
   const [identity, setIdentity] = useState<CurrentUser | null>(null);
@@ -197,6 +204,7 @@ export default function App() {
   const [globalSearch, setGlobalSearch] = useState('');
   const [name, setName] = useState(localStorage.getItem('contasuite-name') || '');
   const [theme, setTheme] = useState(localStorage.getItem('contasuite-theme') || 'light');
+  const themeName = (THEMES.find((t) => t.id === theme) || THEMES[0]).name;
   const location = useLocation();
   // Bloque 6 (C3): the toast stays mounted while it leaves, then the message is cleared.
   const [leaving, setLeaving] = useState(false);
@@ -368,7 +376,13 @@ export default function App() {
               {g.items
                 .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
                 .map((i) => (
-                  <NavLink key={i.path} to={i.path} end={i.path === '/'} title={collapsed ? i.title : undefined} aria-label={i.title}>
+                  <NavLink
+                    key={i.path}
+                    to={i.path}
+                    end={i.path === '/'}
+                    title={collapsed ? i.title : undefined}
+                    aria-label={i.title}
+                  >
                     {moduleIconNames[i.path.slice(1)] ? (
                       <OriginalIcon name={moduleIconNames[i.path.slice(1)]} size={28} sidebar />
                     ) : (
@@ -401,12 +415,7 @@ export default function App() {
       </aside>
       {open && <button className="sidebar-shade" aria-label="Cerrar menú" onClick={() => setOpen(false)} />}
       <header className="topbar">
-        <button
-          className="icon-button menu-button"
-          onClick={toggleSidebar}
-          aria-label="Abrir menú"
-          title="Abrir menú"
-        >
+        <button className="icon-button menu-button" onClick={toggleSidebar} aria-label="Abrir menú" title="Abrir menú">
           <Menu size={21} />
         </button>
         <div className="breadcrumbs">
@@ -465,10 +474,11 @@ export default function App() {
         </button>
         <button
           className="icon-button"
-          aria-label="Cambiar tema"
-          onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+          aria-label={'Cambiar tema (actual: ' + themeName + ')'}
+          title={'Tema: ' + themeName + '. Pulsa para cambiar.'}
+          onClick={() => setTheme(THEMES[(THEMES.findIndex((t) => t.id === theme) + 1) % THEMES.length].id)}
         >
-          {theme === 'light' ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === 'dark' ? <Moon size={18} /> : theme === 'contrast' ? <Monitor size={18} /> : <Sun size={18} />}
         </button>
         <div className="profile-avatar small">{name ? name[0] : 'CS'}</div>
       </header>

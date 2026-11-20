@@ -95,7 +95,6 @@ Los puntos 1.1–1.3 comparten `Documents.tsx` y se confirmaron juntos; 2.1/2.2 
 - **3B:** importación definitiva, exportación XLSX y doble captura.
 - **Panel global de certificados en Inicio** (fuera de alcance).
 - **Lectura directa con el agente** (sin subir archivos) para Recopila y CFDI.
-- **Tema de alto contraste:** sin conmutador en la barra; sólo verificado por la prueba de contraste AA.
 - Sin verificar: los flujos de Recopila/CFDI con el agente real de punta a punta en el navegador (sí hay prueba viva del agente para 5.7), PostgreSQL y las migraciones sobre bases reales. Los flujos con datos sintéticos sí se verificaron: ver «Verificación posterior».
 
 ## Verificación posterior (2026-11-19)
@@ -119,7 +118,6 @@ Pasada de verificación con datos sintéticos, sin tocar datos ni instancias rea
 - 4.7 lector de Contalink: espera una muestra del formato.
 - 3B (importación definitiva, exportación XLSX, doble captura) y panel global de certificados en Inicio: fuera de alcance de este prompt.
 - Lectura directa con el agente para Recopila y CFDI.
-- Conmutador de alto contraste en la barra.
 - Escritura en la carpeta con el agente desde el navegador (sólo tiene prueba viva del agente).
 - PostgreSQL y las migraciones 0016/0017/fiscal_002/003 sobre bases reales (requieren autorización: `scripts/schema_admin.py --apply --backup`).
 
@@ -134,3 +132,7 @@ Los reportes `.xlsx` de la carpeta `Reportes/` (`EMITIDOS-RFC-AAAAMM.xlsx`) ahor
 - **Fuera de «Escribir en carpeta de la empresa» (5.7):** la carpeta física no define dónde van los reportes, así que sólo se escriben XML y PDF.
 - **Indicador por periodo:** «CFDI Abr 2026: 2 XML · 1 PDF · 1 reporte · 2 en revisión».
 - **Pruebas:** `backend/tests/test_sat_reports.py` (admisión, rechazos, guardado, ya registrado, versión nueva, exclusión de la escritura) y el E2E de CFDI con un reporte. Backend `-m "not slow"`: 435 aprobadas, 10 omitidas.
+
+## Conmutador de tema en la barra (2026-11-19)
+
+El botón de tema de la barra ahora recorre claro → oscuro → alto contraste → claro (antes sólo alternaba claro y oscuro, y desde alto contraste volvía a claro). Su nombre accesible indica el tema actual («Cambiar tema (actual: Alto contraste)») y el icono lo refleja. Configuración › Apariencia sigue ofreciendo los tres. Prueba: `e2e/theme-switch.spec.ts` (recorrido y persistencia tras recargar). E2E completo: 26 aprobadas.
