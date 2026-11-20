@@ -97,4 +97,30 @@ Los puntos 1.1–1.3 comparten `Documents.tsx` y se confirmaron juntos; 2.1/2.2 
 - **Lectura directa con el agente** (sin subir archivos) para Recopila y CFDI.
 - **Reportes Excel del SAT en el expediente:** requiere ampliar los formatos del Centro Documental.
 - **Tema de alto contraste:** sin conmutador en la barra; sólo verificado por la prueba de contraste AA.
-- Sin verificar: los flujos nuevos de Recopila/CFDI en el navegador con el agente real de punta a punta (sí hay prueba viva del agente para 5.7), PostgreSQL y las migraciones sobre bases reales.
+- Sin verificar: los flujos de Recopila/CFDI con el agente real de punta a punta en el navegador (sí hay prueba viva del agente para 5.7), PostgreSQL y las migraciones sobre bases reales. Los flujos con datos sintéticos sí se verificaron: ver «Verificación posterior».
+
+## Verificación posterior (2026-11-19)
+
+Pasada de verificación con datos sintéticos, sin tocar datos ni instancias reales (servidor temporal en el puerto 8096).
+
+**Pruebas E2E nuevas** (`frontend/e2e/`, helpers compartidos en `synthetic.ts`; todo el contenido lo genera la prueba):
+- `cfdi-flow.spec.ts`: analizar un ZIP, contrastar con el expediente, guardado parcial (2 bloqueados a Por revisar › CFDI) e indicador por periodo.
+- `recopila-flow.spec.ts`: analizar pólizas y CFDI, generar, guardar en el expediente, indicador y sección Recopila en Por revisar.
+- `recopila-extra.spec.ts`: asociar un sobrante a una póliza y revertir el ajuste, aviso de formato no compatible y «Usar documentos de la empresa».
+- `expectNoOverflow` (en `helpers.ts`): sin desborde horizontal en los tres temas (claro, oscuro y alto contraste) y a 320, 768 y 1280 px con resultados en pantalla (contraste de CFDI, Por revisar › CFDI, Recopila generado y expediente). Con `E2E_SHOTS` guarda capturas.
+
+**Correcciones encontradas** (commits `fix:` propios):
+- El indicador de Recopila decía «1 facturas sin póliza»; ahora usa singular.
+- **Windows:** la detección de formato no compatible (4.7) contaba doble cada página, porque `rglob('*.pdf')` y `rglob('*.PDF')` listan el mismo archivo en un sistema de archivos que no distingue mayúsculas. Ahora hay un solo recorrido y la prueba exige exactamente 1.
+- El aviso de formato no compatible decía «1 páginas parecen…»; ahora usa singular.
+
+**Resultados:** E2E completo 25 aprobadas; `tsc` y build sin errores; backend completo 433 aprobadas, 10 omitidas y 1 fallo intermitente de la prueba `slow` del agente real (`test_live_agent_scan_over_http`), que corrida sola pasa en 29 s. Se atribuye a la carga de una suite de casi 9 minutos y queda anotado, sin causa confirmada.
+
+**Siguen pendientes**
+- 4.7 lector de Contalink: espera una muestra del formato.
+- 3B (importación definitiva, exportación XLSX, doble captura) y panel global de certificados en Inicio: fuera de alcance de este prompt.
+- Lectura directa con el agente para Recopila y CFDI.
+- Reportes Excel del SAT en el expediente: requiere ampliar los formatos del Centro Documental.
+- Conmutador de alto contraste en la barra.
+- Escritura en la carpeta con el agente desde el navegador (sólo tiene prueba viva del agente).
+- PostgreSQL y las migraciones 0016/0017/fiscal_002/003 sobre bases reales (requieren autorización: `scripts/schema_admin.py --apply --backup`).
