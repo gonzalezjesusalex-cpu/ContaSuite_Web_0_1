@@ -93,7 +93,8 @@ def foreign_policy_pages(result, cfdi_pdfs):
     pages = 0
     hinted = False
     budget = FOREIGN_SCAN_PAGES
-    for pdf in sorted(root.rglob('*.pdf')) + sorted(root.rglob('*.PDF')):
+    # One pass over every file: on case-insensitive file systems two globs (.pdf and .PDF) list the same file twice.
+    for pdf in sorted(f for f in root.rglob('*') if f.suffix.lower() == '.pdf'):
         key = str(pdf)
         if key in parsed or key in cfdi_pdfs or budget <= 0:
             continue

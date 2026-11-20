@@ -158,7 +158,7 @@ def test_amounts_are_never_exposed_and_months_summarize(tmp_path):
 def test_incompatible_format_is_only_detected(tmp_path):
     result = analysis(tmp_path)
     data = build(result, RFC)
-    assert data['unsupported']['pages'] >= 1 and data['unsupported']['contalink_hint'] is True
+    assert data['unsupported']['pages'] == 1 and data['unsupported']['contalink_hint'] is True
     assert all('contalink' not in p.source_pdf for p in result.policies)
 
 
