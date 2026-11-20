@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { company, login, sidebar } from './helpers';
+import { company, expectNoOverflow, login, sidebar } from './helpers';
 import { cfdi, other, pdf, uuid, zip } from './synthetic';
 
 // Flujo CFDI con datos sintéticos: analizar un ZIP, contrastar con el expediente, guardar y ver Por revisar › CFDI.
@@ -36,6 +36,7 @@ test('CFDI: analizar, contrastar con el expediente, guardar y revisar bloqueados
   await contrast.click();
   await expect(page.getByRole('status').filter({ hasText: '2 bloqueados' })).toBeVisible();
   if (shots) await page.screenshot({ path: shots + '/cfdi-2-contraste.png', fullPage: true });
+  await expectNoOverflow(page, 'cfdi-contraste');
   await page.getByRole('button', { name: 'Guardar en expediente' }).click();
   await expect(page.getByText('Guardado en el expediente.')).toBeVisible();
   if (shots) await page.screenshot({ path: shots + '/cfdi-3-guardado.png', fullPage: true });
@@ -51,5 +52,6 @@ test('CFDI: analizar, contrastar con el expediente, guardar y revisar bloqueados
   await page.getByRole('button', { name: /^CFDI 2$/ }).click();
   await expect(page.getByRole('heading', { name: 'CFDI', exact: true })).toBeVisible();
   await expect(page.getByText('CFDI Abr 2026: 2 XML · 1 PDF · 2 en revisión')).toBeVisible();
+  await expectNoOverflow(page, 'cfdi-por-revisar');
   if (shots) await page.screenshot({ path: shots + '/cfdi-4-por-revisar.png', fullPage: true });
 });

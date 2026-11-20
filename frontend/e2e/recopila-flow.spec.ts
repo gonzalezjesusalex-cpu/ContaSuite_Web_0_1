@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { company, login, sidebar } from './helpers';
+import { company, expectNoOverflow, login, sidebar } from './helpers';
 import { cfdi, pdf, uuid, zip } from './synthetic';
 
 // Flujo Recopila con datos sintéticos: analizar pólizas y CFDI, generar archivos y guardarlos en el expediente.
@@ -37,6 +37,7 @@ test('Recopila: analizar, generar y guardar en el expediente', async ({ page }) 
   await expect(page.getByRole('button', { name: 'Descargar todos (ZIP)' })).toBeVisible({ timeout: 60_000 });
   if (shots) await page.screenshot({ path: shots + '/recopila-2-generado.png', fullPage: true });
 
+  await expectNoOverflow(page, 'recopila-generado');
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByRole('button', { name: 'Guardar en expediente' }).click();
   await expect(page.getByText('Guardado en el expediente.')).toBeVisible();
@@ -52,5 +53,6 @@ test('Recopila: analizar, generar y guardar en el expediente', async ({ page }) 
   await page.getByRole('button', { name: /^Por revisar/ }).click();
   await expect(page.getByRole('button', { name: /^Recopila \d+$/ })).toBeVisible();
   await expect(page.getByText(/1 factura sin póliza/)).toBeVisible();
+  await expectNoOverflow(page, 'recopila-expediente');
   if (shots) await page.screenshot({ path: shots + '/recopila-4-expediente.png', fullPage: true });
 });
