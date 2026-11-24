@@ -1,3 +1,4 @@
+import PasswordManager from './PasswordManager';
 import CertificateLifecycle from './CertificateLifecycle';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -49,10 +50,7 @@ export default function Credentials({
     [kind, setKind] = useState(''),
     [status, setStatus] = useState(''),
     [until, setUntil] = useState('');
-  const [edit, setEdit] = useState<Secret | true | null>(null),
-    [secret, setSecret] = useState(''),
-    [service, setService] = useState('sat_password'),
-    [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(false),
     [certOpen, setCertOpen] = useState(false),
     [documentId, setDocumentId] = useState(''),
     [certKind, setCertKind] = useState('unknown'),
@@ -87,31 +85,6 @@ export default function Credentials({
       (tab !== 'FIEL' || c.kind === 'fiel') &&
       (tab !== 'CSD' || c.kind === 'csd'),
   );
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if (!edit) return;
-    setBusy(true);
-    setError('');
-    try {
-      await api(
-        '/credentials/companies/' +
-          company +
-          '/secrets' +
-          (edit === true ? '' : '?ident=' + encodeURIComponent(edit.id)),
-        'POST',
-        { service_id: service, secret, revision: edit === true ? 0 : edit.revision },
-      );
-      setSecret('');
-      setEdit(null);
-      setReload((n) => n + 1);
-      setMessage('Credencial cifrada y registrada.');
-    } catch (e) {
-      setSecret('');
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   async function saveCert(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -134,7 +107,11 @@ export default function Credentials({
   return (
     <section className={stitchCard + ' padded stitch-live-module'}>
       <h2>Credenciales y Certificados</h2>
-      <p>Metadatos por contribuyente. Los secretos permanecen enmascarados y la revelación está deshabilitada.</p>
+      <p>
+        Contraseñas cifradas con reautenticación para verlas o usarlas, archivos FIEL/CSD y vigencia de certificados
+        públicos (sin validación ante el SAT).
+      </p>
+      <PasswordManager companyId={companyId || company || undefined} notify={setMessage} />
       {!companyId && (
         <div className="toolbar">
           <select
@@ -256,17 +233,6 @@ export default function Credentials({
           ) : (
             <>
               <div className="actions">
-                <button
-                  className={stitchPrimary}
-                  disabled={!can('create')}
-                  onClick={() => {
-                    setSecret('');
-                    setService('sat_password');
-                    setEdit(true);
-                  }}
-                >
-                  Registrar credencial
-                </button>
                 <button className={stitchButton} disabled={!can('certificates')} onClick={() => setCertOpen(true)}>
                   Registrar certificado / vínculo
                 </button>
@@ -274,39 +240,6 @@ export default function Credentials({
                   Documentos de la empresa
                 </Link>
               </div>
-              <h3>Accesos disponibles</h3>
-              {data.credentials
-                .filter((c) =>
-                  tab === 'IMSS e INFONAVIT'
-                    ? /imss|idse|sipare|infonavit/.test(c.service_id)
-                    : tab === 'Accesos fiscales'
-                      ? /sat|fiel|csd/.test(c.service_id)
-                      : tab === 'Otros servicios'
-                        ? !/sat|fiel|csd|imss|idse|sipare|infonavit/.test(c.service_id)
-                        : true,
-                )
-                .map((c) => (
-                  <div className="card padded" key={c.id}>
-                    <strong>{data.services.find((s) => s.id === c.service_id)?.label || 'Servicio'}</strong>
-                    <p>
-                      •••••••• · {c.archived ? 'Histórica' : 'Activa'} · Revisión {c.revision}
-                    </p>
-                    <button
-                      className={stitchButton}
-                      disabled={!can('modify') || c.archived}
-                      onClick={() => {
-                        setSecret('');
-                        setService(c.service_id);
-                        setEdit(c);
-                      }}
-                    >
-                      Actualizar
-                    </button>
-                    <button className={stitchButton} disabled title="Pendiente de reautenticación y gestión de claves">
-                      Revelar / copiar deshabilitado
-                    </button>
-                  </div>
-                ))}
               <h3>Certificados públicos</h3>
               <div className="toolbar">
                 <select aria-label="Tipo de certificado" value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -358,47 +291,6 @@ export default function Credentials({
             </>
           )}
         </>
-      )}
-      {edit && (
-        <Modal
-          title="Credencial cifrada"
-          onClose={() => {
-            if (!busy) {
-              setSecret('');
-              setEdit(null);
-            }
-          }}
-        >
-          <form className="padded" onSubmit={save}>
-            <Field label="Servicio">
-              <select disabled={busy || edit !== true} value={service} onChange={(e) => setService(e.target.value)}>
-                {data?.services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Valor sensible">
-              <input
-                type="password"
-                autoComplete="new-password"
-                required
-                maxLength={4096}
-                value={secret}
-                disabled={busy}
-                onChange={(e) => setSecret(e.target.value)}
-              />
-            </Field>
-            <p>
-              No se conserva en el navegador después de guardar o cerrar. La bóveda rechaza el guardado si no tiene
-              proveedor de claves configurado.
-            </p>
-            <button className={stitchPrimary} disabled={busy}>
-              {busy ? 'Guardando…' : 'Guardar cifrado'}
-            </button>
-          </form>
-        </Modal>
       )}
       {certOpen && (
         <Modal

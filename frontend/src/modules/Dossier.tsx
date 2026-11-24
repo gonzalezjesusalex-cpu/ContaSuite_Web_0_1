@@ -481,8 +481,9 @@ export default function Dossier({
             <div className="info-box">
               <ShieldCheck size={22} />
               <p>
-                No se capturan contraseñas ni se suben llaves privadas en esta versión. Puedes adjuntar certificados
-                públicos .cer en Documentos; sus fechas y RFC se muestran en el seguimiento superior.
+                Las contraseñas y los archivos .key de la FIEL/CSD se guardan sólo en el gestor de contraseñas
+                (Credenciales y Certificados), cifrados y con reautenticación. Las fechas del .cer alimentan el
+                semáforo; no son validación del SAT.
               </p>
             </div>
           </div>

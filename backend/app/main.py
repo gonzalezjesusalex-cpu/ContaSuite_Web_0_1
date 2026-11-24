@@ -1354,6 +1354,7 @@ app.include_router(fiscal_import_router)
 from .credential_api import router as credential_router
 
 from . import credential_alerts  # noqa: F401 - registers local alert endpoints on the same router
+from . import credential_vault  # noqa: F401 - plan v1.1 password manager endpoints on the same router
 
 app.include_router(credential_router)
 

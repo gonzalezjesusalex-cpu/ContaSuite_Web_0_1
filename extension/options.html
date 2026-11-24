@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>ContaSuite – acceso al SAT</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        margin: 16px;
+        min-width: 340px;
+        max-width: 520px;
+      }
+      label {
+        display: block;
+        margin: 12px 0 4px;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+      }
+      button {
+        margin-top: 12px;
+        padding: 6px 14px;
+      }
+      p {
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ContaSuite – acceso al SAT</h1>
+    <p>
+      Escribe la dirección de tu ContaSuite (por ejemplo, http://servidor:8000). La extensión sólo atiende a esa
+      dirección y sólo llena el acceso cuando lo pides desde el gestor de contraseñas, con un boleto de un solo uso.
+      No guarda contraseñas ni archivos.
+    </p>
+    <label for="server">Dirección de ContaSuite</label>
+    <input id="server" type="url" placeholder="http://servidor:8000" />
+    <label for="ciec">Página de acceso con contraseña (SAT)</label>
+    <input id="ciec" type="url" />
+    <label for="fiel">Página de acceso con e.firma (SAT)</label>
+    <input id="fiel" type="url" />
+    <button id="save">Guardar</button>
+    <p id="status" role="status"></p>
+    <script src="options.js"></script>
+  </body>
+</html>

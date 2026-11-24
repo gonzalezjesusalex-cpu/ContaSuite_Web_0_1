@@ -26,6 +26,16 @@ credentials = Table(
     Column('archived', Boolean, nullable=False),
     Column('created_at', DateTime(timezone=True), nullable=False),
     Column('updated_at', DateTime(timezone=True), nullable=False),
+    # cs_0021, plan v1.1 Cambio 4 (password manager): visible user, portal address, notes (never secrets),
+    # extra data (registro patronal…), whose FIEL/CSD it is, local strength (0-4) and a keyed fingerprint to find
+    # repeated passwords without decrypting them.
+    Column('username', String(200)),
+    Column('url', String(500)),
+    Column('notes', String(2000)),
+    Column('extra', JSON),
+    Column('holder', String(12)),
+    Column('strength', Integer),
+    Column('fingerprint', String(64)),
 )
 versions = Table(
     'vault_versions',
@@ -53,7 +63,38 @@ certificates = Table(
     Column('reviewed_at', DateTime(timezone=True), nullable=False),
     Column('notes', String(2000), nullable=False),
     Column('revision', Integer, nullable=False),
+    # cs_0021: whose certificate it is: the company or its legal representative (a second FIEL).
+    Column('holder', String(12)),
     UniqueConstraint('company_id', 'fingerprint', 'kind'),
+)
+# cs_0021: encrypted FIEL/CSD/IMSS files (.cer, .key) of a credential, outside the document folders. Never indexed
+# by CS-Storage nor read by the agent; never downloaded: used only through the browser extension's one-time ticket.
+files = Table(
+    'vault_files',
+    metadata,
+    Column('id', String(36), primary_key=True),
+    Column('company_id', ForeignKey(Company.id), nullable=False),
+    Column('credential_id', ForeignKey(credentials.c.id), nullable=False),
+    Column('file_kind', String(10), nullable=False),
+    Column('file_name', String(255), nullable=False),
+    Column('envelope', JSON, nullable=False),
+    Column('sha256', String(64), nullable=False),
+    Column('size', Integer, nullable=False),
+    Column('certificate_id', String(36)),
+    Column('actor_id', String(100), nullable=False),
+    Column('created_at', DateTime(timezone=True), nullable=False),
+)
+# cs_0021: one-time tickets for the browser extension (60 s, single use); only the hash is stored.
+tickets = Table(
+    'vault_tickets',
+    metadata,
+    Column('token_hash', String(64), primary_key=True),
+    Column('credential_id', ForeignKey(credentials.c.id), nullable=False),
+    Column('company_id', ForeignKey(Company.id), nullable=False),
+    Column('actor_id', String(100), nullable=False),
+    Column('purpose', String(20), nullable=False),
+    Column('expires_at', DateTime(timezone=True), nullable=False),
+    Column('used_at', DateTime(timezone=True)),
 )
 audit = Table(
     'vault_audit',
@@ -103,4 +144,15 @@ INITIAL = {
     'contpaqi_payroll': 'CONTPAQi Nóminas',
     'external_billing': 'Facturación externa',
     'other': 'Otros servicios',
+}
+# cs_0021: portals of the password manager (one credential = portal + user + password).
+PORTALS = {
+    'fiel': 'FIEL (e.firma)',
+    'csd': 'CSD (sello digital)',
+    'idse': 'IMSS – IDSE',
+    'sipare': 'IMSS – SIPARE',
+    'imss_certificate': 'IMSS – certificado digital',
+    'infonavit': 'Infonavit – portal empresarial',
+    'state_isn': 'Portal estatal (ISN)',
+    'bank': 'Banco',
 }

@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "ContaSuite – acceso al SAT",
+  "short_name": "ContaSuite",
+  "version": "1.1.0",
+  "description": "Llena el acceso al portal del SAT con la contraseña o la e.firma guardadas en el gestor de ContaSuite, sólo cuando lo pides desde ContaSuite.",
+  "minimum_chrome_version": "116",
+  "permissions": ["scripting", "storage", "tabs"],
+  "host_permissions": ["https://*.sat.gob.mx/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "options_page": "options.html",
+  "action": { "default_title": "ContaSuite – acceso al SAT", "default_popup": "options.html" }
+}

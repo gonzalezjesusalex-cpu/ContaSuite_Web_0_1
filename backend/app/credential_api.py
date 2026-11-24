@@ -30,8 +30,11 @@ def no_cache(response):
 
 def by_role(p, company, permission):
     # Bloque 2 (decisions 2-4): administrators and the company's responsible accountant hold every
-    # credential permission except reveal, which always needs an explicit grant in the table below.
-    return permission != 'reveal' and (p.admin or (p.role == 'contador' and company.accountant_id == p.subject))
+    # credential permission except reveal. Plan v1.1 (decision 1 of 23/11/2026): seeing or copying passwords is
+    # for administrators and for users with the explicit «reveal» grant of the company (no role includes it).
+    if permission == 'reveal':
+        return p.admin
+    return p.admin or (p.role == 'contador' and company.accountant_id == p.subject)
 
 
 def allowed(p, db, cid, permission):
@@ -66,11 +69,56 @@ def event(db, p, cid, action, ident=None, details=None):
     )
 
 
-def public_credential(row):
-    return {
-        k: row[k]
-        for k in ['id', 'company_id', 'service_id', 'label', 'revision', 'archived', 'created_at', 'updated_at']
-    }
+PUBLIC = [
+    'id',
+    'company_id',
+    'service_id',
+    'label',
+    'revision',
+    'archived',
+    'created_at',
+    'updated_at',
+    'username',
+    'url',
+    'notes',
+    'extra',
+    'holder',
+    'strength',
+]
+
+
+def public_credential(row, repeated=frozenset()):
+    # Never the envelope or the fingerprint: only whether the password is repeated elsewhere in the vault.
+    out = {k: row.get(k) for k in PUBLIC}
+    out['repeated'] = bool(row.get('fingerprint') and row['fingerprint'] in repeated)
+    return out
+
+
+def repeated_fingerprints(db):
+    from sqlalchemy import func
+
+    return frozenset(
+        r[0]
+        for r in db.execute(
+            select(credentials.c.fingerprint)
+            .where(credentials.c.fingerprint.is_not(None), credentials.c.archived.is_(False))
+            .group_by(credentials.c.fingerprint)
+            .having(func.count() > 1)
+        )
+    )
+
+
+def attached_files(db, company_ids):
+    from .credential_models import files as vault_files
+
+    out = {}
+    for r in db.execute(
+        select(vault_files.c.id, vault_files.c.credential_id, vault_files.c.file_kind, vault_files.c.file_name).where(
+            vault_files.c.company_id.in_(company_ids)
+        )
+    ).mappings():
+        out.setdefault(r['credential_id'], []).append({'id': r['id'], 'kind': r['file_kind'], 'name': r['file_name']})
+    return out
 
 
 def temporal(row, thresholds=(60, 30, 15), stamp=None):
@@ -125,9 +173,14 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
     no_cache(response)
     ready(db)
     allowed(p, db, cid, 'metadata')
+    repeated = repeated_fingerprints(db)
     items = [
-        public_credential(r) for r in db.execute(select(credentials).where(credentials.c.company_id == cid)).mappings()
+        public_credential(r, repeated)
+        for r in db.execute(select(credentials).where(credentials.c.company_id == cid)).mappings()
     ]
+    attached = attached_files(db, [cid])
+    for item in items:
+        item['files'] = attached.get(item['id'], [])
     thresholds = db.execute(select(settings.c.thresholds).where(settings.c.id == 1)).scalar() or [60, 30, 15]
     certs = [
         {**dict(r), **temporal(r, thresholds), 'authority_validated': False}
@@ -151,18 +204,33 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
         certificates=certs,
         services=[dict(r) for r in db.execute(select(services)).mappings()],
         permissions=perms,
-        reveal_enabled=False,
+        reveal_enabled='reveal' in perms and vault_unlocked(),
+        vault_unlocked=vault_unlocked(),
         thresholds=thresholds,
     )
+
+
+def vault_unlocked():
+    try:
+        VaultCipher.from_environment()
+        return True
+    except VaultLocked:
+        return False
 
 
 class CredentialIn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     service_id: str = Field(max_length=50)
-    # Label is deliberately not free-form: avoids accidental passwords in audit or overview.
+    # Plan v1.1: a free name for «Otro» portals; the screen warns not to write passwords in names or notes.
     label: str = Field('Acceso', min_length=1, max_length=100)
-    secret: SecretStr = Field(min_length=1, max_length=4096)
+    # Omitted when only the visible data change; the stored password is kept.
+    secret: SecretStr | None = Field(None, min_length=1, max_length=4096)
     revision: int = Field(0, ge=0)
+    username: str | None = Field(None, max_length=200)
+    url: str | None = Field(None, max_length=500, pattern=r'^(https?://\S+)?$')
+    notes: str | None = Field(None, max_length=2000)
+    extra: dict[str, str] = Field(default_factory=dict, max_length=10)
+    holder: Literal['company', 'legal_rep'] | None = None
 
 
 @router.post('/companies/{cid}/secrets')
@@ -192,18 +260,37 @@ def store(
         raise HTTPException(404, 'Credencial no encontrada.')
     if (old['revision'] if old else 0) != payload.revision:
         raise HTTPException(409, 'El registro cambió; actualiza.')
+    if not old and payload.secret is None:
+        raise HTTPException(422, 'Captura la contraseña.')
     ident = ident or str(uuid4())
-    try:
-        envelope = VaultCipher.from_environment().seal(payload.secret.get_secret_value(), cid, ident)
-    except VaultLocked:
-        raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+    visible = {
+        'username': (payload.username or '').strip() or None,
+        'url': payload.url or None,
+        'notes': (payload.notes or '').strip() or None,
+        'extra': {k[:40]: v[:200] for k, v in payload.extra.items()},
+        'holder': payload.holder,
+        'label': payload.label.strip() or 'Acceso',
+    }
+    envelope = old['envelope'] if old else None
+    if payload.secret is not None:
+        from .credential_crypto import strength
+
+        secret = payload.secret.get_secret_value()
+        try:
+            cipher = VaultCipher.from_environment()
+            envelope = cipher.seal(secret, cid, ident)
+            visible['fingerprint'] = cipher.fingerprint(secret)
+        except VaultLocked:
+            raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+        visible['strength'] = strength(secret, db.get(Company, cid).rfc)
+        del secret
     revision = payload.revision + 1
     try:
         if old:
             if not db.execute(
                 update(credentials)
                 .where(credentials.c.id == ident, credentials.c.revision == payload.revision)
-                .values(envelope=envelope, revision=revision, updated_at=now())
+                .values(envelope=envelope, revision=revision, updated_at=now(), **visible)
             ).rowcount:
                 raise HTTPException(409, 'Edición concurrente.')
         else:
@@ -212,12 +299,12 @@ def store(
                     id=ident,
                     company_id=cid,
                     service_id=payload.service_id,
-                    label='Acceso',
                     envelope=envelope,
                     revision=revision,
                     archived=False,
                     created_at=now(),
                     updated_at=now(),
+                    **visible,
                 )
             )
         db.execute(
@@ -225,7 +312,14 @@ def store(
                 credential_id=ident, revision=revision, envelope=envelope, actor_id=p.subject, created_at=now()
             )
         )
-        event(db, p, cid, 'credential_modified' if old else 'credential_created', ident, {'revision': revision})
+        event(
+            db,
+            p,
+            cid,
+            'credential_modified' if old else 'credential_created',
+            ident,
+            {'revision': revision, 'secret_changed': payload.secret is not None},
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -233,22 +327,80 @@ def store(
     return {'id': ident, 'revision': revision}
 
 
+REAUTH_SECONDS = 300
+
+
+def recent_reauth(db, p):
+    """The person re-entered their password in this session within the last five minutes."""
+    from datetime import timedelta
+
+    from .models import UserSession
+
+    if p.bootstrap or not p.session_id:
+        return False
+    current = db.get(UserSession, p.session_id)
+    return bool(
+        current
+        and current.reauth_at
+        and not current.revoked_at
+        and utc(current.reauth_at) >= now() - timedelta(seconds=REAUTH_SECONDS)
+    )
+
+
+def credential_row(db, cid, ident):
+    row = (
+        db.execute(select(credentials).where(credentials.c.id == ident, credentials.c.company_id == cid))
+        .mappings()
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, 'Credencial no encontrada.')
+    return row
+
+
+def require_recent(db, p, cid, ident):
+    if not recent_reauth(db, p):
+        event(db, p, cid, 'reveal_blocked', ident, {'reason': 'reauth_required'})
+        db.commit()
+        raise HTTPException(
+            428, 'Confirma tu contraseña para ver o usar secretos.', headers={'Cache-Control': 'no-store'}
+        )
+
+
+class RevealIn(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    action: Literal['view', 'copy'] = 'view'
+    reason: str = Field('', max_length=200)
+
+
 @router.post('/companies/{cid}/secrets/{ident}/reveal')
-def reveal(cid: str, ident: str, response: Response, p: Principal = Depends(auth), db=Depends(session)):
+def reveal(
+    cid: str,
+    ident: str,
+    response: Response,
+    payload: RevealIn | None = None,
+    p: Principal = Depends(auth),
+    db=Depends(session),
+):
+    """Plan v1.1: the password of one credential, after recent re-authentication, for an authorized person.
+
+    Every view or copy is written to the vault log (who, when, which company, why). The value travels only in
+    this no-store response; it is never logged, listed or exported here.
+    """
     no_cache(response)
     ready(db)
     allowed(p, db, cid, 'reveal')
-    if not db.execute(
-        select(credentials.c.id).where(credentials.c.id == ident, credentials.c.company_id == cid)
-    ).first():
-        raise HTTPException(404, 'Credencial no encontrada.')
-    event(db, p, cid, 'reveal_blocked', ident)
+    payload = payload or RevealIn()
+    row = credential_row(db, cid, ident)
+    require_recent(db, p, cid, ident)
+    try:
+        secret = VaultCipher.from_environment().open(row['envelope'], cid, ident, authorize_recent=lambda: True)
+    except VaultLocked:
+        raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+    action = 'secret_copied' if payload.action == 'copy' else 'secret_revealed'
+    event(db, p, cid, action, ident, {'reason': payload.reason})
     db.commit()
-    raise HTTPException(
-        423,
-        'Revelación deshabilitada hasta integrar reautenticación reciente y proveedor de claves.',
-        headers={'Cache-Control': 'no-store'},
-    )
+    return {'secret': secret, 'expires_in': 20}
 
 
 @router.delete('/companies/{cid}/secrets/{ident}')
@@ -280,6 +432,8 @@ class CertificateIn(BaseModel):
     kind: Literal['fiel', 'csd', 'unknown'] = 'unknown'
     document_id: str | None = Field(None, max_length=36)
     notes: str = Field('', max_length=2000)
+    # Plan v1.1: a second FIEL may belong to the company's legal representative (another RFC).
+    holder: Literal['company', 'legal_rep'] = 'company'
 
 
 @router.post('/companies/{cid}/certificates')
@@ -316,7 +470,7 @@ def add_certificate(
         from .storage.classifier import RFC, valid_rfc
 
         rfcs = {r for r in RFC.findall(parsed['subject'].upper()) if valid_rfc(r)}
-        if rfcs and company.rfc not in rfcs:
+        if rfcs and company.rfc not in rfcs and payload.holder == 'company':
             raise HTTPException(422, 'El RFC del certificado no coincide con la empresa.')
     ident = str(uuid4())
     try:
@@ -331,6 +485,7 @@ def add_certificate(
                 reviewed_at=now(),
                 notes=payload.notes,
                 revision=1,
+                holder=payload.holder,
                 **parsed,
             )
         )
