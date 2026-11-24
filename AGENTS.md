@@ -1,6 +1,6 @@
 # ContaSuite Web — reglas para agentes
 
-Plan vigente: [PLAN_FINALIZACION.md](PLAN_FINALIZACION.md) (manda sobre cualquier otro documento). Estado e instancias: [ESTADO.md](ESTADO.md). Operación: [OPERACION.md](OPERACION.md). Informes y reglas de iteraciones anteriores: `docs/historico/` (sólo consulta; no sustituyen a este archivo).
+Plan vigente: [PLAN_FINALIZACION.md](PLAN_FINALIZACION.md) (manda sobre cualquier otro documento). Funciones nuevas aprobadas para v1.1: [docs/PLAN_V1_1_SEGUIMIENTO.md](docs/PLAN_V1_1_SEGUIMIENTO.md). Estado e instancias: [ESTADO.md](ESTADO.md). Operación: [OPERACION.md](OPERACION.md). Informes y reglas de iteraciones anteriores: `docs/historico/` (sólo consulta; no sustituyen a este archivo).
 
 ## Datos, instancias y secretos
 
@@ -25,7 +25,7 @@ Plan vigente: [PLAN_FINALIZACION.md](PLAN_FINALIZACION.md) (manda sobre cualquie
 ## Seguridad
 
 - Nunca aceptar actores, roles ni ámbitos enviados por el cliente fuera de endpoints administrativos autorizados.
-- No guardar llaves privadas FIEL ni contraseñas de red. Fechas de un CER no son validación SAT.
+- Llaves privadas FIEL/CSD y contraseñas de las empresas: el usuario levantó la prohibición el 23/11/2026, **sólo** para el gestor de contraseñas del plan v1.1 (`docs/PLAN_V1_1_SEGUIMIENTO.md`, Cambio 4): cifradas, con reautenticación para ver o usar, permiso explícito y bitácora. Fuera de ese gestor (documentos, registros, `.env`, respaldos en claro, agente) siguen prohibidas. No guardar contraseñas de red (SMB). Fechas de un CER no son validación SAT.
 - El arranque sólo verifica esquema; nunca migrar ni sembrar al iniciar. Cambios de esquema mediante migración explícita con respaldo.
 
 ## Forma de trabajar
