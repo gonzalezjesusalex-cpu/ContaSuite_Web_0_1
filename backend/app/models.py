@@ -58,6 +58,14 @@ class Company(Base):
     operations_start: Mapped[__import__('datetime').date | None] = mapped_column(Date, nullable=True)
     padron_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
     csf_issued_on: Mapped[__import__('datetime').date | None] = mapped_column(Date, nullable=True)
+    # cs_0019, plan v1.1: company data of the office's Excel files that are not credentials (registro patronal,
+    # workers, line of business, REPSE, bank, legal representative). Workers feed «No aplica» of IMSS/Infonavit.
+    employer_registration: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    workers: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    business_activity: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    repse: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    bank: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    legal_representative: Mapped[str | None] = mapped_column(String(200), nullable=True)
     email: Mapped[str] = mapped_column(String(180), default='')
     phone: Mapped[str] = mapped_column(String(40), default='')
     location: Mapped[str] = mapped_column(String(150), default='')

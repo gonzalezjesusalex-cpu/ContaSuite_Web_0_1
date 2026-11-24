@@ -12,6 +12,7 @@ from sqlalchemy import (
     JSON,
     ForeignKey,
     UniqueConstraint,
+    Index,
 )
 from .models import Company, Document, DocumentVersion
 
@@ -100,6 +101,35 @@ opinions = table(
     Column('notes', String(2000), nullable=False),
     Column('actor_id', String(100), nullable=False),
     Column('created_at', DateTime(timezone=True), nullable=False),
+    # cs_0019, plan v1.1 Cambio 1: data read from the PDF (folio, workers, official validity, omitted
+    # obligations of a negative SAT opinion), which fields were read versus typed, and whether it awaits review.
+    Column('folio', String(60)),
+    Column('source', String(12)),
+    Column('workers', Integer),
+    Column('official_valid_until', Date),
+    Column('issued_at', DateTime(timezone=True)),
+    Column('read_fields', JSON),
+    Column('omissions', JSON),
+    Column('review', Boolean),
+)
+Index('uq_integral_opinions_folio', opinions.c.authority, opinions.c.folio, unique=True)
+# cs_0019: «No aplica» of a document for a company (IMSS and Infonavit without workers), confirmed by a person.
+document_settings = table(
+    'company_document_settings',
+    Column('company_id', ForeignKey(Company.id), primary_key=True),
+    Column('kind', String(12), primary_key=True),
+    Column('not_applicable', Boolean, nullable=False),
+    Column('actor_id', String(100), nullable=False),
+    Column('updated_at', DateTime(timezone=True), nullable=False),
+)
+# cs_0019: the office's validity per document (days green and days amber), not the official one.
+document_validity = table(
+    'document_validity',
+    Column('kind', String(12), primary_key=True),
+    Column('green_days', Integer, nullable=False),
+    Column('amber_days', Integer, nullable=False),
+    Column('actor_id', String(100), nullable=False),
+    Column('updated_at', DateTime(timezone=True), nullable=False),
 )
 cfdi_reviews = table(
     'integral_cfdi_reviews',

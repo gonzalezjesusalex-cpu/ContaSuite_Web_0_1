@@ -1387,6 +1387,10 @@ from .integral_api import router as integral_router
 
 app.include_router(integral_router)
 
+from .document_status import router as document_status_router
+
+app.include_router(document_status_router)
+
 
 DIST = ROOT / 'frontend' / 'dist'
 

@@ -458,7 +458,7 @@ class OpinionIn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     authority: Literal['SAT', 'IMSS', 'INFONAVIT']
     consulted_on: date
-    result: Literal['positive', 'negative', 'unreviewed', 'unavailable'] = 'unreviewed'
+    result: Literal['positive', 'negative', 'no_opinion', 'unreviewed', 'unavailable'] = 'unreviewed'
     next_review: date | None = None
     document_id: str | None = None
     responsible: str = Field('', max_length=100)
@@ -475,7 +475,15 @@ def add_opinion(cid: str, payload: OpinionIn, p: Principal = Depends(auth), db=D
         raise HTTPException(422, 'Documento de otra empresa.')
     ident = str(uuid4())
     db.execute(
-        opinions.insert().values(id=ident, company_id=cid, **payload.model_dump(), actor_id=p.subject, created_at=now())
+        opinions.insert().values(
+            id=ident,
+            company_id=cid,
+            **payload.model_dump(),
+            actor_id=p.subject,
+            created_at=now(),
+            source='manual',
+            review=False,
+        )
     )
     event(db, p, 'opinion_registered', ident, cid)
     db.commit()
