@@ -36,6 +36,17 @@ catalog = Table(
     Column('id', String(36), primary_key=True),
     Column('label', String(100), nullable=False),
     Column('periodicity', String(12), nullable=False),
+    # cs_0018, plan v1.1 Cambio 2: obligations as printed on the CSF. NULL group_name = the office's internal
+    # control (Excel «Control de obligaciones»); a group marks a CSF obligation shown in the period checklist.
+    # `cadence` adds the bimonthly period that the original CHECK on periodicity does not allow.
+    Column('official_name', String(300)),
+    Column('short_name', String(60)),
+    Column('group_name', String(20)),
+    Column('cadence', String(12)),
+    Column('regime_scope', String(80)),
+    Column('due_rule', JSON),
+    Column('due_text', String(300)),
+    Column('aliases', JSON),
     CheckConstraint("periodicity IN ('monthly','quarterly','annual')"),
 )
 Index('uq_fiscal_catalog_name', func.lower(catalog.c.label), unique=True)
@@ -48,6 +59,12 @@ applicability = Table(
     Column('responsible_id', ForeignKey(UserAccount.id)),
     Column('updated_at', DateTime(timezone=True), nullable=False),
     Column('revision', Integer, nullable=False),
+    # cs_0018: start and end of the obligation for this company (CSF columns), where the proposal came from
+    # ('csf' or 'manual') and the wording read on the constancia.
+    Column('start_date', Date),
+    Column('end_date', Date),
+    Column('source', String(10)),
+    Column('csf_text', String(300)),
 )
 periods = Table(
     'fiscal_periods',
@@ -228,7 +245,8 @@ def _matrix_data(year, month, principal, db):
     companies = db.scalars(select(Company).order_by(Company.name)).all()
     companies = [c for c in companies if principal.admin or c.id in principal.company_ids]
     ids = [c.id for c in companies]
-    definitions = [dict(r) for r in db.execute(select(catalog)).mappings()]
+    # The internal control matrix keeps its own concepts; CSF obligations (v1.1) live in the period checklist.
+    definitions = [dict(r) for r in db.execute(select(catalog).where(catalog.c.group_name.is_(None))).mappings()]
     keys = [period_key(year, month, f) for f in ['monthly', 'quarterly', 'annual']]
     rows = list(
         db.execute(select(records).where(records.c.company_id.in_(ids), records.c.period_id.in_(keys))).mappings()
@@ -396,6 +414,17 @@ class ApplicabilityIn(BaseModel):
     applicable: bool
     responsible_id: str | None = None
     revision: int = Field(ge=0)
+    # Plan v1.1: dates of the obligation (CSF columns) and where the proposal came from.
+    start_date: date | None = None
+    end_date: date | None = None
+    source: Literal['csf', 'manual'] | None = None
+    csf_text: str | None = Field(None, max_length=300)
+
+    @model_validator(mode='after')
+    def ordered(self):
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError('La fecha fin es anterior a la de inicio.')
+        return self
 
 
 @router.put('/applicability')
@@ -450,10 +479,65 @@ def save_applicability(payload: ApplicabilityIn, principal: Principal = Depends(
     return {'revision': payload.revision + 1}
 
 
+class DueRule(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    kind: Literal['day_next_month', 'last_day_next_month', 'months_after_year_end', 'fixed_next_year']
+    day: int | None = Field(None, ge=1, le=31)
+    month: int | None = Field(None, ge=1, le=12)
+    months: int | None = Field(None, ge=1, le=12)
+
+
 class CatalogIn(BaseModel):
     model_config = ConfigDict(extra='forbid')
     label: str = Field(min_length=1, max_length=100)
     periodicity: Literal['monthly', 'quarterly', 'annual'] = 'monthly'
+    # Plan v1.1: a CSF obligation (group set) with its official wording and due rule.
+    official_name: str | None = Field(None, max_length=300)
+    short_name: str | None = Field(None, max_length=60)
+    group_name: Literal['IVA', 'ISR', 'Retenciones', 'Informativas', 'Anuales'] | None = None
+    cadence: Literal['monthly', 'bimonthly', 'quarterly', 'annual'] | None = None
+    regime_scope: str | None = Field(None, max_length=80)
+    due_rule: DueRule | None = None
+    due_text: str | None = Field(None, max_length=300)
+
+
+class CatalogEdit(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    official_name: str = Field(min_length=1, max_length=300)
+    short_name: str = Field(min_length=1, max_length=60)
+    group_name: Literal['IVA', 'ISR', 'Retenciones', 'Informativas', 'Anuales']
+    cadence: Literal['monthly', 'bimonthly', 'quarterly', 'annual']
+    regime_scope: str = Field('', max_length=80)
+    due_rule: DueRule | None = None
+    due_text: str = Field('', max_length=300)
+    aliases: list[str] = Field(default_factory=list, max_length=10)
+
+
+@router.put('/catalog/{ident}')
+def edit_definition(ident: str, payload: CatalogEdit, principal: Principal = Depends(auth), db=Depends(session)):
+    """An administrator corrects a CSF obligation: wording, group, cadence and due rule (plan v1.1)."""
+    principal.require_admin()
+    ready(db)
+    old = db.execute(select(catalog).where(catalog.c.id == ident)).mappings().first()
+    if not old or not old['group_name']:
+        raise HTTPException(404, 'Obligación de constancia no encontrada.')
+    values = payload.model_dump()
+    values['due_rule'] = payload.due_rule.model_dump(exclude_none=True) if payload.due_rule else None
+    values['aliases'] = [a.strip()[:300] for a in payload.aliases if a.strip()]
+    # The original CHECK keeps periodicity in three values; bimonthly is carried by cadence.
+    values['periodicity'] = 'monthly' if payload.cadence == 'bimonthly' else payload.cadence
+    db.execute(update(catalog).where(catalog.c.id == ident).values(**values))
+    db.execute(
+        history.insert().values(
+            id=str(uuid4()),
+            actor_id=principal.subject,
+            created_at=now(),
+            before=serial(old),
+            after={'action': 'catalog_modified', 'id': ident, **values},
+        )
+    )
+    db.commit()
+    return {'saved': True}
 
 
 @router.post('/catalog', status_code=201)
@@ -469,7 +553,18 @@ def add_definition(payload: CatalogIn, principal: Principal = Depends(auth), db=
         raise HTTPException(409, 'Nombre de obligación ya registrado.')
     ident = str(uuid4())
     try:
-        db.execute(catalog.insert().values(id=ident, label=payload.label.strip(), periodicity=payload.periodicity))
+        extra = payload.model_dump(exclude={'label', 'periodicity'})
+        extra['due_rule'] = payload.due_rule.model_dump(exclude_none=True) if payload.due_rule else None
+        if payload.group_name and not extra['due_rule'] and payload.due_text:
+            from .obligation_catalog import parse_due_rule
+
+            extra['due_rule'] = parse_due_rule(payload.due_text)
+        periodicity = payload.periodicity
+        if payload.cadence:
+            periodicity = 'monthly' if payload.cadence == 'bimonthly' else payload.cadence
+        db.execute(
+            catalog.insert().values(id=ident, label=payload.label.strip(), periodicity=periodicity, aliases=[], **extra)
+        )
         db.execute(
             history.insert().values(
                 id=str(uuid4()),

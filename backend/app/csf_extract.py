@@ -276,16 +276,183 @@ def regimes_from(text):
     return found
 
 
+# Plan v1.1 (Cambio 2): the obligations table has four columns (description, due description, start, end) and
+# long descriptions wrap onto following lines. The PDF layout (column positions) is read first; without it, the
+# wording that opens the due column («A más tardar…», «Dentro de…») separates description and due text.
+DATE = r'\d{2}/\d{2}/\d{4}'
+DUE_OPENING = re.compile(r'\b(A\s*MAS\s*TARDAR|DENTRO\s*DE\s*LOS|CONJUNTAMENTE\s*CON|EN\s*EL\s*MES\s*DE)\b')
+DUE_WORDS = ('POSTERIOR', 'QUE CORRESPONDA', 'EJERCICIO SIGUIENTE', 'CIERRE DEL EJERCICIO', 'DEL MES DE')
+OBLIGATION_END = [r'SUS\s*DATOS\s*PERSONALES', r'CADENA\s*ORIGINAL', r'SELLO\s*DIGITAL', r'PAGINA\s*\[?\s*\d']
+
+
+def clean(text):
+    return re.sub(r'\s+', ' ', text or '').strip(' ,;')
+
+
+def split_due(text):
+    """(description, due text) of a line that holds both, split where the due wording starts."""
+    m = DUE_OPENING.search(fold(text))
+    if not m:
+        return text, ''
+    return text[: m.start()], text[m.start() :]
+
+
+def entry(description, due, start, end):
+    return {
+        'description': clean(description)[:300],
+        'due_text': clean(due)[:300] or None,
+        'start_date': spanish_date(start) if start else None,
+        'end_date': spanish_date(end) if end else None,
+    }
+
+
 def obligations_from(text):
-    body = section(text, r'OBLIGACIONES\s*:', [r'SUS DATOS PERSONALES', r'CADENA ORIGINAL', r'SELLO DIGITAL'])
-    items = []
-    for m in re.finditer(r'([A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 ,.()/%-]{10,}?)\s*(\d{2}/\d{2}/\d{4})', body):
-        description = re.sub(r'\s+', ' ', m.group(1)).strip(' ,.')
-        if 'DESCRIPCION DE LA OBLIGACION' in fold(description):
-            description = re.sub(r'(?i).*descripci[oó]n de la obligaci[oó]n\s*', '', description)
-        if description:
-            items.append({'description': description[:300], 'start_date': spanish_date(m.group(2))})
-    return items[:50]
+    """Obligations from the plain text of the constancia (also the OCR path)."""
+    body = clean(section(text, r'OBLIGACIONES\s*:', OBLIGATION_END).replace('\n', ' '))
+    body = re.sub(
+        r'(?i)descripci[oó]n de la obligaci[oó]n\s*descripci[oó]n vencimiento\s*fecha inicio\s*(fecha fin)?', '', body
+    )
+    items, cursor = [], 0
+    # Each obligation ends with its start date (and end date, when printed). The text before a date holds the
+    # wrapped tail of the previous obligation, then this one's description (it opens with a capitalized verb)
+    # and its due wording.
+    for m in re.finditer(DATE + r'(?:\s*(' + DATE + r'))?', body):
+        chunk = body[cursor : m.start()]
+        cursor = m.end()
+        due_at = DUE_OPENING.search(fold(chunk))
+        before = chunk[: due_at.start()] if due_at else chunk
+        due = chunk[due_at.start() :] if due_at else ''
+        opener = OBLIGATION_OPENING.search(before)
+        tail, description = (before[: opener.start()], before[opener.start() :]) if opener else ('', before)
+        if items and clean(tail):
+            continued(items[-1], tail)
+        items.append([description, due, m.group().split()[0][:10], m.group(1)])
+    if items and clean(body[cursor:]):
+        continued(items[-1], body[cursor:])
+    return [entry(*i) for i in items if clean(i[0])][:50]
+
+
+OBLIGATION_OPENING = re.compile(r'\b(Pago|Declaraci[oó]n|Entero|Ajuste|Presentaci[oó]n|Informativa|Retenci[oó]n)\b')
+
+
+def continued(item, text):
+    """Wrapped tail of an obligation: due wording continues its due text, anything else its description."""
+    regime = re.match(r'(?s)\s*(.*?R[eé]gimen[^.]*\.?)(.*)$', text)
+    if regime:
+        # «… Régimen Simplificado de Confianza.» belongs to the name (it tells RESICO from the general one).
+        item[0] += ' ' + regime.group(1)
+        text = regime.group(2)
+    if not clean(text):
+        return
+    if any(w in fold(text) for w in DUE_WORDS):
+        item[1] += ' ' + text
+    else:
+        item[0] += ' ' + text
+
+
+def fragments(page):
+    """(x, y, text) of every text run of a page, from the PDF drawing positions."""
+    out = []
+
+    def visit(text, cm, tm, _font, _size):
+        if text and text.strip():
+            x = tm[4] * cm[0] + tm[5] * cm[2] + cm[4]
+            y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
+            out.append((x, y, text))
+
+    try:
+        page.extract_text(visitor_text=visit)
+    except Exception:  # noqa: BLE001 - a broken text layer gives no layout; the text path still runs
+        return []
+    return out
+
+
+def obligations_from_layout(pages):
+    """Obligations by column position, across the constancia's pages; None when the header is not split in
+    columns (then the text path is used). Works for any PDF generator: only titles and columns matter."""
+    columns = None
+    rows = []
+    inside = False
+    for page in pages:
+        lines = {}
+        for x, y, text in fragments(page):
+            lines.setdefault(round(y / 3), []).append((x, text))
+        for key in sorted(lines, reverse=True):
+            parts = sorted(lines[key])
+            joined = fold(' '.join(t for _, t in parts))
+            if re.search(r'OBLIGACIONES\s*:', joined):
+                inside = True
+                continue
+            if not inside:
+                continue
+            if any(re.search(p, joined) for p in OBLIGATION_END):
+                inside = False
+                continue
+            if 'DESCRIPCION DE LA OBLIGACION' in joined:
+                xs = {}
+                for x, t in parts:
+                    f = fold(t)
+                    if 'VENCIMIENTO' in f:
+                        xs['due'] = x
+                    elif 'INICIO' in f:
+                        xs['start'] = x
+                    elif re.search(r'\bFIN\b', f):
+                        xs['end'] = x
+                    elif 'OBLIGACION' in f:
+                        xs['description'] = x
+                if {'description', 'due', 'start'} <= set(xs):
+                    columns = xs
+                continue
+            if columns:
+                rows.append(parts)
+    if not columns:
+        return None
+    bounds = sorted((x, name) for name, x in columns.items())
+
+    def column(x):
+        name = bounds[0][1]
+        for left, label in bounds:
+            if x >= left - 4:
+                name = label
+        return name
+
+    items, current = [], None
+    for parts in rows:
+        cells = {}
+        for x, t in parts:
+            cells.setdefault(column(x), []).append(t)
+        cells = {k: ' '.join(v) for k, v in cells.items()}
+        start = re.search(DATE, cells.get('start', ''))
+        if start:
+            end = re.search(DATE, cells.get('end', ''))
+            current = [cells.get('description', ''), cells.get('due', ''), start.group(), end.group() if end else None]
+            items.append(current)
+        elif current is not None:
+            current[0] += ' ' + cells.get('description', '')
+            current[1] += ' ' + cells.get('due', '')
+    return [entry(*i) for i in items if clean(i[0])][:50]
+
+
+INFONAVIT_MESSAGE = (
+    'Es la constancia del Infonavit (aportaciones patronales), no la del SAT: súbela en el semáforo documental.'
+)
+INFONAVIT = ('INFONAVIT', 'FONDO NACIONAL DE LA VIVIENDA', 'APORTACIONES PATRONALES', 'ENTERO DE DESCUENTOS')
+
+
+def is_infonavit(text):
+    """The Infonavit's «Constancia de situación fiscal… aportaciones patronales y entero de descuentos» shares the
+    title with the SAT's constancia; its issuer and full title tell them apart (plan v1.1)."""
+    folded = fold(text or '')
+    return any(k in folded for k in INFONAVIT)
+
+
+def issued_from_chain(text):
+    """Issue date from the seal's original chain: ||AAAA/MM/DD hh:mm:ss|RFC|CONSTANCIA DE SITUACIÓN FISCAL|…"""
+    m = re.search(r'\|\|\s*(\d{4})/(\d{2})/(\d{2})\s+\d{2}:\d{2}:\d{2}\s*\|', text or '')
+    try:
+        return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+    except ValueError:
+        return None
 
 
 def issued_near_label(text):
@@ -336,7 +503,7 @@ def build(values, text, source):
     municipality, state = take('tax_municipality'), take('tax_state')
     between = ' y '.join(v for v in (take('between_1'), take('between_2')) if v) or None
     status = take('padron_status')
-    issued = spanish_date(values.get('issued', ('', 1))[0]) or issued_near_label(text)
+    issued = spanish_date(values.get('issued', ('', 1))[0]) or issued_near_label(text) or issued_from_chain(text)
     form = {
         'person_type': person_type,
         'rfc': rfc,
@@ -439,12 +606,17 @@ def analyze(data):
             texts.append(p.extract_text() or '')
         except Exception:  # noqa: BLE001 - a broken text layer counts as no text; the content is never logged
             texts.append('')
-    start = next((i for i, t in enumerate(texts) if TITLE in fold(t)), None)
+    start = next((i for i, t in enumerate(texts) if TITLE in fold(t) and not is_infonavit(t)), None)
     if start is not None:
         span = csf_page_span(texts, start)
         text = '\n'.join(texts[i] for i in span)
         result = build(fields_from_text(text), text, 'text')
+        layout = obligations_from_layout([pages[i] for i in span])
+        if layout:
+            result['obligations'] = layout
         return {**result, 'pages': [i + 1 for i in span], 'page_count': len(pages)}
+    if any(TITLE in fold(t) and is_infonavit(t) for t in texts):
+        raise CsfError(INFONAVIT_MESSAGE)
     if any(t.strip() for t in texts):
         raise CsfError('El documento no contiene «Constancia de Situación Fiscal».')
     if not ocr_available():
@@ -467,6 +639,8 @@ def analyze_scanned(pages):
         # Cheap pass on the top of each page to find the constancia; other documents are not read further.
         head = fold(' '.join(t for t, _ in ocr_lines(img, crop_top=0.25)))
         if 'CONSTANCIA' in head and 'SITUACION' in head:
+            if is_infonavit(head):
+                raise CsfError(INFONAVIT_MESSAGE)
             start = i
             break
     if start is None:
@@ -553,3 +727,47 @@ def suggest_obligations(obligations, catalog_rows, applicable=None):
                     entry['sources'].append(item['description'])
                 break
     return list(out.values())
+
+
+def propose_csf_obligations(obligations, entries, applicable=None):
+    """Plan v1.1: CSF obligations matched exactly (normalized wording) to the catalog, with their dates.
+
+    entries: catalog rows with a group (id, official_name, aliases, short_name, group_name, cadence).
+    applicable: {obligation_id: (applicable, revision)}. Returns (proposals, unmatched): an obligation of the
+    constancia that is not in the catalog is never guessed; it is listed for a person to add or choose.
+    """
+    from . import obligation_catalog as oc
+
+    applicable = applicable or {}
+    proposals, unmatched = {}, []
+    for item in obligations:
+        ident = oc.match(item['description'], entries)
+        if not ident:
+            unmatched.append(
+                {
+                    'description': item['description'],
+                    'due_text': item.get('due_text'),
+                    'due_rule': oc.parse_due_rule(item.get('due_text') or ''),
+                    'start_date': item.get('start_date'),
+                    'end_date': item.get('end_date'),
+                }
+            )
+            continue
+        current = applicable.get(ident, (False, 0))
+        definition = next(e for e in entries if e['id'] == ident)
+        proposals.setdefault(
+            ident,
+            {
+                'obligation_id': ident,
+                'label': definition.get('short_name') or definition.get('label'),
+                'official_name': definition.get('official_name'),
+                'group': definition.get('group_name'),
+                'cadence': definition.get('cadence'),
+                'already_applicable': bool(current[0]),
+                'revision': current[1],
+                'csf_text': item['description'],
+                'start_date': item.get('start_date'),
+                'end_date': item.get('end_date'),
+            },
+        )
+    return list(proposals.values()), unmatched

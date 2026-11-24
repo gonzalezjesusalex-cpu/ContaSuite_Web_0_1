@@ -513,7 +513,26 @@ async def analyze_csf(
         result['existing_company'] = {'id': existing.id, 'name': existing.name} if visible else {'id': None}
         result['warnings'].insert(0, 'Ya existe una empresa con este RFC. No se fusionará ni se creará otra.')
     result['suggested_obligations'] = obligation_suggestions(db, result['obligations'], company_id or None)
+    result['csf_obligations'], result['unmatched_obligations'] = csf_obligation_proposals(
+        db, result['obligations'], company_id or None
+    )
     return result
+
+
+def csf_obligation_proposals(db, obligations, company_id):
+    """Plan v1.1 (Cambio 2): CSF obligations matched to the catalog with their dates, and those not found."""
+    from .csf_extract import propose_csf_obligations
+    from .fiscal_control import applicability, catalog, metadata
+    from .schema_cache import tables_ready
+
+    if not obligations or not tables_ready(db, metadata):
+        return [], []
+    entries = [dict(r) for r in db.execute(select(catalog).where(catalog.c.group_name.is_not(None))).mappings()]
+    current = {}
+    if company_id:
+        for r in db.execute(select(applicability).where(applicability.c.company_id == company_id)).mappings():
+            current[r['obligation_id']] = (r['applicable'], r['revision'])
+    return propose_csf_obligations(obligations, entries, current)
 
 
 def obligation_suggestions(db, obligations, company_id):
@@ -1322,6 +1341,10 @@ app.include_router(cfdi_write_router)
 from .fiscal_control import router as fiscal_control_router
 
 app.include_router(fiscal_control_router)
+
+from .obligation_checklist import router as obligation_checklist_router
+
+app.include_router(obligation_checklist_router)
 
 from .fiscal_import_api import router as fiscal_import_router
 
