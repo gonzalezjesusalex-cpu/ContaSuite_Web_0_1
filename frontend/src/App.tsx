@@ -74,6 +74,8 @@ class ModuleBoundary extends Component<{ children: ReactNode; route: string }, {
     );
   }
 }
+// Rediseño v2: una sola lista en el orden del diseño (Inicio, Empresas, CFDI, Recopila, Declara, Recibos,
+// Configuración); «Tareas y vencimientos» se conserva junto a Empresas. Los grupos sólo ordenan.
 const nav = [
   {
     group: 'General',
@@ -86,14 +88,19 @@ const nav = [
   {
     group: 'Automatización',
     items: [
-      { path: '/recopilador-cfdi', title: 'Recopila', icon: CloudDownload },
       { path: '/organizador-cfdi', title: 'CFDI', icon: FolderTree },
+      { path: '/recopilador-cfdi', title: 'Recopila', icon: CloudDownload },
       { path: '/declara', title: 'Declara', icon: Files },
       { path: '/recibos', title: 'Recibos', icon: ReceiptText },
     ],
   },
   { group: 'Sistema', items: [{ path: '/configuracion', title: 'Configuración', icon: Settings }] },
 ];
+const ROLE_NAMES: Record<CurrentUser['role'], string> = {
+  admin: 'Administrador',
+  contador: 'Contador',
+  auxiliar: 'Auxiliar',
+};
 type Shared = { state: State; refresh: () => Promise<void>; notify: (m: string) => void };
 function CompaniesRoute(props: Shared) {
   const { search } = useLocation();
@@ -372,7 +379,6 @@ export default function App() {
         <nav>
           {nav.map((g) => (
             <div key={g.group}>
-              <div className="nav-group">{g.group}</div>
               {g.items
                 .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
                 .map((i) => (
@@ -384,7 +390,7 @@ export default function App() {
                     aria-label={i.title}
                   >
                     {moduleIconNames[i.path.slice(1)] ? (
-                      <OriginalIcon name={moduleIconNames[i.path.slice(1)]} size={28} sidebar />
+                      <OriginalIcon name={moduleIconNames[i.path.slice(1)]} size={24} />
                     ) : (
                       <i.icon size={18} strokeWidth={1.6} />
                     )}
@@ -406,7 +412,9 @@ export default function App() {
           </div>
           <div>
             <strong>{name || 'Mi despacho'}</strong>
-            <small>ContaSuite v1.0 RC1</small>
+            <small title="ContaSuite v1.0 RC1">
+              {identity ? ROLE_NAMES[identity.role] || 'Usuario' : 'ContaSuite'}
+            </small>
           </div>
           <button className="icon-button" onClick={logout} aria-label="Cerrar sesión">
             <LogOut size={17} />
@@ -473,12 +481,19 @@ export default function App() {
           <RefreshCw size={17} />
         </button>
         <button
-          className="icon-button"
+          className="theme-button"
           aria-label={'Cambiar tema (actual: ' + themeName + ')'}
           title={'Tema: ' + themeName + '. Pulsa para cambiar.'}
           onClick={() => setTheme(THEMES[(THEMES.findIndex((t) => t.id === theme) + 1) % THEMES.length].id)}
         >
-          {theme === 'dark' ? <Moon size={18} /> : theme === 'contrast' ? <Monitor size={18} /> : <Sun size={18} />}
+          {theme === 'dark' ? (
+            <Moon size={17} aria-hidden />
+          ) : theme === 'contrast' ? (
+            <Monitor size={17} aria-hidden />
+          ) : (
+            <Sun size={17} aria-hidden />
+          )}
+          <span>{themeName}</span>
         </button>
         <div className="profile-avatar small">{name ? name[0] : 'CS'}</div>
       </header>
