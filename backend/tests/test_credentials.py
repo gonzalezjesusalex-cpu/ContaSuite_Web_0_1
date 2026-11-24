@@ -74,7 +74,9 @@ def test_store_redaction_isolation_history_and_reveal(vault):
         envelope = db.execute(select(credentials.c.envelope)).scalar()
         assert secret not in json.dumps(envelope)
         snap = overview('company-a', Response(), ADMIN, db)
-        assert secret not in str(snap) and 'envelope' not in str(snap) and not snap['reveal_enabled']
+        assert secret not in str(snap) and 'envelope' not in str(snap) and 'fingerprint' not in str(snap)
+        # Plan v1.1, decision 1: administrators may reveal (with a recent re-authentication).
+        assert snap['reveal_enabled']
         assert db.scalar(select(func.count()).select_from(audit)) >= 2
         assert len(overview('company-b', Response(), ADMIN, db)['credentials']) == 0
         outsider = Principal('outsider', 'Outsider', False, frozenset({'company-b'}), session_id='fake')
@@ -82,7 +84,7 @@ def test_store_redaction_isolation_history_and_reveal(vault):
             overview('company-a', Response(), outsider, db)
         with pytest.raises(HTTPException) as forbidden:
             reveal('company-a', saved['id'], Response(), ADMIN, db)
-        assert forbidden.value.status_code == 403  # admins do not implicitly reveal
+        assert forbidden.value.status_code == 428  # allowed role, but no recent re-authentication
         from app.credential_models import grants
 
         # Test explicit reveal grant still cannot bypass missing recent-auth adapter.
@@ -98,7 +100,7 @@ def test_store_redaction_isolation_history_and_reveal(vault):
         db.commit()
         with pytest.raises(HTTPException) as locked:
             reveal('company-a', saved['id'], Response(), ADMIN, db)
-        assert locked.value.status_code == 423
+        assert locked.value.status_code == 428
         store(
             'company-a',
             CredentialIn(service_id='sat_password', secret='Other-synthetic', revision=1),

@@ -149,7 +149,7 @@ export default function FiscalControl({
         </div>
       </div>
       {view === 'Casillas' && <ObligationChecklist period={period} companyId={companyId} notify={notify} />}
-      <div className="toolbar" hidden={view === 'Casillas'}>
+      <div className="toolbar" style={view === 'Casillas' ? { display: 'none' } : undefined}>
         <input
           aria-label="Buscar nombre o RFC"
           placeholder="Buscar nombre o RFC"

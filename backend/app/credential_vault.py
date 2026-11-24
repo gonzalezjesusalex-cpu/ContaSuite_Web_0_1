@@ -371,7 +371,7 @@ def redeem(payload: dict, response: Response, db=Depends(session)):
 HEADER_RULES = [
     ('ignore', (r'^NO\.?$', r'^NUM', r'^NIVEL', r'VENCIMIENTO', r'FECHA', r'INICIAL', r'^FINAL')),
     ('rfc', (r'^RFC$', r'^R\.?F\.?C')),
-    ('company', (r'EMPRESA', r'RAZON SOCIAL', r'CONTRIBUYENTE', r'^NOMBRE$')),
+    ('company', (r'^EMPRESA', r'^RAZON SOCIAL', r'^CONTRIBUYENTE', r'^NOMBRE$')),
     ('regime', (r'REGIMEN',)),
     ('employer_registration', (r'REG\.? ?PATRONAL', r'REGISTRO PATRONAL')),
     ('business_activity', (r'^GIRO',)),
@@ -460,7 +460,11 @@ def parse_sheet(rows):
     header = rows[head_at]
     # A second header row (user / password under a merged portal title) is detected by its words.
     sub = rows[head_at + 1] if head_at + 1 < len(rows) else []
-    has_sub = any(re.search(r'USUARIO|CONTRASENA', fold(str(c or '')).upper().replace('Ñ', 'N')) for c in sub)
+    # Only a row of bare titles («Usuario», «Contraseña», «Correo») counts; a data row never has an RFC value.
+    words = [fold(str(c or '')).upper().replace('Ñ', 'N').strip(' .:') for c in sub]
+    has_sub = any(w in ('USUARIO', 'CONTRASENA', 'CORREO', 'PASSWORD') for w in words) and not any(
+        re.fullmatch(r'[A-Z&N]{3,4}\d{6}[A-Z0-9]{3}', w) for w in words
+    )
     roles, last = [], None
     for i, cell in enumerate(header):
         role = header_role(str(cell or ''))

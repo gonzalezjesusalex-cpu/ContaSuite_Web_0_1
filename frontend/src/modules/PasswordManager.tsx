@@ -360,6 +360,12 @@ export default function PasswordManager({ companyId, notify }: { companyId?: str
 function ReauthDialog({ onClose, onDone }: { onClose: () => void; onDone: () => Promise<void> }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const field = useRef<HTMLInputElement>(null);
+  // The dialog focuses its close button first; the password field is what the person types into.
+  useEffect(() => {
+    const t = window.setTimeout(() => field.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, []);
   async function submit(e: FormEvent) {
     e.preventDefault();
     try {
@@ -376,7 +382,7 @@ function ReauthDialog({ onClose, onDone }: { onClose: () => void; onDone: () => 
       <form onSubmit={submit} className="form-grid">
         <p className="wide">Por seguridad, ver, copiar o usar secretos pide tu contraseña de ContaSuite. Vale cinco minutos.</p>
         <Field label="Tu contraseña de ContaSuite">
-          <input type="password" autoComplete="current-password" autoFocus required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input ref={field} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         {error && (
           <p role="alert" className="error-banner wide">

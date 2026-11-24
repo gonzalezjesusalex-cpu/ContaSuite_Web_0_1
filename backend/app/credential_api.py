@@ -378,9 +378,9 @@ def reveal(
     cid: str,
     ident: str,
     response: Response,
-    payload: RevealIn | None = None,
     p: Principal = Depends(auth),
     db=Depends(session),
+    payload: RevealIn | None = None,
 ):
     """Plan v1.1: the password of one credential, after recent re-authentication, for an authorized person.
 

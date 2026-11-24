@@ -197,7 +197,7 @@ def checklist(
     for c in companies:
         items = cells[c.id]
         summary = totals(items)
-        if pending and not summary['pending']:
+        if (pending and not summary['pending']) or (not items and not company_id):
             continue
         rows.append(
             {

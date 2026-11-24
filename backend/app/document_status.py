@@ -145,7 +145,7 @@ def company_lights(db, companies, soon=7):
             o = latest.get((c.id, AUTHORITY[kind]))
             if not o:
                 proposal = kind != 'sat' and c.workers == 0
-                lights.append(light(kind, 'gray', detail='Sin documento.', propose_not_applicable=proposal))
+                lights.append(light(kind, 'gray', propose_not_applicable=proposal))
                 continue
             state, age, expires = by_age(o['consulted_on'], rules[kind], day)
             if o['result'] == 'negative':

@@ -10,6 +10,17 @@ from app.models import Base, Company, Document, DocumentVersion, DocumentLocatio
 from app.storage.migrate import upgrade_storage
 
 
+# Plan v1.1 (cs_0019): company data of the office's Excel files.
+V11_COMPANY_COLUMNS = {
+    'employer_registration',
+    'workers',
+    'business_activity',
+    'repse',
+    'bank',
+    'legal_representative',
+}
+
+
 def local_engine(tmp_path):
     engine = create_engine('sqlite:///' + str(tmp_path / 'migration.db'))
 
@@ -105,9 +116,11 @@ def test_fresh_database_and_frozen_migration_schema_match_models(tmp_path):
             'security_events',
         ):
             # Columns added after the frozen storage chain, by later revisions of the single Alembic history.
-            later = {'user_accounts': {'role'}, 'companies': {'accountant_id', 'accountant_legacy'} | CSF_COLUMNS}.get(
-                name, set()
-            )
+            later = {
+                'user_accounts': {'role'},
+                'user_sessions': {'reauth_at'},
+                'companies': {'accountant_id', 'accountant_legacy'} | CSF_COLUMNS | V11_COMPANY_COLUMNS,
+            }.get(name, set())
             assert {c.name for c in Base.metadata.tables[name].columns} - later == {
                 c['name'] for c in inspector.get_columns(name)
             }, name

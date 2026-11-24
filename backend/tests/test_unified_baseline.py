@@ -17,7 +17,7 @@ from app.storage.migrate import STORAGE_HEAD, schema_revision, upgrade_schema, u
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
-HEAD = 'cs_0017_organizador_items'
+HEAD = 'cs_0021_password_manager'
 OLD_CHAIN = [
     ('fiscal_migrations', '001_control_obligaciones'),
     ('credential_migrations', '001_vault'),
@@ -110,8 +110,15 @@ def test_database_prepared_by_old_procedure_upgrades_without_changing_rows(tmp_p
         upgrade_schema(engine)
         upgrade_schema(engine)  # idempotent
         assert schema_revision(engine) == (HEAD, HEAD)
-        # Existing rows keep every previous value; later revisions only add columns and tables.
-        assert snapshot(engine, old_columns) == before
+        # Existing rows keep every previous value; later revisions only add columns and tables, and the plan v1.1
+        # revisions add catalog rows (CSF obligations, password manager portals, office validity per document).
+        after = snapshot(engine, old_columns)
+        seeded = {'fiscal_catalog', 'vault_services', 'document_validity'}
+        for table, rows in before.items():
+            if table in seeded:
+                assert set(rows) <= set(after[table]), table
+            else:
+                assert after[table] == rows, table
         assert check_schema(engine)['compatible']
         with Session(engine) as db:
             assert db.scalar(select(Company.name).where(Company.id == 'company-before')) == 'Sintética'
