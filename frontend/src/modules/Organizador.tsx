@@ -1,3 +1,5 @@
+import CfdiCalendar from './CfdiCalendar';
+import { can } from '../permissions';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Archive, Download, FileText, FolderOpen, FolderTree, RefreshCw } from 'lucide-react';
@@ -686,6 +688,9 @@ export default function Organizador({
           notify={notify}
           refresh={refresh}
         />
+      )}
+      {company && (
+        <CfdiCalendar companyId={company} canRebuild={can(state.current_user, 'documentos.subir', company)} notify={notify} />
       )}
     </div>
   );

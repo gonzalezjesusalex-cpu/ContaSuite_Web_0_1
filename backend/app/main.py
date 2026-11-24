@@ -1391,6 +1391,10 @@ from .document_status import router as document_status_router
 
 app.include_router(document_status_router)
 
+from .cfdi_calendar import router as cfdi_calendar_router
+
+app.include_router(cfdi_calendar_router)
+
 
 DIST = ROOT / 'frontend' / 'dist'
 

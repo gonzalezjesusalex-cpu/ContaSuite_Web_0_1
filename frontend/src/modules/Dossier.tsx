@@ -1,4 +1,5 @@
 import CompanyObligations from './CompanyObligations';
+import CfdiCalendar from './CfdiCalendar';
 import CompanyDocumentStatus from './CompanyDocumentStatus';
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
@@ -414,7 +415,7 @@ export default function Dossier({
         {(section === 'Obligaciones'
           ? ['Cumplimiento', 'Obligaciones de la constancia', 'Histórico fiscal']
           : section === 'Documentos'
-            ? ['Documentos', 'Explorador documental']
+            ? ['Documentos', 'Explorador documental', 'Calendario de CFDI']
             : section === 'FIEL/CSD'
               ? ['Credenciales y Certificados', 'e.firma y CSD']
               : section === 'Actividad'
@@ -434,6 +435,8 @@ export default function Dossier({
           refresh={refresh}
           job={scanDone}
         />
+      ) : tab === 'Calendario de CFDI' ? (
+        <CfdiCalendar companyId={c.id} canRebuild={can(me, 'documentos.subir', c.id)} notify={notify} />
       ) : tab === 'Credenciales y Certificados' ? (
         <Credentials state={state} companyId={c.id} scanJob={scanDone} />
       ) : tab === 'Declaraciones' && can(me, 'declara.usar', c.id) ? (

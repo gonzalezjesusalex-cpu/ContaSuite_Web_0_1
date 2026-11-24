@@ -359,6 +359,14 @@ class StorageService(DocumentCatalog, ClassificationService):
                             )
                         )
                 version = self._version(db, actor, doc, stored, 'cs_internal', stored.key)
+                if name.lower().endswith('.xml'):
+                    # Plan v1.1 (Cambio 3): calendar row of the CFDI (date, issuer, receiver, total).
+                    from ..cfdi_calendar import facts, record
+
+                    with self.internal.open_read(stored.key) as content:
+                        calendar_facts = facts(content)
+                    db.flush()
+                    record(db, doc, version, calendar_facts)
                 if name.lower().endswith('.xml') and available(db):
                     from .classifier import classify
 
@@ -433,6 +441,11 @@ class StorageService(DocumentCatalog, ClassificationService):
                     from .classifier import classify
 
                     identity = classify(spool, Path(key).name, []) if Path(key).suffix.lower() == '.xml' else None
+                    calendar_facts = None
+                    if Path(key).suffix.lower() == '.xml':
+                        from ..cfdi_calendar import facts
+
+                        calendar_facts = facts(spool)
                 finally:
                     spool.close()
                 previous = db.scalar(
@@ -527,6 +540,11 @@ class StorageService(DocumentCatalog, ClassificationService):
                     lock(db)
                     db.flush()
                     register(db, doc, version, identity, actor.subject)
+                if calendar_facts:
+                    from ..cfdi_calendar import record
+
+                    db.flush()
+                    record(db, doc, version, calendar_facts)
                 self._event(db, actor, 'external_observed', document_id=doc.id, source_id=source_id)
                 result = self._public(db, doc, actor)
             return result

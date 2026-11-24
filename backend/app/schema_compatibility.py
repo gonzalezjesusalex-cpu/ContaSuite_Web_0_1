@@ -15,8 +15,21 @@ def metadatas():
     from .alert_schedule import metadata as schedule
     from .evidence_history import metadata as evidence
     from .document_identity import metadata as identity
+    from .cfdi_calendar import metadata as cfdi_calendar
 
-    return [Base.metadata, fiscal, vault, imports, integral, archive, lifecycle, schedule, evidence, identity]
+    return [
+        Base.metadata,
+        fiscal,
+        vault,
+        imports,
+        integral,
+        archive,
+        lifecycle,
+        schedule,
+        evidence,
+        identity,
+        cfdi_calendar,
+    ]
 
 
 def check_schema(engine):
