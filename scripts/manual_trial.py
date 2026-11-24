@@ -88,6 +88,35 @@ def main():
             check=True,
             stdout=subprocess.DEVNULL,
         )
+    else:
+        # A trial created with an earlier version: update its schema, keeping a copy first (plan v1.1 adds cs_0018+).
+        import shutil
+
+        backup = folder / ('prueba-antes-de-actualizar-' + datetime.now().strftime('%Y%m%d-%H%M%S') + '.db')
+        shutil.copy2(folder / 'prueba.db', backup)
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / 'scripts/schema_admin.py'),
+                '--data-dir',
+                env['DATA_DIR'],
+                '--apply',
+                '--backup',
+                str(backup),
+            ],
+            env=env,
+            stdout=subprocess.DEVNULL,
+        )
+        if result.returncode:
+            raise SystemExit('No se pudo actualizar la base de prueba; usa INICIAR_PRUEBA_MANUAL.bat --reset.')
+    # Password manager (plan v1.1): a DPAPI keyring of this trial only, inside its own data folder.
+    if os.name == 'nt' and not (Path(env['DATA_DIR']) / 'vault' / 'keyring.dpapi').is_file():
+        subprocess.run(
+            [sys.executable, str(ROOT / 'scripts/vault_keyring.py'), '--data-dir', env['DATA_DIR'], '--init'],
+            env=env,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
     api = subprocess.Popen(
         [sys.executable, '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', str(port)],
         cwd=ROOT / 'backend',
