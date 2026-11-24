@@ -27,7 +27,7 @@ Línea base antes de cambiar código (worktree limpio de `main`): **435 pasadas,
 5. `4448563` Cambio 4 — gestor de contraseñas y extensión.
 6. Prueba final (este informe, `tests/test_v11.py` y correcciones).
 
-## Decisiones tomadas por defecto (confirmar)
+## Decisiones tomadas por defecto (confirmadas por el usuario el 24/11/2026)
 
 - **Llave maestra**: DPAPI de Windows en `<DATA_DIR>/vault/keyring.dpapi`, creada con `scripts/vault_keyring.py --init`
   (alcance del usuario de Windows; `--machine` si el servicio corre con otra cuenta) y respaldo fuera de línea con
