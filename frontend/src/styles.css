@@ -492,25 +492,154 @@ strong {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 60%, #eff4ff55, transparent 70%);
-  padding: 32px;
-}
-.welcome .brand-icon {
-  margin-bottom: 30px;
-}
-.welcome h1 {
-  font-size: 25px;
+  background: radial-gradient(ellipse at 50% 45%, rgb(var(--md-surface-container-low)), transparent 70%);
+  padding: 40px 24px;
   text-align: center;
+}
+/* Rediseño v2 (Inicio): logo con nombre, saludo, nombre configurado en su propia línea y accesos rápidos. */
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  text-align: left;
+}
+.welcome-brand strong {
+  display: block;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  line-height: 24px;
   font-weight: 600;
 }
-.welcome p {
-  margin-top: 10px;
+.welcome-brand small {
+  display: block;
+  margin: 0;
   color: var(--muted);
-  font-size: 15px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
 }
-.welcome small {
-  margin-top: 9px;
+.welcome h1 {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--muted);
+}
+.welcome .welcome-title {
+  margin-top: 18px;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  color: var(--primary);
+}
+.welcome > small {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+.quick-access {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 212px));
+  gap: 16px;
+  margin-top: 36px;
+  text-align: left;
+}
+.quick-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 178px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  transition:
+    border-color var(--motion-state) var(--ease-state),
+    box-shadow var(--motion-state) var(--ease-state),
+    transform var(--motion-state) var(--ease-state);
+}
+@media (hover: hover) and (pointer: fine) {
+  .quick-card:hover {
+    border-color: var(--primary);
+    box-shadow: var(--elev-2);
+    transform: translateY(-2px);
+  }
+}
+.quick-card strong {
+  margin-top: auto;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.quick-card > span:last-child {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  line-height: 18px;
+}
+.quick-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+.quick-icon.tone-indigo {
+  background: #e2dfff;
+  color: #312e81;
+}
+.quick-icon.tone-green {
+  background: #d6fbe9;
+}
+.quick-icon.tone-blue {
+  background: #e5eeff;
+}
+.quick-icon.tone-orange {
+  background: #ffede3;
+}
+.quick-arrow {
+  position: absolute;
+  top: 34px;
+  right: 24px;
+  color: var(--muted);
+}
+[data-theme='dark'] .quick-icon {
+  background: rgb(var(--md-surface-container-high));
+  color: rgb(var(--md-primary));
+}
+[data-theme='contrast'] .quick-icon {
+  background: #000;
+  color: #fff;
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .quick-card {
+  border: 2px solid #fff;
+}
+@media (max-width: 1100px) {
+  .quick-access {
+    grid-template-columns: repeat(2, minmax(0, 240px));
+  }
+}
+@media (max-width: 560px) {
+  .quick-access {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .quick-card {
+    min-height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-card {
+    transition: none;
+  }
+  .quick-card:hover {
+    transform: none;
+  }
 }
 .page-heading {
   display: flex;
@@ -1951,10 +2080,11 @@ dd {
     right: 15px;
   }
   .welcome h1 {
-    font-size: 22px;
+    font-size: 20px;
   }
-  .welcome .brand-icon {
-    margin-bottom: 23px;
+  .welcome-name {
+    font-size: 28px;
+    line-height: 36px;
   }
   .stitch-preview {
     overflow-x: auto;
@@ -2356,14 +2486,15 @@ dd {
 }
 
 .welcome-name {
-  font-size: 25px;
-  font-weight: 600;
-  line-height: 1.35;
+  font-family: var(--font-headline);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 44px;
   text-align: center;
-  margin-top: 8px;
+  margin-top: 4px;
   max-width: 90%;
   overflow-wrap: anywhere;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.5px;
 }
 
 .recopila-steps {

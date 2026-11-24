@@ -56,8 +56,10 @@ test.beforeEach(async ({ page }) => {
 test('el enlace para saltar al contenido es el primer foco y lleva al contenido', async ({ page }) => {
   await login(page);
   await page.goto('/empresas');
-  await page.keyboard.press('Tab');
   const skip = page.getByRole('link', { name: 'Saltar al contenido' });
+  // The shell renders after the session check («Consultando sesión…»); press Tab once it exists.
+  await expect(skip).toBeAttached();
+  await page.keyboard.press('Tab');
   await expect(skip).toBeFocused();
   await expect(skip).toBeInViewport();
   await page.keyboard.press('Enter');

@@ -14,10 +14,10 @@ import {
 } from 'react';
 import { X, Building2 } from 'lucide-react';
 import { OriginalIcon } from './OriginalIcon';
-export function Logo({ large = false, sidebar = false }: { large?: boolean; sidebar?: boolean }) {
+export function Logo({ large = false, sidebar = false, size }: { large?: boolean; sidebar?: boolean; size?: number }) {
   return (
     <div className={'brand-icon original-brand ' + (large ? 'large' : '')}>
-      <OriginalIcon name="suite" size={large ? 104 : 40} sidebar={sidebar} label="ContaSuite" />
+      <OriginalIcon name="suite" size={size || (large ? 104 : 40)} sidebar={sidebar} label="ContaSuite" />
     </div>
   );
 }
