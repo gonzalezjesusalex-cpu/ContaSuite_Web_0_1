@@ -1,3 +1,4 @@
+import DocumentSummary from './DocumentSummary';
 import { useEffect, useState } from 'react';
 import { can } from '../permissions';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -270,6 +271,9 @@ export default function IntegralDashboard({
         <p role="alert" className="error-banner">
           {error}
         </p>
+      )}
+      {view === 'Dashboard general' && (
+        <DocumentSummary admin={state.current_user.admin} notify={(m) => setError(m)} />
       )}
       {data && (
         <>

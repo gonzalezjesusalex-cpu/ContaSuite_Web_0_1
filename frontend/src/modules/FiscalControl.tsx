@@ -7,6 +7,7 @@ import { Field, Modal, Kpi } from '../components/ui';
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
 import type { State } from '../types';
 import './fiscal-control.css';
+import ObligationChecklist from './ObligationChecklist';
 import type { Summary, FiscalCell } from './fiscalRead';
 type Company = { id: string; name: string; rfc: string; regime: string; accountant: string };
 type Definition = { id: string; label: string; periodicity: string };
@@ -132,14 +133,14 @@ export default function FiscalControl({
           <p>Periodo {period} · Seguimiento interno, sin validación ante el SAT.</p>
         </div>
         <div className="actions">
-          {['Dashboard', 'Tabla'].map((v) => (
+          {['Dashboard', 'Tabla', 'Casillas'].map((v) => (
             <button
               key={v}
               className={view === v ? stitchPrimary : stitchButton}
               aria-pressed={view === v}
               onClick={() => setView(v)}
             >
-              {v}
+              {v === 'Casillas' ? 'Obligaciones del periodo' : v}
             </button>
           ))}
           <button className={stitchButton} onClick={() => setReload((n) => n + 1)}>
@@ -147,7 +148,8 @@ export default function FiscalControl({
           </button>
         </div>
       </div>
-      <div className="toolbar">
+      {view === 'Casillas' && <ObligationChecklist period={period} companyId={companyId} notify={notify} />}
+      <div className="toolbar" hidden={view === 'Casillas'}>
         <input
           aria-label="Buscar nombre o RFC"
           placeholder="Buscar nombre o RFC"
@@ -175,13 +177,13 @@ export default function FiscalControl({
           ))}
         </select>
       </div>
-      {error && (
+      {error && view !== 'Casillas' && (
         <p role="alert" className="error-banner">
           {error}
         </p>
       )}
-      {loading && <p role="status">Consultando registros…</p>}
-      {data && (
+      {loading && view !== 'Casillas' && <p role="status">Consultando registros…</p>}
+      {data && view !== 'Casillas' && (
         <>
           {view === 'Dashboard' ? (
             <>

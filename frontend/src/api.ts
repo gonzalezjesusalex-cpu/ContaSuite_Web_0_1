@@ -101,3 +101,14 @@ export const dateLabel = (date: string) =>
     month: 'short',
     year: 'numeric',
   });
+/** Downloads a file produced by an API endpoint (an export) with the session's credentials. */
+export async function downloadApi(path: string, name: string) {
+  const response = await fetch('/api' + path, { credentials: 'same-origin', headers: authHeaders() });
+  if (!response.ok) throw new Error('No se pudo generar el archivo');
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

@@ -1,3 +1,4 @@
+import DocumentLights, { type CompanyLights } from './DocumentLights';
 import { useState, useEffect } from 'react';
 import { canRegisterCompanies, csfIsStale, responsibleName } from '../permissions';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -55,6 +56,15 @@ export default function Companies({
   );
   const [archive, setArchive] = useState(params.get('archive') || 'active'),
     [sort, setSort] = useState(params.get('sort') || 'name');
+  // Plan v1.1: document traffic light of every visible company, shown compact in the directory.
+  const [lights, setLights] = useState<Record<string, CompanyLights>>({});
+  useEffect(() => {
+    const abort = new AbortController();
+    api<{ companies: CompanyLights[] }>('/integral/document-status', 'GET', undefined, abort.signal)
+      .then((d) => setLights(Object.fromEntries(d.companies.map((c) => [c.company_id, c]))))
+      .catch(() => !abort.signal.aborted && setLights({}));
+    return () => abort.abort();
+  }, [state.companies.length]);
   const [directory, setDirectory] = useState<Company[]>([]),
     [directoryError, setDirectoryError] = useState(''),
     [directoryLoading, setDirectoryLoading] = useState(false);
@@ -339,7 +349,7 @@ export default function Companies({
                       <th>Régimen fiscal</th>
                       <th>Contador asignado</th>
                       <th>Adjuntos directos</th>
-                      <th>Opinión 32-D</th>
+                      <th>Semáforo documental</th>
                       <th>Estado interno</th>
                       <th>Acciones</th>
                     </tr>
@@ -380,7 +390,7 @@ export default function Companies({
                           {state.document_counts[c.id] ?? 0}
                         </td>
                         <td>
-                          <Badge>Sin consultar</Badge>
+                          {lights[c.id] ? <DocumentLights company={lights[c.id]} compact /> : <Badge>Sin información</Badge>}
                         </td>
                         <td>
                           <Badge tone={toneOf(statusOf(c, state, period, fiscal?.company_summaries[c.id]))}>

@@ -1,3 +1,5 @@
+import CompanyObligations from './CompanyObligations';
+import CompanyDocumentStatus from './CompanyDocumentStatus';
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
@@ -397,12 +399,20 @@ export default function Dossier({
           </button>
         ))}
       </div>
+      {section === 'Resumen' && (
+        <CompanyDocumentStatus
+          companyId={c.id}
+          canUpload={can(me, 'documentos.subir', c.id)}
+          canEdit={can(me, 'empresa.editar', c.id)}
+          notify={notify}
+        />
+      )}
       {section === 'Resumen' && <FiscalSummary period={period} companyId={c.id} compact />}
       {section === 'Actividad' && <ArchiveActivity companyId={c.id} available={!!state.archive_available} />}
       {section === 'Actividad' && can(me, 'cfdi.usar', c.id) && <CfdiRuns companyId={c.id} />}
       <div className="actions" aria-label="Vistas de la sección">
         {(section === 'Obligaciones'
-          ? ['Cumplimiento', 'Histórico fiscal']
+          ? ['Cumplimiento', 'Obligaciones de la constancia', 'Histórico fiscal']
           : section === 'Documentos'
             ? ['Documentos', 'Explorador documental']
             : section === 'FIEL/CSD'
@@ -441,6 +451,8 @@ export default function Dossier({
         </section>
       ) : tab === 'Cumplimiento' ? (
         <FiscalControl state={state} period={period} companyId={c.id} notify={notify} />
+      ) : tab === 'Obligaciones de la constancia' ? (
+        <CompanyObligations companyId={c.id} notify={notify} />
       ) : tab === 'Histórico fiscal' ? (
         <FiscalSummary period={period} companyId={c.id} />
       ) : tab === 'Tareas' ? (

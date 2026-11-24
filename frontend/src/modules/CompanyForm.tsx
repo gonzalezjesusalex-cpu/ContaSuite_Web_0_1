@@ -111,6 +111,8 @@ export default function CompanyForm({
   const [fromCsf, setFromCsf] = useState<Set<string>>(new Set());
   const [csfRegimes, setCsfRegimes] = useState<CsfRegime[] | null>(null);
   const [chosenObligations, setChosenObligations] = useState<Set<string>>(new Set());
+  // Plan v1.1: CSF obligations proposed from the constancia (all pre-selected; the user can untick them).
+  const [chosenCsf, setChosenCsf] = useState<Set<string>>(new Set());
   const shownRegimes = regimes.filter((r) => (form.person_type === 'Moral' ? r.moral : r.fisica));
   const responsibleChanged = admin && responsibleId !== (company?.accountant_id || '');
   const [busy, setBusy] = useState(false);
@@ -151,6 +153,7 @@ export default function CompanyForm({
     setFromCsf(new Set(Object.keys(values)));
     setCsfRegimes(result.fields.regimes || null);
     setCsf(result);
+    setChosenCsf(new Set((result.csf_obligations || []).filter((o) => !o.already_applicable).map((o) => o.obligation_id)));
     setCsfFile(file);
     setCsfMode('read');
     const el = document.querySelector<HTMLFormElement>('.registration-form');
@@ -227,6 +230,23 @@ export default function CompanyForm({
           });
         } catch (err) {
           notify('No se activó la obligación ' + s.label + ': ' + (err as Error).message);
+        }
+      }
+      for (const o of csf?.csf_obligations || []) {
+        if (!chosenCsf.has(o.obligation_id)) continue;
+        try {
+          await api('/fiscal-control/applicability', 'PUT', {
+            company_id: c.id,
+            obligation_id: o.obligation_id,
+            applicable: true,
+            revision: company ? o.revision : 0,
+            start_date: o.start_date,
+            end_date: o.end_date,
+            source: 'csf',
+            csf_text: o.csf_text.slice(0, 300),
+          });
+        } catch (err) {
+          notify('No se asignó la obligación ' + o.label + ': ' + (err as Error).message);
         }
       }
       await onSaved();
@@ -599,6 +619,55 @@ export default function CompanyForm({
                         </span>
                       </label>
                     ))}
+                  </fieldset>
+                )}
+                {((csf?.csf_obligations?.length || 0) > 0 || (csf?.unmatched_obligations?.length || 0) > 0) && (
+                  <fieldset className="csf-address wide">
+                    <legend>Obligaciones de la constancia</legend>
+                    <p className="muted">
+                      Se asignan a la empresa con las fechas de inicio y fin que trae la constancia. Desmarca las que
+                      no correspondan; podrás corregirlas después en el expediente.
+                    </p>
+                    {csf!.csf_obligations!.map((o) => (
+                      <label key={o.obligation_id} className="check-option">
+                        <input
+                          type="checkbox"
+                          disabled={o.already_applicable}
+                          checked={o.already_applicable || chosenCsf.has(o.obligation_id)}
+                          onChange={(e) =>
+                            setChosenCsf((old) => {
+                              const next = new Set(old);
+                              if (e.target.checked) next.add(o.obligation_id);
+                              else next.delete(o.obligation_id);
+                              return next;
+                            })
+                          }
+                        />
+                        <span>
+                          {o.official_name}
+                          <small className="muted">
+                            {' '}
+                            · {o.group}
+                            {o.start_date && <> · desde {o.start_date}</>}
+                            {o.end_date && <> · hasta {o.end_date}</>}
+                            {o.already_applicable && <> · ya asignada</>}
+                          </small>
+                        </span>
+                      </label>
+                    ))}
+                    {(csf?.unmatched_obligations?.length || 0) > 0 && (
+                      <div className="muted">
+                        <p>
+                          Sin coincidencia en el catálogo (un administrador puede agregarlas en Control de
+                          obligaciones → Catálogo):
+                        </p>
+                        <ul>
+                          {csf!.unmatched_obligations!.map((u) => (
+                            <li key={u.description}>{u.description}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </fieldset>
                 )}
                 <Field label="Fecha de inicio de operaciones">

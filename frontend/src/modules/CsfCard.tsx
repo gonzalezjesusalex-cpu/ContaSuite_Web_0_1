@@ -10,12 +10,29 @@ export type CsfResult = {
   low_confidence: string[];
   warnings: string[];
   unmatched_regimes: string[];
-  obligations: { description: string; start_date: string | null }[];
+  obligations: { description: string; due_text?: string | null; start_date: string | null; end_date?: string | null }[];
   pages: number[];
   page_count: number;
   existing_company?: { id: string | null; name?: string };
   /** Obligations catalog entries the constancia points to; activated only if the user confirms. */
   suggested_obligations?: { obligation_id: string; label: string; revision: number; sources: string[] }[];
+  /** Plan v1.1: CSF obligations matched to the catalog by their exact wording, with the dates of the constancia. */
+  csf_obligations?: CsfObligation[];
+  /** Obligations of the constancia that are not in the catalog: never guessed, an administrator adds them. */
+  unmatched_obligations?: { description: string; due_text: string | null; start_date: string | null; end_date: string | null }[];
+};
+
+export type CsfObligation = {
+  obligation_id: string;
+  label: string;
+  official_name: string;
+  group: string;
+  cadence: string;
+  already_applicable: boolean;
+  revision: number;
+  csf_text: string;
+  start_date: string | null;
+  end_date: string | null;
 };
 
 /** Sends the PDF to be read on the server (text layer first, local OCR for scans). Nothing is saved. */

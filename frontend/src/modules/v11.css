@@ -1,0 +1,436 @@
+/* Plan v1.1: document traffic light, obligations checklist, CFDI calendar and password manager.
+   Colors come from the theme tokens (--ok, --warn, --danger, --muted), so light, dark and high contrast
+   keep their AA contrast; backgrounds are tints of the same token. */
+
+.v11-lights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+.v11-lights.compact {
+  gap: 4px;
+  margin: 0;
+  flex-wrap: nowrap;
+}
+.v11-light > span,
+.v11-light > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+  font: inherit;
+  line-height: 1.1;
+}
+.v11-lights.compact .v11-light > span,
+.v11-lights.compact .v11-light > button {
+  width: 26px;
+  height: 26px;
+  justify-content: center;
+  padding: 0;
+}
+.v11-light.is-green {
+  color: var(--ok);
+}
+.v11-light.is-amber {
+  color: var(--warn);
+}
+.v11-light.is-red {
+  color: var(--danger);
+}
+.v11-light.is-gray,
+.v11-light.is-na {
+  color: var(--muted);
+}
+.v11-light.is-na > span {
+  border-style: dashed;
+  background: transparent;
+}
+.v11-light-text {
+  display: grid;
+}
+.v11-light-text small {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text);
+}
+.v11-light-details {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: var(--fs-sm, 13px);
+}
+.v11-light-details li {
+  margin: 4px 0;
+}
+
+/* Obligations checklist */
+.v11-checklist .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v11-checklist .toolbar .actions {
+  margin-left: auto;
+}
+.v11-company-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.v11-company-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--panel);
+  min-width: 0;
+}
+.v11-company-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: start;
+}
+.v11-company-card h3 {
+  margin: 0;
+  font-size: var(--fs-lg, 16px);
+  overflow-wrap: anywhere;
+}
+.v11-progress {
+  font-variant-numeric: tabular-nums;
+  color: var(--ok);
+}
+.v11-progress.is-overdue,
+.v11-group-count.is-overdue {
+  color: var(--danger);
+}
+.v11-group-count.is-done {
+  color: var(--ok);
+}
+.v11-group {
+  border-top: 1px solid var(--border);
+  padding: 6px 0;
+}
+.v11-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+  font-weight: 600;
+}
+.v11-group > summary::-webkit-details-marker {
+  display: none;
+}
+.v11-group-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.v11-chevron {
+  transition: transform var(--motion-fast, 150ms) var(--ease-out, ease-out);
+  transform: rotate(-90deg);
+}
+.v11-group[open] .v11-chevron {
+  transform: none;
+}
+.v11-check {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 4px;
+  border-radius: 8px;
+}
+.v11-check:hover {
+  background: var(--hover);
+}
+.v11-check input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ok);
+}
+.v11-check > span {
+  display: grid;
+  min-width: 0;
+}
+.v11-check small {
+  color: var(--muted);
+}
+.v11-check.is-overdue small {
+  color: var(--danger);
+}
+.v11-check.is-done .v11-check-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+.v11-matrix-scroll {
+  overflow: auto;
+  max-height: 70vh;
+  margin-top: 16px;
+}
+.v11-matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.v11-matrix th,
+.v11-matrix td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  white-space: nowrap;
+}
+.v11-matrix thead th {
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+  z-index: 2;
+}
+.v11-matrix thead tr:nth-child(2) th {
+  top: 33px;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 500;
+}
+.v11-matrix tbody th {
+  position: sticky;
+  left: 0;
+  background: var(--panel);
+  text-align: left;
+  z-index: 1;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v11-matrix td.is-done {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+.v11-matrix td.is-overdue {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
+.v11-matrix td.v11-na {
+  color: var(--muted);
+}
+.v11-matrix input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ok);
+}
+
+/* Document summary */
+.v11-state-grid {
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+  font-size: var(--fs-sm, 13px);
+}
+.v11-state-grid > div {
+  display: grid;
+  grid-template-columns: minmax(140px, 2fr) repeat(5, minmax(48px, 1fr));
+  gap: 4px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.v11-state-grid [role='cell'],
+.v11-state-head [role='columnheader']:not(:first-child) {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.v11-state-head .is-green {
+  color: var(--ok);
+}
+.v11-state-head .is-amber {
+  color: var(--warn);
+}
+.v11-state-head .is-red {
+  color: var(--danger);
+}
+.v11-state-head .is-gray,
+.v11-state-head .is-na {
+  color: var(--muted);
+}
+.v11-state-grid [role='rowheader'] {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.v11-validity-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+}
+.v11-validity-row > span {
+  min-width: 220px;
+  font-weight: 600;
+}
+.v11-validity-row input {
+  width: 64px;
+}
+
+/* CFDI calendar */
+.v11-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm, 13px);
+}
+.v11-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  vertical-align: -1px;
+}
+.v11-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.v11-month {
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.v11-month[aria-pressed='true'] {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.v11-month h4 {
+  margin: 0 0 6px;
+}
+.v11-month p {
+  margin: 2px 0;
+  font-size: var(--fs-sm, 13px);
+}
+.v11-month .is-missing {
+  color: var(--muted);
+}
+.cfdi-both {
+  color: var(--ok);
+}
+.cfdi-issued {
+  color: var(--primary);
+}
+.cfdi-received {
+  color: var(--warn);
+}
+.cfdi-none {
+  color: var(--muted);
+}
+.v11-month .v11-swatch,
+.v11-day .v11-swatch {
+  background: color-mix(in srgb, currentColor 35%, transparent);
+}
+.v11-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 12px;
+}
+.v11-days .v11-weekday {
+  text-align: center;
+  font-size: var(--fs-xs, 12px);
+  color: var(--muted);
+}
+.v11-day {
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.v11-day.cfdi-both,
+.v11-day.cfdi-issued,
+.v11-day.cfdi-received {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  border-color: currentColor;
+}
+.v11-day span {
+  display: block;
+  color: var(--text);
+  font-size: var(--fs-xs, 12px);
+}
+.v11-day[disabled] {
+  cursor: default;
+}
+
+/* Password manager */
+.v11-vault-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v11-vault-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.v11-vault-item {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 2fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.v11-vault-item .v11-secret {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+.v11-vault-item .actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+.v11-vault-item small {
+  color: var(--muted);
+}
+.v11-weak {
+  color: var(--warn);
+}
+.v11-repeated {
+  color: var(--danger);
+}
+@media (max-width: 720px) {
+  .v11-vault-item {
+    grid-template-columns: 1fr;
+  }
+  .v11-vault-item .actions {
+    justify-content: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v11-chevron {
+    transition: none;
+  }
+}
