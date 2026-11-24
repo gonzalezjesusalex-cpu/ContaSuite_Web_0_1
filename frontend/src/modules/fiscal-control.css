@@ -105,7 +105,7 @@
   color: #ffaaa4;
 }
 [data-theme='dark'] .fiscal-control .fiscal-in_progress {
-  color: #80aaff;
+  color: #c3c0ff;
 }
 [data-theme='contrast'] .fiscal-control .fiscal-cell {
   color: var(--text);

@@ -1,0 +1,134 @@
+/* Rediseño v2, paso 1: tokens del sistema de diseño
+   (design-source/v2/stitch_contasuite_desktop_accounting_app/contasuite_design_system.md).
+   Colores como tripletas RGB para que Tailwind admita opacidad (`rgb(var(--md-x) / <alpha>)`).
+   Claro y oscuro salen del diseño; el alto contraste se deriva aquí: base negra, texto blanco,
+   sin rellenos pastel y bordes de 2 px (styles.css). Las variables heredadas (--panel, --primary…)
+   se definen en styles.css a partir de estos tokens. */
+:root {
+  --md-primary: 26 20 107; /* #1A146B */
+  --md-on-primary: 255 255 255;
+  --md-primary-container: 49 46 129; /* #312E81 */
+  --md-on-primary-container: 226 223 255; /* #E2DFFF */
+  --md-secondary: 0 108 74; /* #006C4A */
+  --md-on-secondary: 255 255 255;
+  --md-secondary-container: 130 245 193; /* #82F5C1 */
+  --md-on-secondary-container: 0 56 37; /* #003825 */
+  --md-tertiary: 112 56 11; /* #70380B */
+  --md-on-tertiary: 255 255 255;
+  --md-tertiary-container: 255 219 199; /* #FFDBC7 */
+  --md-on-tertiary-container: 49 19 0; /* #311300 */
+  --md-error: 186 26 26; /* #BA1A1A */
+  --md-on-error: 255 255 255;
+  --md-error-container: 255 218 214; /* #FFDAD6 */
+  --md-on-error-container: 65 0 2; /* #410002 */
+  --md-background: 248 249 255; /* #F8F9FF */
+  --md-on-background: 11 28 48; /* #0B1C30 */
+  --md-surface: 248 249 255;
+  --md-surface-dim: 203 219 245; /* #CBDBF5 */
+  --md-surface-bright: 248 249 255;
+  --md-surface-container-lowest: 255 255 255;
+  --md-surface-container-low: 239 244 255; /* #EFF4FF */
+  --md-surface-container: 229 238 255; /* #E5EEFF */
+  --md-surface-container-high: 220 233 255; /* #DCE9FF */
+  --md-surface-container-highest: 211 228 254; /* #D3E4FE */
+  --md-on-surface: 11 28 48; /* #0B1C30 */
+  --md-surface-variant: 228 224 239; /* #E4E0EF */
+  --md-on-surface-variant: 71 70 81; /* #474651 */
+  --md-outline: 119 118 130; /* #777682 */
+  --md-outline-variant: 200 197 211; /* #C8C5D3 */
+  --md-inverse-surface: 33 49 69; /* #213145 */
+  --md-inverse-on-surface: 234 241 255; /* #EAF1FF */
+  --md-inverse-primary: 195 192 255; /* #C3C0FF */
+
+  --font-headline: 'Plus Jakarta Sans', 'Rubik', system-ui, sans-serif;
+  --font-body: 'Rubik', system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono', ui-monospace, monospace;
+
+  /* rounded: sm 6, DEFAULT 8, md 10 (controles), lg 16 (tarjetas), xl 20, full. */
+  --radius-sm: 6px;
+  --radius-default: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* motion: state-change 120 ms ease-out, surface-enter 200 ms, surface-exit 150 ms. */
+  --motion-state: 120ms;
+  --motion-enter: 200ms;
+  --motion-exit: 150ms;
+  --ease-state: ease-out;
+  --ease-enter: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+}
+[data-theme='dark'] {
+  --md-primary: 195 192 255; /* #C3C0FF */
+  --md-on-primary: 39 35 119; /* #272377 */
+  --md-primary-container: 49 46 129;
+  --md-on-primary-container: 226 223 255;
+  --md-secondary: 104 219 169; /* #68DBA9 */
+  --md-on-secondary: 0 56 37;
+  --md-secondary-container: 0 81 55; /* #005137 */
+  --md-on-secondary-container: 133 248 196; /* #85F8C4 */
+  --md-tertiary: 255 182 136; /* #FFB688 */
+  --md-on-tertiary: 81 36 0;
+  --md-tertiary-container: 112 56 11;
+  --md-on-tertiary-container: 255 219 199;
+  --md-error: 255 180 171; /* #FFB4AB */
+  --md-on-error: 105 0 5;
+  --md-error-container: 147 0 10; /* #93000A */
+  --md-on-error-container: 255 218 214;
+  --md-background: 3 20 39; /* #031427 */
+  --md-on-background: 211 228 254;
+  --md-surface: 3 20 39;
+  --md-surface-dim: 3 20 39;
+  --md-surface-bright: 42 58 79; /* #2A3A4F */
+  --md-surface-container-lowest: 0 15 33; /* #000F21 */
+  --md-surface-container-low: 11 28 48; /* #0B1C30 */
+  --md-surface-container: 16 32 52; /* #102034 */
+  --md-surface-container-high: 27 43 63; /* #1B2B3F */
+  --md-surface-container-highest: 38 54 74; /* #26364A */
+  --md-on-surface: 211 228 254; /* #D3E4FE */
+  --md-surface-variant: 71 70 81;
+  --md-on-surface-variant: 200 197 211; /* #C8C5D3 */
+  --md-outline: 145 143 156; /* #918F9C */
+  --md-outline-variant: 71 70 81; /* #474651 */
+  --md-inverse-surface: 211 228 254;
+  --md-inverse-on-surface: 33 49 69;
+  --md-inverse-primary: 86 84 168; /* #5654A8 */
+}
+/* Derivado: sin pasteles. Los contenedores son negros y el color queda en el texto y el borde. */
+[data-theme='contrast'] {
+  --md-primary: 195 192 255; /* #C3C0FF, 12:1 sobre negro */
+  --md-on-primary: 0 0 0;
+  --md-primary-container: 195 192 255;
+  --md-on-primary-container: 0 0 0;
+  --md-secondary: 104 219 169;
+  --md-on-secondary: 0 0 0;
+  --md-secondary-container: 0 0 0;
+  --md-on-secondary-container: 104 219 169;
+  --md-tertiary: 255 182 136;
+  --md-on-tertiary: 0 0 0;
+  --md-tertiary-container: 0 0 0;
+  --md-on-tertiary-container: 255 182 136;
+  --md-error: 255 180 171;
+  --md-on-error: 0 0 0;
+  --md-error-container: 0 0 0;
+  --md-on-error-container: 255 180 171;
+  --md-background: 0 0 0;
+  --md-on-background: 255 255 255;
+  --md-surface: 0 0 0;
+  --md-surface-dim: 0 0 0;
+  --md-surface-bright: 23 23 23;
+  --md-surface-container-lowest: 0 0 0;
+  --md-surface-container-low: 0 0 0;
+  --md-surface-container: 0 0 0;
+  --md-surface-container-high: 23 23 23;
+  --md-surface-container-highest: 23 23 23;
+  --md-on-surface: 255 255 255;
+  --md-surface-variant: 0 0 0;
+  --md-on-surface-variant: 255 255 255;
+  --md-outline: 255 255 255;
+  --md-outline-variant: 255 255 255;
+  --md-inverse-surface: 255 255 255;
+  --md-inverse-on-surface: 0 0 0;
+  --md-inverse-primary: 26 20 107;
+}

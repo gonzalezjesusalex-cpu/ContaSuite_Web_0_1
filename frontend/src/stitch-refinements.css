@@ -1,21 +1,22 @@
 /* Values from design_references/.../fiscal_precision_platform/DESIGN.md and code.html.
    Semantic theme variables preserve dark/high-contrast modes and real operational states. */
 :root {
-  --stitch-radius: 12px;
+  --stitch-radius: var(--radius-lg);
   /* Bloque 6 (A2, O2): one button and one card, with .stitch-button (8 px) as reference. */
-  --radius-control: 8px;
+  --radius-control: var(--radius-md);
   --radius-card: var(--stitch-radius);
   --elev-control: 0 1px 2px #0b1c300d;
-  --stitch-focus: #0053db;
+  --stitch-focus: #312e81;
   --stitch-duration: var(--motion-base);
   /* Bloque 6 (C1): motion tokens. Strong ease-out for entering/leaving UI, the drawer curve for the
      mobile sidebar; 120 / 160 / 200 ms (toasts and dialogs may use up to 250 ms). */
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  /* Rediseño v2: surface-enter (theme-tokens.css). */
+  --ease-out: var(--ease-enter);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-  --motion-fast: 120ms;
-  --motion-base: 160ms;
-  --motion-slow: 200ms;
+  --motion-fast: var(--motion-state);
+  --motion-base: var(--motion-exit);
+  --motion-slow: var(--motion-enter);
 }
 .skip-link {
   position: fixed;
@@ -89,7 +90,7 @@
 .stitch-live-module input,
 .stitch-live-module select,
 .stitch-live-module textarea {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   min-height: 36px;
 }
 .stitch-live-module input[type='checkbox'] {
@@ -145,7 +146,7 @@
   color: var(--muted);
 }
 .identity-uuid {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -183,7 +184,7 @@
    scale is removed in styles.css. */
 
 [data-theme='dark'] {
-  --stitch-focus: #b4c5ff;
+  --stitch-focus: #c3c0ff;
 }
 [data-theme='contrast'] {
   --stitch-focus: #fff;

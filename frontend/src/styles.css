@@ -1,49 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Rediseño v2 (paso 1): las variables de siempre leen los tokens de theme-tokens.css. Los temas sólo
+   redefinen los tokens y, donde el papel cambia (p. ej. --panel en oscuro), la variable. */
 :root {
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 13px;
-  color: #0b1c30;
-  background: #f8f9ff;
-  --canvas: #f8f9ff;
-  --panel: #fff;
-  --text: #0b1c30;
-  /* #64748b gave 4.3:1 on the tinted surfaces (#eff4ff, #e5eeff); this keeps the slate tone at >= 4.6:1 (WCAG AA). */
-  --muted: #5b6b81;
-  --border: #e2e8f0;
-  --hover: #eff4ff;
-  --primary: #004ac6;
-  --sidebar: #213145;
-  --blue-soft: #e5eeff;
-  --shadow: 0 1px 3px rgba(15, 23, 42, 0.045);
-  /* Bloque 6 (A3): semantic tokens with the values already in use; the visible palette does not change.
-     `--ok`, `--warn`, `--danger` are the state colors of text on the page and change per theme; the `-strong`
-     variants are the text on their own light `-bg` (badges, banners) and stay the same in every theme. */
-  --ok: #007d55;
-  --ok-strong: #006242;
-  --ok-bg: #ecfdf5;
-  --ok-border: #bdedda;
-  --warn: #a16207;
-  --warn-strong: #92400e;
-  --warn-bg: #fffbeb;
-  --warn-border: #fde6ac;
-  --danger: #ba1a1a;
-  --danger-strong: #ba1a1a;
-  --danger-bg: #fef2f2;
-  --danger-border: #fecaca;
+  color: rgb(var(--md-on-surface));
+  background: rgb(var(--md-surface));
+  --canvas: rgb(var(--md-surface));
+  --panel: rgb(var(--md-surface-container-lowest));
+  --text: rgb(var(--md-on-surface));
+  /* #474651 (on-surface-variant): >= 7:1 sobre blanco y sobre los contenedores claros (AA). */
+  --muted: rgb(var(--md-on-surface-variant));
+  --border: rgb(var(--md-outline-variant));
+  --hover: rgb(var(--md-surface-container-low));
+  --primary: rgb(var(--md-primary));
+  --primary-container: rgb(var(--md-primary-container));
+  --on-primary-container: rgb(var(--md-on-primary-container));
+  --sidebar: rgb(var(--md-inverse-surface));
+  --blue-soft: rgb(var(--md-surface-container));
+  --shadow: 0 1px 3px rgb(11 28 48 / 0.045);
+  /* Bloque 6 (A3): `--ok`, `--warn`, `--danger` are the state colors of text on the page and change per theme;
+     the `-strong` variants are the text on their own light `-bg` (badges, banners) and stay the same in the
+     light and dark themes (contrast derives its own). Rediseño v2: secondary, tertiary and error of the design. */
+  --ok: rgb(var(--md-secondary));
+  --ok-strong: #003825;
+  --ok-bg: #d6fbe9;
+  --ok-border: #82f5c1;
+  --warn: rgb(var(--md-tertiary));
+  --warn-strong: #5a2c06;
+  --warn-bg: #ffede3;
+  --warn-border: #ffdbc7;
+  --danger: rgb(var(--md-error));
+  --danger-strong: #93000a;
+  --danger-bg: #ffedea;
+  --danger-border: #ffdad6;
   --info: var(--primary);
-  --info-strong: #004ac6;
-  --info-bg: #eff4ff;
-  --info-border: #dbe1ff;
-  /* Bloque 6, fase 4: colors of the Bloque 1 and 5 screens as tokens (same values as before). */
-  --warn-line: #b45309;
-  --event-line: #305990;
-  --event-urgent: #bd3a40;
-  --event-bg: rgba(50, 90, 145, 0.08);
-  --on-primary: #fff;
+  --info-strong: #1a146b;
+  --info-bg: #efedff;
+  --info-border: #e2dfff;
+  /* Bloque 6, fase 4: colors of the Bloque 1 and 5 screens as tokens. */
+  --warn-line: #8f4a12;
+  --event-line: #312e81;
+  --event-urgent: #ba1a1a;
+  --event-bg: rgb(49 46 129 / 0.08);
+  --on-primary: rgb(var(--md-on-primary));
   --elev-1: var(--shadow);
-  --elev-2: 0 8px 24px rgb(15 23 42 / 0.14);
+  --elev-2: 0 8px 24px rgb(11 28 48 / 0.14);
   /* Bloque 6 (A1, O1): one type scale; 12 px floor for metadata, 13 px for data, buttons and tabs. */
   --fs-xs: 12px;
   --fs-sm: 13px;
@@ -98,6 +102,12 @@ p {
   margin: 0;
 }
 /* Bloque 6 (B1): one title scale; 28 px (24 px on narrow screens, stitch-refinements.css). */
+h1,
+h2,
+h3,
+.kpi strong {
+  font-family: var(--font-headline);
+}
 h1 {
   font-size: var(--fs-3xl);
   line-height: 1.3;
@@ -143,7 +153,7 @@ strong {
   color: var(--danger);
 }
 .rfc {
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -191,17 +201,17 @@ strong {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eef4ff;
-  color: #2563eb;
+  background: #e2dfff;
+  color: #312e81;
   border-radius: 8px;
-  border: 1px solid #dce9ff;
-  box-shadow: 0 3px 8px #003ea815;
+  border: 1px solid #c3c0ff;
+  box-shadow: 0 3px 8px #312e8115;
 }
 .brand-icon.large {
   width: 72px;
   height: 72px;
   border-radius: 17px;
-  box-shadow: 0 8px 30px #2563eb14;
+  box-shadow: 0 8px 30px #312e8114;
 }
 .sidebar nav {
   flex: 1;
@@ -231,8 +241,8 @@ strong {
   }
 }
 .sidebar nav a.active {
-  background: #2563eb;
-  color: #eeefff;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
 }
 .sidebar nav > div {
   margin-bottom: 13px;
@@ -262,8 +272,8 @@ strong {
   width: 31px;
   height: 31px;
   border-radius: 50%;
-  background: #dbe2f8;
-  color: #3f4758;
+  background: #e2dfff;
+  color: #312e81;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,11 +506,11 @@ strong {
   background: var(--primary);
   color: #fff;
   border-color: var(--primary);
-  box-shadow: 0 2px 4px #004ac61a;
+  box-shadow: 0 2px 4px #1a146b1a;
 }
 @media (hover: hover) and (pointer: fine) {
   .btn.primary:hover {
-    background: #0053db;
+    background: var(--primary-container);
   }
 }
 /* Variants of the single button (A2): primary, danger and icon; .stitch-button stays an alias. */
@@ -513,7 +523,7 @@ strong {
   padding: 9px;
 }
 .btn.selected {
-  border-color: #2563eb;
+  border-color: var(--primary);
   background: var(--blue-soft);
   color: var(--primary);
 }
@@ -640,9 +650,9 @@ strong {
   font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 15px;
-  background: #eff4ff;
-  color: #575e70;
-  border: 1px solid #dbe2f8;
+  background: var(--hover);
+  color: var(--muted);
+  border: 1px solid var(--border);
 }
 .badge.green {
   background: var(--ok-bg);
@@ -1189,7 +1199,7 @@ tbody tr:last-child td {
   gap: 13px;
   text-align: center;
   align-items: center;
-  border: 1px dashed #c3c6d7;
+  border: 1px dashed var(--border);
   border-radius: 8px;
   color: var(--muted);
   font-size: 12px;
@@ -1298,7 +1308,7 @@ dd {
 }
 .path-text {
   overflow-wrap: anywhere;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
   color: var(--muted);
 }
@@ -1362,7 +1372,7 @@ dd {
   left: -4px;
   top: 4px;
   border-radius: 50%;
-  background: #2563eb;
+  background: var(--primary);
 }
 .dossier-grid {
   display: grid;
@@ -1426,7 +1436,7 @@ dd {
   gap: 14px;
   padding: 16px 18px;
   background: var(--panel);
-  border: 1px solid #dbe1ff;
+  border: 1px solid var(--info-border);
   border-radius: 8px;
   margin-bottom: 20px;
   color: var(--primary);
@@ -1492,7 +1502,7 @@ dd {
   align-items: center;
   justify-content: center;
   padding: 25px;
-  background: radial-gradient(ellipse, #eff4ff, #f8f9ff);
+  background: radial-gradient(ellipse, rgb(var(--md-surface-container-low)), rgb(var(--md-surface)));
 }
 .login-card {
   width: 410px;
@@ -1564,26 +1574,23 @@ dd {
 .sidebar-shade {
   display: none;
 }
+/* Oscuro v2: las tarjetas descansan en surface-container-low sobre surface (#031427). */
 [data-theme='dark'] {
-  --canvas: #101827;
-  --panel: #1c293c;
-  --text: #eaf1ff;
-  --muted: #a9b9d0;
-  --border: #334155;
-  --hover: #24354b;
-  --primary: #80aaff;
-  --sidebar: #152133;
-  --blue-soft: #283e61;
-  --ok: #4edea3;
-  --warn: #fcd34d;
-  --danger: #ffaaa4;
+  --panel: rgb(var(--md-surface-container-low));
+  --hover: rgb(var(--md-surface-container-high));
+  --sidebar: rgb(var(--md-surface-container-lowest));
+  --blue-soft: rgb(var(--md-surface-container-highest));
+  --shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  --event-line: #c3c0ff;
+  --event-urgent: #ffb4ab;
+  --event-bg: rgb(195 192 255 / 0.1);
   color: var(--text);
   background: var(--canvas);
 }
 [data-theme='dark'] .btn.primary {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #fff;
+  background: var(--primary-container);
+  border-color: var(--primary-container);
+  color: var(--on-primary-container);
 }
 [data-theme='dark'] .compliance-cells > div {
   background: var(--hover);
@@ -1594,25 +1601,41 @@ dd {
 [data-theme='dark'] .login-page {
   background: var(--canvas);
 }
+/* Alto contraste v2 (derivado): base negra, texto blanco, sin rellenos pastel; los estados conservan su
+   color en el texto y en un borde de 2 px. */
 [data-theme='contrast'] {
-  --canvas: #000;
-  --panel: #000;
-  --text: #fff;
   --muted: #eee;
-  --border: #fff;
   --hover: #171717;
-  --primary: #7eb3ff;
   --sidebar: #000;
-  --blue-soft: #173c71;
-  --ok: #4edea3;
-  --warn: #fcd34d;
-  --danger: #ffaaa4;
+  --blue-soft: #171717;
+  --ok-strong: #68dba9;
+  --ok-bg: #000;
+  --ok-border: #68dba9;
+  --warn-strong: #ffb688;
+  --warn-bg: #000;
+  --warn-border: #ffb688;
+  --danger-strong: #ffb4ab;
+  --danger-bg: #000;
+  --danger-border: #ffb4ab;
+  --info-strong: #c3c0ff;
+  --info-bg: #000;
+  --info-border: #c3c0ff;
+  --warn-line: #ffb688;
+  --event-line: #c3c0ff;
+  --event-urgent: #ffb4ab;
+  --event-bg: #171717;
   color: #fff;
   background: #000;
 }
 [data-theme='contrast'] .btn.primary {
-  background: #0053db;
-  color: #fff;
+  background: var(--primary);
+  border-color: #fff;
+  color: #000;
+}
+/* Bordes sólidos de 2 px en tarjetas, botones y campos (contasuite_design_system.md, Alto contraste). */
+[data-theme='contrast'] :is(.card, .stitch-card, .btn, .stitch-button, .kpi, .badge, .modal),
+[data-theme='contrast'] :is(input, select, textarea):not([type='checkbox'], [type='radio'], [type='range']) {
+  border: 2px solid var(--border);
 }
 [data-theme='contrast'] .compliance-cells > div {
   background: #171717;
@@ -1879,7 +1902,7 @@ dd {
 }
 @media (hover: hover) and (pointer: fine) {
   .btn.danger:hover {
-    background: #fee2e2;
+    background: var(--danger-border);
   }
 }
 
@@ -2343,7 +2366,7 @@ dd {
 .recopila-uuids {
   overflow-wrap: anywhere;
   margin: 12px 0;
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs);
 }
 .recopila-month-toggle {
@@ -2435,25 +2458,27 @@ dd {
   }
 }
 .stitch-live-module .stitch-button.primary {
-  background: #2563eb;
-  color: #eeefff;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
   box-shadow: 0 1px 2px #0b1c3012;
 }
 @media (hover: hover) and (pointer: fine) {
   .stitch-live-module .stitch-button.primary:hover:not(:disabled) {
-    background: #004ac6;
+    background: var(--primary);
+    color: var(--on-primary);
   }
 }
 .stitch-live-module .stitch-button.primary:active:not(:disabled) {
-  background: #003ea8;
+  background: var(--primary);
+  color: var(--on-primary);
 }
 .stitch-live-module .stitch-button.danger {
-  color: #ba1a1a;
-  background: #fef2f2;
+  color: var(--danger-strong);
+  background: var(--danger-bg);
 }
 @media (hover: hover) and (pointer: fine) {
   .stitch-live-module .stitch-button.danger:hover:not(:disabled) {
-    background: #fee2e2;
+    background: var(--danger-border);
   }
 }
 .stitch-live-module .stitch-card {
@@ -2969,7 +2994,7 @@ dialog[data-closing]::backdrop {
   margin: 14px 0;
 }
 .declara-hash {
-  font-family: monospace;
+  font-family: var(--font-mono);
   font-size: var(--fs-xs) !important;
 }
 .declara-downloads {
@@ -3183,7 +3208,7 @@ dialog[data-closing]::backdrop {
   border-bottom: 1px solid var(--border);
 }
 .documents-versions small {
-  font-family: monospace;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
   max-width: 100%;
   color: var(--muted);
@@ -4397,7 +4422,10 @@ textarea:user-invalid {
   border-color: var(--danger);
   color: var(--danger-strong);
 }
-button.header-cert-chip { cursor: pointer; font: inherit; }
+button.header-cert-chip {
+  cursor: pointer;
+  font: inherit;
+}
 
 .recopila-indicator {
   display: flex;

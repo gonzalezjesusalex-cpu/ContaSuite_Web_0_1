@@ -402,7 +402,7 @@
   background: var(--panel);
 }
 .v11-vault-item .v11-secret {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
 }
 .v11-vault-item .actions {
