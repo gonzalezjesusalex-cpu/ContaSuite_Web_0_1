@@ -18,7 +18,6 @@ import {
 import { api, getToken, dateLabel } from '../api';
 import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
 import type { State } from '../types';
-import './v11.css';
 // Counters reported by the Recopila engine adapter; any other keys are informative only.
 type RunSummary = {
   policy_pages?: number;

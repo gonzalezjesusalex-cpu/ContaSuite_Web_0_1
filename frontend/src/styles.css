@@ -4822,3 +4822,1385 @@ button.header-cert-chip {
     transition: none;
   }
 }
+
+/* Rediseño v2: componentes compartidos (KPIs, filtros, chips, interruptores, estados, tablas, leyendas) y
+   reglas de módulo que no dependen de clases v11-*. Las que ajustan componentes v1.1 siguen en
+   modules/v11.css, que se carga después. */
+/* Rediseño v2, paso 4: Panel de empresas (contasuite_panel_de_empresas). KPIs con ícono, barra de filtros,
+   tarjetas por empresa con semáforo y barras por familia de impuesto, vista de lista y leyenda. */
+.v2-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.v2-kpis .kpi {
+  position: relative;
+  margin: 0;
+  padding: 20px 16px;
+  min-height: 136px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.v2-kpis .kpi > span:first-child {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  padding-right: 28px;
+}
+.kpi .kpi-icon {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  color: var(--primary);
+}
+.v2-kpis .kpi strong {
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+.v2-kpis .kpi strong small {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.v2-kpis .kpi.amber strong {
+  color: var(--warn);
+}
+.v2-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  /* Track visible on the card and on an open group in every theme. */
+  background: color-mix(in srgb, var(--muted) 28%, transparent);
+  overflow: hidden;
+}
+.v2-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.v2-bar.is-done > span {
+  background: var(--ok);
+}
+.v2-bar.is-overdue > span {
+  background: var(--danger);
+}
+.v2-filters {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.v2-filter-row + .v2-filter-row {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.v2-filter-row > select {
+  min-width: 160px;
+}
+/* Specificity above .stitch-live-module select (stitch-refinements.css loads after styles.css). */
+.v2-filters .v2-filter-row select,
+.v2-search {
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  color: var(--text);
+}
+.v2-search {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--muted);
+}
+.v2-search:has(input:focus-visible) {
+  outline: 2px solid var(--stitch-focus);
+  outline-offset: 2px;
+}
+.v2-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: none !important;
+  padding: 8px 0 !important;
+  color: var(--text);
+  outline: none;
+}
+.v2-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.v2-chip {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.v2-chip[aria-pressed='true'] {
+  background: var(--primary-container);
+  border-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-filter-actions {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v2-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.v2-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-segmented button[aria-pressed='true'] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--elev-control);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-chip:hover:not([aria-pressed='true']),
+  .v2-segmented button:hover:not([aria-pressed='true']) {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.v2-company-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.v2-company-card {
+  min-width: 0;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-company-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.v2-company-card h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.v2-type {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(var(--md-surface-container));
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-company-card header small {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--muted);
+}
+.v2-list-scroll {
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-list {
+  width: 100%;
+  border-collapse: collapse;
+}
+.v2-list th,
+.v2-list td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.v2-list thead th {
+  background: var(--hover);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-list tbody th {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+  white-space: normal;
+}
+.v2-list tbody th small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.v2-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-sm);
+}
+.v2-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v2-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+.v2-legend li.is-green svg {
+  color: var(--ok);
+}
+.v2-legend li.is-amber svg {
+  color: var(--warn);
+}
+.v2-legend li.is-red svg {
+  color: var(--danger);
+}
+.v2-legend li.is-gray svg {
+  color: var(--muted);
+}
+.v2-legend > span {
+  color: var(--muted);
+}
+.v2-empty {
+  padding: 24px;
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+[data-theme='contrast']
+  :is(.v2-kpis .kpi, .v2-filters, .v2-company-card, .v2-list-scroll, .v2-legend, .v2-chip, .v2-segmented) {
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-bar {
+  outline: 1px solid #fff;
+}
+@media (max-width: 1200px) {
+  .v2-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .v2-kpis {
+    grid-template-columns: 1fr;
+  }
+  .v2-filter-actions {
+    margin-left: 0;
+  }
+  .v2-company-card {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-chip,
+  .v2-segmented button {
+    transition: none;
+  }
+}
+/* Rediseño v2, paso 5: Obligaciones por periodo (contasuite_obligaciones_por_periodo). Barra con vista y
+   totales, leyenda de celdas, matriz con mosaicos de estado (icono + texto accesible) y panel de detalle. */
+.v2-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.v2-totals li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+.v2-totals strong {
+  font-family: var(--font-mono);
+}
+.v2-totals li.is-done svg {
+  color: var(--ok);
+}
+.v2-totals li.is-overdue {
+  color: var(--danger);
+}
+.v2-cell-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.v2-cell-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.v2-cell {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-state) var(--ease-state),
+    box-shadow var(--motion-state) var(--ease-state);
+}
+.v2-cell:has(input:focus-visible) {
+  outline: 2px solid var(--stitch-focus);
+  outline-offset: 2px;
+}
+.v2-cell:has(input:disabled) {
+  opacity: 0.55;
+  cursor: progress;
+}
+.v2-cell.is-done {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok-strong);
+}
+.v2-cell.is-overdue {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-strong);
+}
+.v2-cell.is-na {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+button.v2-cell.is-na {
+  cursor: pointer;
+}
+.v2-cell.is-selected {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.v2-matrix-layout {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+}
+.v2-matrix-layout.has-detail {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.v2-progress-cell {
+  font-family: var(--font-mono);
+}
+.v2-progress-cell.is-done {
+  color: var(--ok);
+}
+.v2-progress-cell.is-overdue {
+  color: var(--danger);
+}
+.v2-detail {
+  position: sticky;
+  top: 80px;
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-detail header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.v2-detail h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.v2-detail dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.v2-detail dt {
+  margin-top: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.v2-detail dd {
+  margin: 0;
+  text-align: left;
+  font-size: var(--fs-md);
+}
+.v2-detail dd .rfc {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+}
+.v2-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-state.is-done {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok-strong);
+}
+.v2-state.is-overdue {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-strong);
+}
+.v2-state.is-na {
+  color: var(--muted);
+}
+@media (max-width: 1200px) {
+  .v2-matrix-layout.has-detail {
+    grid-template-columns: 1fr;
+  }
+  .v2-detail {
+    position: static;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-cell {
+    transition: none;
+  }
+}
+/* Rediseño v2, paso 6: Calendario de CFDI (contasuite_calendario_de_cfdi). Resumen del ejercicio, tarjetas de
+   meses, vista diaria con día seleccionado y celdas índigo (emitidos), menta (recibidos) o divididas (ambos). */
+.v2-cal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding: 20px 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-cal-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-cal-year {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.v2-cal-year strong {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  font-family: var(--font-headline);
+}
+.v2-cal-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 0 0 0 auto;
+}
+.v2-cal-totals div {
+  display: grid;
+  gap: 2px;
+}
+.v2-cal-totals dt {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.v2-cal-totals dd {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.v2-cal-note {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.v2-cal-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 22px;
+  line-height: 28px;
+}
+.v2-month-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+.v2-month-name small {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  color: var(--primary);
+}
+.v2-cal-days {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-cal-days-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.v2-cal-days-head h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+.v2-cal-days-head p {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+}
+.v2-cal-month-totals {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+/* Above .stitch-live-module [role='status'] (stitch-refinements.css loads after styles.css). */
+.v2-calendar .v2-cal-selected[role='status'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  color: var(--text);
+}
+.v2-cal-selected > div {
+  display: grid;
+}
+.v2-cal-selected small {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.v2-cal-selected strong {
+  font-family: var(--font-headline);
+  font-size: 18px;
+}
+.v2-cal-selected > span:not(.v2-cal-icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+}
+.v2-cal-selected > span.is-issued,
+.v2-cal-selected > span.is-received {
+  color: var(--text);
+}
+.v2-cal-selected > button {
+  margin-left: auto;
+}
+/* The previous calendar styles every span of a day as a block; the counts and pills are inline here. */
+.v2-day-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--muted);
+}
+.v2-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.v2-pill.is-issued {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+.v2-pill.is-received {
+  background: rgb(var(--md-secondary-container));
+  color: rgb(var(--md-on-secondary-container));
+}
+.v2-swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.v2-swatch.cfdi-none {
+  background: rgb(var(--md-surface-container-low));
+  color: var(--muted);
+}
+.v2-swatch.cfdi-both {
+  background: linear-gradient(
+    to bottom right,
+    var(--primary-container) 0 50%,
+    rgb(var(--md-secondary-container)) 50% 100%
+  );
+}
+[data-theme='contrast'] .v2-swatch.cfdi-both {
+  background: #000;
+  border: 2px solid #c3c0ff;
+  box-shadow: inset 0 0 0 3px #68dba9;
+}
+@media (max-width: 760px) {
+  .v2-cal-totals {
+    margin-left: 0;
+  }
+}
+/* Rediseño v2, paso 7: Gestor de contraseñas (contasuite_gestor_de_contrase_as). Revisión local arriba, lista de
+   empresas a la izquierda y, a la derecha, firmas electrónicas en tarjetas y accesos a portales en filas. Los
+   secretos nunca se muestran por defecto. */
+.v2-vault-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.v2-vault .v2-vault-health[role='status'] {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-md);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-vault .v2-vault-health span {
+  font-weight: 400;
+}
+.v2-vault .v2-vault-health.is-ok[role='status'] {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-vault-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.v2-vault-layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.v2-vault-layout.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.v2-vault-companies {
+  position: sticky;
+  top: 80px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-vault-companies ul {
+  display: grid;
+  gap: 4px;
+  max-height: 60vh;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.v2-vault-companies li > button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.v2-vault-companies li > button small {
+  color: var(--muted);
+}
+.v2-vault-companies li > button[aria-pressed='true'] {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-vault-companies li > button[aria-pressed='true'] small {
+  color: var(--on-primary-container);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-vault-companies li > button:hover:not([aria-pressed='true']) {
+    background: var(--hover);
+  }
+}
+.v2-vault-detail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.v2-vault-company {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.v2-vault-company h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+}
+.v2-vault-company .rfc {
+  color: var(--muted);
+}
+.v2-vault-detail > .v2-segmented {
+  justify-self: start;
+}
+.v2-vault-heading {
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+.v2-signatures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+.v2-signature {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-signature header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.v2-signature h4 {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: 16px;
+  font-weight: 600;
+}
+.v2-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v2-files li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.v2-secret {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  overflow-wrap: anywhere;
+}
+.v2-signature .actions,
+.v2-portals .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v2-portals {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.v2-portals li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(120px, auto) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+}
+.v2-portals li + li {
+  border-top: 1px solid var(--border);
+}
+.v2-portal-icon {
+  color: var(--primary);
+}
+.v2-portal-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-width: 0;
+}
+.v2-portal-name strong {
+  flex-basis: 100%;
+  font-size: var(--fs-sm);
+}
+.v2-portal-name .link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  cursor: copy;
+}
+.v2-secret-inline {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.v2-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-flag.is-weak {
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.v2-flag.is-repeated {
+  background: var(--danger-bg);
+  color: var(--danger-strong);
+}
+.v2-vault-log {
+  overflow: auto;
+  padding: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-vault-log > p {
+  padding: 16px;
+  margin: 0;
+}
+.v2-vault-log .v2-list {
+  border: 0;
+}
+.v2-vault-log .v2-list td {
+  white-space: normal;
+}
+.v2-vault-log .v2-list td:first-child {
+  white-space: nowrap;
+}
+[data-theme='contrast']
+  :is(.v2-vault-companies, .v2-signature, .v2-portals, .v2-vault-log, .v2-vault-health, .v2-files li) {
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-flag {
+  border: 1px solid currentColor;
+}
+@media (max-width: 1100px) {
+  .v2-vault-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-vault-companies {
+    position: static;
+  }
+  .v2-vault-companies ul {
+    max-height: 240px;
+  }
+}
+@media (max-width: 700px) {
+  .v2-portals li {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+  .v2-portals li > .v2-secret-inline,
+  .v2-portals li > .actions {
+    grid-column: 2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-vault-companies li > button {
+    transition: none;
+  }
+}
+/* Rediseño v2, paso 8: CFDI (organizador). Mismo flujo en una página; pestañas de salto a cada sección, tabla
+   de auditoría con tipo y estado con icono y texto, y detalle del archivo como tarjeta. */
+.v2-section-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 20px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.v2-section-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-section-tabs button:hover {
+    background: var(--hover);
+  }
+}
+.v2-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(var(--md-surface-container));
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 18px;
+  text-align: center;
+}
+.v2-count.is-warn {
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.organizador-module .v2-kpis {
+  margin-bottom: 20px;
+}
+.v2-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.v2-kind.is-issued {
+  background: var(--info-bg);
+  color: var(--info-strong);
+}
+.v2-kind.is-received {
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-kind.is-report {
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.v2-state,
+.v2-kind {
+  white-space: nowrap;
+}
+.v2-cal-totals div {
+  padding: 0;
+  border: 0;
+}
+.v2-cal-totals dd {
+  text-align: left;
+}
+.v2-state.is-error {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-strong);
+}
+.v2-state.is-ready {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--info-strong);
+}
+.v2-state.is-muted {
+  color: var(--muted);
+}
+.v2-audit-filters {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.v2-audit-table thead th {
+  background: var(--hover);
+}
+.v2-audit-table tbody tr.is-selected td {
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.v2-audit-table .organizador-path {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.v2-file-detail {
+  margin-top: 16px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-file-detail header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.v2-file-detail h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.v2-file-detail-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-theme='contrast'] :is(.v2-section-tabs, .v2-file-detail, .v2-audit-filters, .v2-kind) {
+  border: 2px solid #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-section-tabs button {
+    transition: none;
+  }
+}
+/* Rediseño v2, paso 9: Recopila (contasuite_recopila). Mismo flujo; pasos con estado, documentos a relacionar
+   e historial de análisis en dos tarjetas, y estados de póliza con icono y texto. Sin descarga del SAT. */
+.v2-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.v2-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-steps li.is-current {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.v2-steps li.is-done {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-recopila-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 20px;
+}
+.v2-recopila-top > section {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-recopila-top h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 20px;
+  line-height: 26px;
+}
+.v2-recopila-top h2 + p {
+  margin: -6px 0 4px;
+  font-size: var(--fs-sm);
+}
+.v2-recopila-params .actions {
+  margin: 8px 0;
+}
+.v2-wide {
+  width: 100%;
+  justify-content: center;
+  min-height: 42px;
+}
+.v2-recopila-history ul {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.v2-recopila-history li > button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--motion-state) var(--ease-state);
+}
+.v2-recopila-history li > button > span:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.v2-recopila-history li > button strong {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-sm);
+}
+.v2-recopila-history li > button small {
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.v2-recopila-history li > button[aria-pressed='true'] {
+  border: 2px solid var(--primary);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-recopila-history li > button:hover:not(:disabled) {
+    border-color: var(--primary);
+  }
+}
+.v2-recopila-history li > button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+.v2-state.is-warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-strong);
+}
+.recopila-module .v2-kpis {
+  margin-bottom: 20px;
+}
+[data-theme='contrast'] :is(.v2-steps li, .v2-recopila-top > section, .v2-recopila-history li > button) {
+  border: 2px solid #fff;
+}
+@media (max-width: 1100px) {
+  .v2-recopila-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-recopila-history li > button {
+    transition: none;
+  }
+}
+/* Rediseño v2, paso 10: Recibos (contasuite_recibos). Mismo flujo (individual, en masa, historial) con el
+   lenguaje nuevo: interruptor de modalidad, tarjetas con borde, tablas con folio e importes en monoespaciada y
+   vista previa del PDF como papel. Sin timbrado, XML ni estados: Recibos emite PDF con folio. */
+.receipts-module .receipt-tabs {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.receipts-module .receipt-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.receipts-module .receipt-tabs > button.active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--elev-control);
+}
+.receipts-module .receipt-tabs > button.active::after {
+  display: none;
+}
+.receipts-module .stitch-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.receipts-module .receipt-section-title h2 {
+  font-size: 20px;
+  line-height: 26px;
+}
+.receipts-module .receipt-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+.receipts-module .receipt-table table {
+  font-size: var(--fs-sm);
+}
+.receipts-module .receipt-table th {
+  padding: 12px 16px;
+  background: var(--hover);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.receipts-module .receipt-table td {
+  padding: 12px 16px;
+}
+.receipts-module .receipt-table .v2-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Spline Sans Mono is loaded in 400 and 500: no synthetic bold. */
+.receipts-module .receipt-table strong.v2-mono {
+  font-weight: 500;
+}
+.receipts-module .receipt-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.receipts-module .receipt-paper {
+  background: rgb(var(--md-surface-container-low));
+}
+[data-theme='contrast'] .receipts-module :is(.receipt-tabs, .stitch-card, .receipt-table, .receipt-preview) {
+  border: 2px solid #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .receipts-module .receipt-tabs > button {
+    transition: none;
+  }
+}

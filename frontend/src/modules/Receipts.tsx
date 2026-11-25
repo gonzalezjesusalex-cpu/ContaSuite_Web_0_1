@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { api, authHeaders, today, dateLabel } from '../api';
 import { Heading, Field, Modal, Empty, Badge } from '../components/ui';
-import './v11.css';
 import type { State } from '../types';
 const months = [
   'Enero',
