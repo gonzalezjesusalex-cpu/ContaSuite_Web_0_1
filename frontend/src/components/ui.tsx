@@ -225,16 +225,23 @@ export function Kpi({
   value,
   detail,
   tone = 'neutral',
+  icon,
+  children,
 }: {
   label: string;
   value: ReactNode;
   detail: string;
   tone?: string;
+  /** Rediseño v2: icon at the top right of the card and optional extra content (e.g. a progress bar). */
+  icon?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
-    <div className={'card kpi ' + tone}>
+    <div className={'card kpi ' + tone + (icon ? ' has-icon' : '')}>
       <span>{label}</span>
+      {icon && <span className="kpi-icon">{icon}</span>}
       <strong>{value}</strong>
+      {children}
       <small>{detail}</small>
     </div>
   );

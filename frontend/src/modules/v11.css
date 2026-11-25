@@ -434,3 +434,394 @@
     transition: none;
   }
 }
+
+/* Rediseño v2, paso 4: Panel de empresas (contasuite_panel_de_empresas). KPIs con ícono, barra de filtros,
+   tarjetas por empresa con semáforo y barras por familia de impuesto, vista de lista y leyenda. */
+.v2-panel {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.v2-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.v2-kpis .kpi {
+  position: relative;
+  margin: 0;
+  padding: 20px 16px;
+  min-height: 136px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.v2-kpis .kpi > span:first-child {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  padding-right: 28px;
+}
+.kpi .kpi-icon {
+  position: absolute;
+  top: 18px;
+  right: 16px;
+  color: var(--primary);
+}
+.v2-kpis .kpi strong {
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+.v2-kpis .kpi strong small {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.v2-kpis .kpi.amber strong {
+  color: var(--warn);
+}
+.v2-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(var(--md-surface-container-high));
+  overflow: hidden;
+}
+.v2-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.v2-bar.is-done > span {
+  background: var(--ok);
+}
+.v2-bar.is-overdue > span {
+  background: var(--danger);
+}
+.v2-filters {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.v2-filter-row + .v2-filter-row {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.v2-filter-row > select {
+  min-width: 160px;
+}
+.v2-filter-row select,
+.v2-search {
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  color: var(--text);
+}
+.v2-search {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--muted);
+}
+.v2-search:has(input:focus-visible) {
+  outline: 2px solid var(--stitch-focus);
+  outline-offset: 2px;
+}
+.v2-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: none !important;
+  padding: 8px 0 !important;
+  color: var(--text);
+  outline: none;
+}
+.v2-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.v2-chip {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.v2-chip[aria-pressed='true'] {
+  background: var(--primary-container);
+  border-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-filter-actions {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v2-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.v2-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-segmented button[aria-pressed='true'] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--elev-control);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-chip:hover:not([aria-pressed='true']),
+  .v2-segmented button:hover:not([aria-pressed='true']) {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.v2-company-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.v2-company-card {
+  min-width: 0;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-company-card header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.v2-company-card h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.v2-type {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgb(var(--md-surface-container));
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-company-card header small {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--muted);
+}
+.v2-company-card .v11-lights {
+  margin: 16px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.v2-company-card .v11-light > span,
+.v2-company-card .v11-light > button {
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+.v2-company-card .v11-light-text {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  font-weight: 600;
+  font-size: var(--fs-xs);
+}
+.v2-company-card .v11-light-text small {
+  font-weight: 400;
+}
+.v2-group {
+  border-top: 0;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+.v2-group > summary {
+  display: grid;
+  grid-template-columns: 16px 1fr auto 80px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+}
+.v2-group[open] {
+  background: var(--hover);
+  border: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin: 4px 0;
+}
+.v2-group[open] > summary {
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  margin-bottom: 4px;
+}
+.v2-group .v11-check {
+  margin: 0 8px;
+}
+.v2-group .v2-bar {
+  align-self: center;
+}
+.v2-group .v11-group-count {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+.v2-list-scroll {
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-list {
+  width: 100%;
+  border-collapse: collapse;
+}
+.v2-list th,
+.v2-list td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.v2-list thead th {
+  background: var(--hover);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-list tbody th {
+  font-weight: 600;
+  white-space: normal;
+}
+.v2-list tbody th small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.v2-list td.v11-group-count,
+.v2-list td.v11-progress {
+  font-family: var(--font-mono);
+}
+.v2-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-sm);
+}
+.v2-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v2-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+.v2-legend li.is-green svg {
+  color: var(--ok);
+}
+.v2-legend li.is-amber svg {
+  color: var(--warn);
+}
+.v2-legend li.is-red svg {
+  color: var(--danger);
+}
+.v2-legend li.is-gray svg {
+  color: var(--muted);
+}
+.v2-legend > span {
+  color: var(--muted);
+}
+.v2-empty {
+  padding: 24px;
+  background: var(--panel);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+[data-theme='contrast']
+  :is(.v2-kpis .kpi, .v2-filters, .v2-company-card, .v2-list-scroll, .v2-legend, .v2-chip, .v2-segmented) {
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-group[open] {
+  border: 2px solid #fff;
+}
+@media (max-width: 1200px) {
+  .v2-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .v2-kpis {
+    grid-template-columns: 1fr;
+  }
+  .v2-filter-actions {
+    margin-left: 0;
+  }
+  .v2-company-card {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-chip,
+  .v2-segmented button {
+    transition: none;
+  }
+}

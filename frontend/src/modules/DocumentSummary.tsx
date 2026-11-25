@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { Kpi } from '../components/ui';
 import { stitchButton } from '../components/stitch';
 import { ICONS, STATE_TEXT, type CompanyLights, type Light } from './DocumentLights';
 import './v11.css';
@@ -11,7 +10,11 @@ type Summary = {
   physical: number;
   moral: number;
   sat: { positive: number; negative: number; none: number; percent: number };
-  expiring: { days: number; count: number; items: { company_id: string; name: string; kind: Light['kind']; expires: string }[] };
+  expiring: {
+    days: number;
+    count: number;
+    items: { company_id: string; name: string; kind: Light['kind']; expires: string }[];
+  };
   states: Record<Light['kind'], Record<Light['state'], number>>;
 };
 type Validity = Record<string, [number, number]>;
@@ -70,21 +73,10 @@ export default function DocumentSummary({ admin, notify }: { admin: boolean; not
           )}
         </div>
       </div>
-      <div className="kpi-grid four">
-        <Kpi label="RFC activos" value={s.active_rfcs} detail={`${s.physical} personas físicas · ${s.moral} morales`} tone="blue" />
-        <Kpi
-          label="Opinión de cumplimiento SAT"
-          value={s.sat.percent + '% positivas'}
-          detail={`${s.sat.positive} positivas · ${s.sat.negative} negativas · ${s.sat.none} sin opinión`}
-          tone={s.sat.negative ? 'red' : 'green'}
-        />
-        <Kpi
-          label="Documentos por vencer"
-          value={s.expiring.count}
-          detail={`En los próximos ${s.expiring.days} días`}
-          tone={s.expiring.count ? 'amber' : 'green'}
-        />
-      </div>
+      {/* Rediseño v2: los KPIs (RFC activos, opinión SAT, por vencer) están en el Panel de empresas. */}
+      <p className="muted v11-expiring-note">
+        {s.expiring.count} documentos por vencer en los próximos {s.expiring.days} días.
+      </p>
       <div className="v11-state-grid" role="table" aria-label="Estados del semáforo por documento">
         <div role="row" className="v11-state-head">
           <span role="columnheader">Documento</span>
@@ -116,7 +108,8 @@ export default function DocumentSummary({ admin, notify }: { admin: boolean; not
           <ul>
             {s.expiring.items.map((e) => (
               <li key={e.company_id + e.kind}>
-                <Link to={'/empresas/' + e.company_id}>{e.name}</Link> · {LABEL[e.kind].replace(' (días antes de vencer)', '')} ·{' '}
+                <Link to={'/empresas/' + e.company_id}>{e.name}</Link> ·{' '}
+                {LABEL[e.kind].replace(' (días antes de vencer)', '')} ·{' '}
                 {new Date(e.expires + 'T12:00:00').toLocaleDateString('es-MX')}
               </li>
             ))}
@@ -126,8 +119,8 @@ export default function DocumentSummary({ admin, notify }: { admin: boolean; not
       {editing && (
         <div className="v11-validity">
           <p className="muted">
-            Verde hasta N días desde la emisión; ámbar hasta M; después, rojo. Para la FIEL: ámbar cuando faltan M días o
-            menos. Una opinión negativa siempre es roja.
+            Verde hasta N días desde la emisión; ámbar hasta M; después, rojo. Para la FIEL: ámbar cuando faltan M días
+            o menos. Una opinión negativa siempre es roja.
           </p>
           {Object.entries(data.validity).map(([kind, [green, amber]]) => (
             <ValidityRow key={kind} kind={kind} green={green} amber={amber} onSave={save} />
@@ -156,14 +149,19 @@ function ValidityRow({
       <span>{LABEL[kind] || kind}</span>
       {kind !== 'fiel' && (
         <label>
-          Verde hasta <input type="number" min={0} max={365} value={g} onChange={(e) => setG(Number(e.target.value))} /> días
+          Verde hasta <input type="number" min={0} max={365} value={g} onChange={(e) => setG(Number(e.target.value))} />{' '}
+          días
         </label>
       )}
       <label>
         {kind === 'fiel' ? 'Ámbar con' : 'Ámbar hasta'}{' '}
         <input type="number" min={0} max={365} value={a} onChange={(e) => setA(Number(e.target.value))} /> días
       </label>
-      <button className={stitchButton} disabled={g === green && a === amber} onClick={() => onSave(kind, kind === 'fiel' ? a : g, a)}>
+      <button
+        className={stitchButton}
+        disabled={g === green && a === amber}
+        onClick={() => onSave(kind, kind === 'fiel' ? a : g, a)}
+      >
         Guardar
       </button>
     </div>

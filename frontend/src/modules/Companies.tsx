@@ -10,6 +10,7 @@ import IntegralDashboard from './IntegralDashboard';
 import CompanyImporter from './CompanyImporter';
 import Credentials, { AlertCenter } from './Credentials';
 import FiscalControl from './FiscalControl';
+import ObligationChecklist from './ObligationChecklist';
 import { CompanySwitcher, CompanyViews } from './CompanyHeader';
 import { useFiscalRead, fiscalStatus, exportFiscal, type Summary } from './fiscalRead';
 import { confirmDiscard } from '../navigationGuard';
@@ -203,12 +204,27 @@ export default function Companies({
         </div>
       )}
       {tab === 'Panel' ? (
-        <IntegralDashboard
-          key={focused}
-          state={state}
-          period={period}
-          view={vista === 'General' ? 'Dashboard general' : vista}
-        />
+        <>
+          {vista === 'General' && (
+            // Rediseño v2: Panel de empresas (KPIs, filtros y tarjetas por empresa) sobre el dashboard general.
+            <ObligationChecklist
+              key={'panel' + focused}
+              variant="panel"
+              period={period}
+              companyId={focused || undefined}
+              notify={notify}
+              onPeriod={(p) => {
+                if (confirmDiscard()) setPeriod(p);
+              }}
+            />
+          )}
+          <IntegralDashboard
+            key={focused}
+            state={state}
+            period={period}
+            view={vista === 'General' ? 'Dashboard general' : vista}
+          />
+        </>
       ) : tab === 'Importar' ? (
         <CompanyImporter state={state} />
       ) : tab === 'Credenciales' ? (
@@ -390,7 +406,11 @@ export default function Companies({
                           {state.document_counts[c.id] ?? 0}
                         </td>
                         <td>
-                          {lights[c.id] ? <DocumentLights company={lights[c.id]} compact /> : <Badge>Sin información</Badge>}
+                          {lights[c.id] ? (
+                            <DocumentLights company={lights[c.id]} compact />
+                          ) : (
+                            <Badge>Sin información</Badge>
+                          )}
                         </td>
                         <td>
                           <Badge tone={toneOf(statusOf(c, state, period, fiscal?.company_summaries[c.id]))}>
