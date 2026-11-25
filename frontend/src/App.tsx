@@ -23,6 +23,7 @@ import {
   Settings,
   Sun,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { UnsavedNavigation } from './navigationGuard';
 import { updateArchiveWarnings } from './archiveWarnings';
@@ -73,28 +74,35 @@ class ModuleBoundary extends Component<{ children: ReactNode; route: string }, {
     );
   }
 }
-// Rediseño v2: una sola lista en el orden del diseño (Inicio, Empresas, CFDI, Recopila, Declara, Recibos,
-// Configuración); «Tareas y vencimientos» se conserva junto a Empresas. Los grupos sólo ordenan.
-const nav = [
-  {
-    group: 'General',
-    items: [
-      { path: '/', title: 'Inicio', icon: Home },
-      { path: '/empresas', title: 'Empresas', icon: Building2 },
-      { path: '/tareas', title: 'Tareas y vencimientos', icon: ListTodo },
-    ],
-  },
-  {
-    group: 'Automatización',
-    items: [
-      { path: '/organizador-cfdi', title: 'CFDI', icon: FolderTree },
-      { path: '/recopilador-cfdi', title: 'Recopila', icon: CloudDownload },
-      { path: '/declara', title: 'Declara', icon: Files },
-      { path: '/recibos', title: 'Recibos', icon: ReceiptText },
-    ],
-  },
-  { group: 'Sistema', items: [{ path: '/configuracion', title: 'Configuración', icon: Settings }] },
+// Módulos del panel lateral en el orden del diseño; Configuración va abajo, junto al usuario y la salida.
+type NavItem = { path: string; title: string; icon: LucideIcon };
+const nav: NavItem[] = [
+  { path: '/', title: 'Inicio', icon: Home },
+  { path: '/empresas', title: 'Empresas', icon: Building2 },
+  { path: '/tareas', title: 'Tareas y vencimientos', icon: ListTodo },
+  { path: '/organizador-cfdi', title: 'CFDI', icon: FolderTree },
+  { path: '/recopilador-cfdi', title: 'Recopila', icon: CloudDownload },
+  { path: '/declara', title: 'Declara', icon: Files },
+  { path: '/recibos', title: 'Recibos', icon: ReceiptText },
 ];
+const settingsItem: NavItem = { path: '/configuracion', title: 'Configuración', icon: Settings };
+type TipProps = (text: string) => {
+  onMouseEnter: (e: { currentTarget: HTMLElement }) => void;
+  onFocus: (e: { currentTarget: HTMLElement }) => void;
+  onMouseLeave: () => void;
+  onBlur: () => void;
+};
+function SidebarLink({ item, tip }: { item: NavItem; tip: TipProps }) {
+  const original = moduleIconNames[item.path.slice(1)];
+  return (
+    <NavLink to={item.path} end={item.path === '/'} aria-label={item.title} {...tip(item.title)}>
+      <span className="nav-icon">
+        {original ? <OriginalIcon name={original} size={32} /> : <item.icon size={18} strokeWidth={1.6} />}
+      </span>
+      <span className="sidebar-label">{item.title}</span>
+    </NavLink>
+  );
+}
 const ROLE_NAMES: Record<CurrentUser['role'], string> = {
   admin: 'Administrador',
   contador: 'Contador',
@@ -207,6 +215,7 @@ export default function App() {
       }
       return !c;
     });
+    setTooltip(null);
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -218,6 +227,16 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+  // Panel mini: el nombre de cada módulo aparece en una burbuja al pasar el cursor o al enfocar con teclado.
+  // Vive fuera del panel porque éste recorta lo que sobresale.
+  const [tooltip, setTooltip] = useState<{ text: string; top: number } | null>(null);
+  const tip: TipProps = (text) => {
+    const show = (e: { currentTarget: HTMLElement }) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      setTooltip({ text, top: r.top + r.height / 2 });
+    };
+    return { onMouseEnter: show, onFocus: show, onMouseLeave: () => setTooltip(null), onBlur: () => setTooltip(null) };
+  };
   const [globalSearch, setGlobalSearch] = useState('');
   const [name, setName] = useState(localStorage.getItem('contasuite-name') || '');
   const [theme, setTheme] = useState(localStorage.getItem('contasuite-theme') || 'light');
@@ -370,7 +389,7 @@ export default function App() {
   const settingsCrumb = location.pathname.startsWith('/configuracion/')
     ? settingsSection(location.pathname.split('/')[2], identity)
     : undefined;
-  const active = nav.flatMap((g) => g.items).find((i) => i.path !== '/' && location.pathname.startsWith(i.path));
+  const active = [...nav, settingsItem].find((i) => i.path !== '/' && location.pathname.startsWith(i.path));
   const shared = state ? { state, refresh, notify } : null;
   const agentOnline = state?.agent_link?.state === 'online';
   return (
@@ -380,7 +399,7 @@ export default function App() {
       </a>
       <aside className={'sidebar ' + (open ? 'open' : '')}>
         <div className="sidebar-head">
-          <Link to="/" className="brand">
+          <Link to="/" className="brand" aria-label="ContaSuite, ir a Inicio" tabIndex={collapsed ? -1 : undefined}>
             <Logo sidebar />
             <div>
               <strong>ContaSuite</strong>
@@ -390,39 +409,31 @@ export default function App() {
           <button
             className="icon-button sidebar-toggle"
             onClick={toggleSidebar}
-            aria-label={collapsed ? 'Fijar panel lateral expandido' : 'Contraer panel lateral'}
+            aria-label={collapsed ? 'Expandir panel lateral' : 'Contraer panel lateral'}
             aria-expanded={!collapsed}
             title={(collapsed ? 'Expandir' : 'Contraer') + ' panel (Ctrl+B)'}
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
         </div>
-        <nav>
-          {nav.map((g) => (
-            <div key={g.group}>
-              {g.items
-                .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
-                .map((i) => (
-                  <NavLink
-                    key={i.path}
-                    to={i.path}
-                    end={i.path === '/'}
-                    title={collapsed ? i.title : undefined}
-                    aria-label={i.title}
-                  >
-                    {moduleIconNames[i.path.slice(1)] ? (
-                      <OriginalIcon name={moduleIconNames[i.path.slice(1)]} size={24} />
-                    ) : (
-                      <i.icon size={18} strokeWidth={1.6} />
-                    )}
-                    <span>{i.title}</span>
-                  </NavLink>
-                ))}
-            </div>
-          ))}
+        <nav className="sidebar-modules" aria-label="Módulos">
+          {nav
+            .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
+            .map((i) => (
+              <SidebarLink key={i.path} item={i} tip={tip} />
+            ))}
+        </nav>
+        <nav className="sidebar-system" aria-label="Sistema">
+          <SidebarLink item={settingsItem} tip={tip} />
+          <button className="sidebar-logout" onClick={logout} aria-label="Cerrar sesión" {...tip('Cerrar sesión')}>
+            <span className="nav-icon">
+              <LogOut size={18} strokeWidth={1.6} aria-hidden />
+            </span>
+            <span className="sidebar-label">Cerrar sesión</span>
+          </button>
         </nav>
         <div className="sidebar-footer">
-          <div className="profile-avatar">
+          <div className="profile-avatar" aria-hidden>
             {name
               ? name
                   .split(' ')
@@ -431,17 +442,19 @@ export default function App() {
                   .join('')
               : 'CS'}
           </div>
-          <div>
+          <div className="sidebar-label">
             <strong>{name || 'Mi despacho'}</strong>
             <small title="ContaSuite v1.0 RC1">
               {identity ? ROLE_NAMES[identity.role] || 'Usuario' : 'ContaSuite'}
             </small>
           </div>
-          <button className="icon-button" onClick={logout} aria-label="Cerrar sesión">
-            <LogOut size={17} />
-          </button>
         </div>
       </aside>
+      {tooltip && collapsed && (
+        <div className="sidebar-tooltip" role="tooltip" style={{ top: tooltip.top }}>
+          {tooltip.text}
+        </div>
+      )}
       {open && <button className="sidebar-shade" aria-label="Cerrar menú" onClick={() => setOpen(false)} />}
       <header className="topbar">
         <button className="icon-button menu-button" onClick={toggleSidebar} aria-label="Abrir menú" title="Abrir menú">
@@ -464,7 +477,7 @@ export default function App() {
           {settingsCrumb && (
             <>
               <ChevronRight size={13} />
-              <span className="current" aria-current="page">
+              <span className="current crumb-section" aria-current="page">
                 {settingsCrumb.label}
               </span>
             </>
