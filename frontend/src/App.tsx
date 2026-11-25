@@ -9,37 +9,30 @@ import {
   CloudDownload,
   Files,
   FolderTree,
-  HardDrive,
   Home,
-  KeyRound,
   ListTodo,
   LogOut,
   Menu,
   Monitor,
   Moon,
-  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
   RefreshCw,
-  ScrollText,
   Search,
-  Server,
   Settings,
-  ShieldCheck,
   Sun,
-  UserRound,
-  Users,
   X,
 } from 'lucide-react';
 import { UnsavedNavigation } from './navigationGuard';
 import { updateArchiveWarnings } from './archiveWarnings';
 import { api } from './api';
 import { companiesSection } from './companyNavigation';
-import { Badge, Logo, Heading, Field, Empty } from './components/ui';
+import { Logo, Empty } from './components/ui';
 import Login from './modules/Login';
 import type { State, CurrentUser } from './types';
 import { OriginalIcon, moduleIconNames } from './components/OriginalIcon';
+import { settingsSection } from './settingsSections';
 // Route modules load on demand so the initial bundle only carries the shell, login and home.
 const Companies = lazy(() => import('./modules/Companies'));
 const CompanyForm = lazy(() => import('./modules/CompanyForm'));
@@ -49,9 +42,7 @@ const Receipts = lazy(() => import('./modules/Receipts'));
 const Recopila = lazy(() => import('./modules/Recopila'));
 const Organizador = lazy(() => import('./modules/Organizador'));
 const Declara = lazy(() => import('./modules/Declara'));
-const AgentAdmin = lazy(() => import('./modules/AgentAdmin'));
-const AccountSecurity = lazy(() => import('./modules/AccountSecurity'));
-const StorageConnector = lazy(() => import('./modules/StorageConnector'));
+const SettingsPage = lazy(() => import('./modules/Settings'));
 function ModuleLoading() {
   return (
     <div className="empty" role="status">
@@ -228,8 +219,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
   const [globalSearch, setGlobalSearch] = useState('');
-  // Rediseño v2: section of Configuración last chosen in its side navigation (every section stays visible).
-  const [settingsSection, setSettingsSection] = useState('cfg-perfil');
   const [name, setName] = useState(localStorage.getItem('contasuite-name') || '');
   const [theme, setTheme] = useState(localStorage.getItem('contasuite-theme') || 'light');
   const themeName = (THEMES.find((t) => t.id === theme) || THEMES[0]).name;
@@ -370,6 +359,17 @@ export default function App() {
       </div>
     );
   if (!token) return <Login onAuthenticated={authenticated} />;
+  const saveName = (value: string) => {
+    setName(value);
+    try {
+      localStorage.setItem('contasuite-name:' + identity?.id, value);
+    } catch {
+      /* sin almacenamiento */
+    }
+  };
+  const settingsCrumb = location.pathname.startsWith('/configuracion/')
+    ? settingsSection(location.pathname.split('/')[2], identity)
+    : undefined;
   const active = nav.flatMap((g) => g.items).find((i) => i.path !== '/' && location.pathname.startsWith(i.path));
   const shared = state ? { state, refresh, notify } : null;
   const agentOnline = state?.agent_link?.state === 'online';
@@ -454,7 +454,19 @@ export default function App() {
           {active && (
             <>
               <ChevronRight size={13} />
-              <span className="current">{active.title}</span>
+              {settingsCrumb ? (
+                <Link to="/configuracion">{active.title}</Link>
+              ) : (
+                <span className="current">{active.title}</span>
+              )}
+            </>
+          )}
+          {settingsCrumb && (
+            <>
+              <ChevronRight size={13} />
+              <span className="current" aria-current="page">
+                {settingsCrumb.label}
+              </span>
             </>
           )}
         </div>
@@ -605,155 +617,21 @@ export default function App() {
                     )
                   }
                 />
+                <Route path="/configuracion" element={<Navigate to="/configuracion/perfil" replace />} />
                 <Route
-                  path="/configuracion"
+                  path="/configuracion/:section"
                   element={
-                    <>
-                      <Heading
-                        title="Configuración"
-                        description="Preferencias del despacho, tema, servicios, cuenta, permisos y auditoría."
-                      />
-                      <div className="v2-settings">
-                        <nav className="v2-settings-nav" aria-label="Secciones de Configuración">
-                          {(
-                            [
-                              ['cfg-perfil', 'Perfil', UserRound, true],
-                              ['cfg-tema', 'Tema y accesibilidad', Palette, true],
-                              ['cfg-servicios', 'Servicios y agentes', Server, true],
-                              [
-                                'cfg-almacenamiento',
-                                'Almacenamiento',
-                                HardDrive,
-                                !!identity?.admin && !identity.bootstrap,
-                              ],
-                              ['cfg-cuenta', 'Cuenta y seguridad', ShieldCheck, !!identity && !identity.bootstrap],
-                              [
-                                'cfg-equipo',
-                                'Equipo y permisos',
-                                Users,
-                                !!identity && !identity.bootstrap && identity.role !== 'auxiliar',
-                              ],
-                              ['cfg-auditoria', 'Auditoría', ScrollText, !!identity?.admin && !identity.bootstrap],
-                            ] as const
-                          )
-                            .filter(([, , , shown]) => shown)
-                            .map(([id, label, Icon]) => (
-                              <button
-                                key={id}
-                                type="button"
-                                aria-current={settingsSection === id ? 'true' : undefined}
-                                onClick={() => {
-                                  setSettingsSection(id);
-                                  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                                  document
-                                    .getElementById(id)
-                                    ?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-                                }}
-                              >
-                                <Icon size={17} aria-hidden />
-                                {label}
-                              </button>
-                            ))}
-                          <Link to="/empresas?tab=Credenciales">
-                            <KeyRound size={17} aria-hidden />
-                            Gestor de contraseñas
-                            <ChevronRight size={15} aria-hidden className="v2-settings-out" />
-                          </Link>
-                        </nav>
-                        <div className="v2-settings-content">
-                          <section id="cfg-perfil" className="card padded">
-                            <h2>Perfil</h2>
-                            <p className="muted">Nombre que aparece en la pantalla de inicio de este navegador.</p>
-                            <Field label="Nombre mostrado en el inicio">
-                              <input
-                                value={name}
-                                onChange={(e) => {
-                                  setName(e.target.value);
-                                  localStorage.setItem('contasuite-name:' + identity?.id, e.target.value);
-                                }}
-                                placeholder="C.P. Jesús Alejandro"
-                              />
-                            </Field>
-                          </section>
-                          <section id="cfg-tema" className="card padded">
-                            <h2>Tema y accesibilidad</h2>
-                            <p className="muted">
-                              Claro, oscuro o alto contraste. Las animaciones se reducen cuando el sistema lo pide.
-                            </p>
-                            <div className="theme-options">
-                              {[
-                                ['light', 'Claro', Sun],
-                                ['dark', 'Oscuro', Moon],
-                                ['contrast', 'Alto contraste', Monitor],
-                              ].map(([v, t, I]) => {
-                                const Icon = I as typeof Sun;
-                                return (
-                                  <button
-                                    key={String(v)}
-                                    className={'btn ' + (theme === v ? 'selected' : '')}
-                                    aria-pressed={theme === v}
-                                    onClick={() => setTheme(String(v))}
-                                  >
-                                    <Icon size={18} />
-                                    {String(t)}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <small className="muted">Estas preferencias se guardan en este navegador.</small>
-                          </section>
-                          <section id="cfg-servicios" className="card padded">
-                            <h2>Servicios y agentes</h2>
-                            <dl>
-                              <div>
-                                <dt>Base de datos</dt>
-                                <dd>{state?.database}</dd>
-                              </div>
-                              <div>
-                                <dt>API FastAPI</dt>
-                                <dd>
-                                  <Badge tone="green">Conectada</Badge>
-                                </dd>
-                              </div>
-                              <div>
-                                <dt>Consulta SAT</dt>
-                                <dd>
-                                  <Badge>Pendiente de integrar</Badge>
-                                </dd>
-                              </div>
-                              <div>
-                                <dt>OCR</dt>
-                                <dd>
-                                  {state?.integrations.ocr ? (
-                                    <Badge tone="green">Local: constancias escaneadas</Badge>
-                                  ) : (
-                                    <Badge>No instalado</Badge>
-                                  )}
-                                </dd>
-                              </div>
-                            </dl>
-                            <h3 id="agentes">Agentes locales</h3>
-                            {identity?.admin && !identity.bootstrap ? (
-                              <AgentAdmin notify={notify} />
-                            ) : (
-                              <p className="muted">
-                                {agentLabel(state?.agent_link, localAgent)}. El agente de tu equipo se vincula al
-                                iniciar sesión; analiza sólo carpetas autorizadas de tus empresas.
-                              </p>
-                            )}
-                          </section>
-                          {identity?.admin && !identity.bootstrap && <StorageConnector notify={notify} />}
-                          {identity && !identity.bootstrap && (
-                            <AccountSecurity
-                              identity={identity}
-                              companies={state?.companies || []}
-                              notify={notify}
-                              onEnded={ended}
-                            />
-                          )}
-                        </div>
-                      </div>
-                    </>
+                    <SettingsPage
+                      state={shared.state}
+                      identity={identity}
+                      name={name}
+                      onNameSaved={saveName}
+                      theme={theme}
+                      setTheme={setTheme}
+                      localAgent={localAgent}
+                      notify={notify}
+                      onEnded={ended}
+                    />
                   }
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />

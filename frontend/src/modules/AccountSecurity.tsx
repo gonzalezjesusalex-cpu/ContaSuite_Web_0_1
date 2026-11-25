@@ -29,11 +29,14 @@ type Event = {
   document_id: string | null;
 };
 export default function AccountSecurity({
+  section,
   identity,
   companies,
   notify,
   onEnded,
 }: {
+  /** Configuración por pestañas: sólo se dibuja (y sólo pide datos) la sección abierta. */
+  section: 'seguridad' | 'equipo' | 'auditoria';
   identity: CurrentUser;
   companies: Company[];
   notify: (m: string) => void;
@@ -51,8 +54,11 @@ export default function AccountSecurity({
   const [page, setPage] = useState(0);
   const [events, setEvents] = useState<{ items: Event[]; total: number } | null>(null);
   const manager = canManageUsers(identity);
+  // Auditoría también necesita la lista de usuarios para nombrar a los responsables.
+  const needsUsers = manager && section !== 'seguridad';
+  const audit = identity.admin && section === 'auditoria';
   useEffect(() => {
-    if (!manager) return;
+    if (!needsUsers) return;
     const c = new AbortController();
     api<Account[]>('/auth/users', 'GET', undefined, c.signal)
       .then(setUsers)
@@ -60,9 +66,9 @@ export default function AccountSecurity({
         if (!c.signal.aborted) setError(e.message);
       });
     return () => c.abort();
-  }, [manager, reload]);
+  }, [needsUsers, reload]);
   useEffect(() => {
-    if (!identity.admin) return;
+    if (!audit) return;
     const c = new AbortController();
     setEvents(null);
     api<{ items: Event[]; total: number }>(
@@ -76,7 +82,7 @@ export default function AccountSecurity({
         if (!c.signal.aborted) setError(e.message);
       });
     return () => c.abort();
-  }, [identity.admin, reload, kind, page]);
+  }, [audit, reload, kind, page]);
   async function change(e: FormEvent) {
     e.preventDefault();
     setError('');
@@ -119,54 +125,56 @@ export default function AccountSecurity({
           {error}
         </p>
       )}
-      <section id="cfg-cuenta" className={stitchCard + ' padded'}>
-        <h2>Mi cuenta</h2>
-        <p className="muted">
-          {identity.display_name} · {ROLE_LABELS[identity.role] || 'Colaborador'}
-        </p>
-        <form className="account-password" onSubmit={change}>
-          <Field label="Contraseña actual">
-            <input
-              required
-              type="password"
-              maxLength={128}
-              autoComplete="current-password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-            />
-          </Field>
-          <Field label="Nueva contraseña">
-            <input
-              required
-              type="password"
-              minLength={12}
-              maxLength={128}
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
-          <Field label="Repetir nueva contraseña">
-            <input
-              required
-              type="password"
-              minLength={12}
-              maxLength={128}
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
-          </Field>
-          <button className={stitchPrimary} disabled={busy}>
-            Cambiar contraseña
+      {section === 'seguridad' && (
+        <section id="cfg-cuenta" className={stitchCard + ' padded'}>
+          <h2>Mi cuenta</h2>
+          <p className="muted">
+            {identity.display_name} · {ROLE_LABELS[identity.role] || 'Colaborador'}
+          </p>
+          <form className="account-password" onSubmit={change}>
+            <Field label="Contraseña actual">
+              <input
+                required
+                type="password"
+                maxLength={128}
+                autoComplete="current-password"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+              />
+            </Field>
+            <Field label="Nueva contraseña">
+              <input
+                required
+                type="password"
+                minLength={12}
+                maxLength={128}
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+            <Field label="Repetir nueva contraseña">
+              <input
+                required
+                type="password"
+                minLength={12}
+                maxLength={128}
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+            </Field>
+            <button className={stitchPrimary} disabled={busy}>
+              Cambiar contraseña
+            </button>
+          </form>
+          <button className={stitchButton} disabled={busy} onClick={() => revoke()}>
+            Cerrar todas mis sesiones
           </button>
-        </form>
-        <button className={stitchButton} disabled={busy} onClick={() => revoke()}>
-          Cerrar todas mis sesiones
-        </button>
-        <small className="muted">Cambiar la contraseña cierra las sesiones abiertas de esta cuenta.</small>
-      </section>
-      {manager && (
+          <small className="muted">Cambiar la contraseña cierra las sesiones abiertas de esta cuenta.</small>
+        </section>
+      )}
+      {section === 'equipo' && manager && (
         <>
           <section id="cfg-equipo" className={stitchCard + ' padded'}>
             <div className="documents-header">
@@ -220,8 +228,8 @@ export default function AccountSecurity({
           </section>
         </>
       )}
-      {identity.admin && <ResponsibleReconciliation notify={notify} />}
-      {identity.admin && (
+      {section === 'equipo' && identity.admin && <ResponsibleReconciliation notify={notify} />}
+      {audit && (
         <>
           <section id="cfg-auditoria" className={stitchCard + ' padded'}>
             <div className="documents-header">

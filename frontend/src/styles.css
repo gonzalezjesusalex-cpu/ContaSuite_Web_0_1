@@ -4614,9 +4614,9 @@ button.header-cert-chip {
   font-size: var(--fs-xs);
 }
 
-/* Rediseño v2, paso 11: Configuración (contasuite_configuracion). Navegación lateral fija que lleva a cada
-   sección; todas las secciones siguen visibles en la página (perfil, tema, servicios, almacenamiento, cuenta,
-   equipo y auditoría) y el gestor de contraseñas enlaza a Empresas › Credenciales. */
+/* Configuración por pestañas: el menú lleva a /configuracion/<sección> y el panel derecho muestra sólo esa
+   sección, alineada arriba. El gestor de contraseñas es un enlace a su propia página. En pantallas angostas
+   el menú se sustituye por un selector encima del contenido. */
 .v2-settings {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
@@ -4633,8 +4633,8 @@ button.header-cert-chip {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
-.v2-settings-nav > button,
-.v2-settings-nav > a {
+.v2-settings-nav > a,
+.v2-settings-picker > a {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -4649,38 +4649,42 @@ button.header-cert-chip {
   font-size: var(--fs-sm);
   font-weight: 600;
   text-align: left;
-  cursor: pointer;
+  text-decoration: none;
   transition: background-color var(--motion-state) var(--ease-state);
 }
-.v2-settings-nav > a {
+.v2-settings-nav > .v2-settings-external {
   margin-top: 4px;
   border-top: 1px solid var(--border);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   padding-top: 12px;
 }
-.v2-settings-nav .v2-settings-out {
+.v2-settings-out {
   margin-left: auto;
   color: var(--muted);
 }
-.v2-settings-nav > button[aria-current='true'] {
+.v2-settings-nav > a[aria-current='page'] {
   background: var(--primary-container);
   color: var(--on-primary-container);
 }
 @media (hover: hover) and (pointer: fine) {
-  .v2-settings-nav > button:hover:not([aria-current='true']),
-  .v2-settings-nav > a:hover {
+  .v2-settings-nav > a:hover:not([aria-current='page']),
+  .v2-settings-picker > a:hover {
     background: var(--hover);
   }
+}
+.v2-settings-picker {
+  display: none;
 }
 .v2-settings-content {
   display: grid;
   gap: 24px;
   min-width: 0;
+  align-content: start;
 }
 .v2-settings-content > section,
-.v2-settings-content > .stitch-card {
+.v2-settings-content > .stitch-card,
+.v2-settings-content > .account-security > section {
   margin: 0;
-  scroll-margin-top: 88px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: none;
@@ -4696,35 +4700,46 @@ button.header-cert-chip {
   border-bottom: 1px solid var(--border);
   font-size: var(--fs-sm);
 }
-.v2-settings-content [id^='cfg-'] {
-  scroll-margin-top: 88px;
+.v2-settings-form {
+  display: grid;
+  gap: 16px;
+  max-width: 480px;
 }
 [data-theme='contrast'] .v2-settings-nav,
 [data-theme='contrast'] .v2-settings-content > section {
   border: 2px solid #fff;
 }
-[data-theme='contrast'] .v2-settings-nav > button[aria-current='true'] {
+[data-theme='contrast'] .v2-settings-nav > a[aria-current='page'] {
   outline: 2px solid #fff;
   outline-offset: -2px;
 }
 @media (max-width: 1000px) {
   .v2-settings {
     grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
   }
   .v2-settings-nav {
-    position: static;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    display: none;
   }
-  .v2-settings-nav > a {
-    margin-top: 0;
-    border-top: 0;
-    border-radius: var(--radius-md);
-    padding-top: 8px;
+  .v2-settings-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 16px;
+  }
+  .v2-settings-picker > label,
+  .v2-settings-picker > .field {
+    flex: 1 1 240px;
+    margin: 0;
+  }
+  .v2-settings-picker > a {
+    width: auto;
+    border: 1px solid var(--border);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .v2-settings-nav > button,
-  .v2-settings-nav > a {
+  .v2-settings-nav > a,
+  .v2-settings-picker > a {
     transition: none;
   }
 }
