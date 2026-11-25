@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { api, authHeaders, today, dateLabel } from '../api';
 import { Heading, Field, Modal, Empty, Badge } from '../components/ui';
+import './v11.css';
 import type { State } from '../types';
 const months = [
   'Enero',
@@ -660,7 +661,7 @@ export default function Receipts({
                                 </small>
                               </button>
                             </td>
-                            <td>{money(r.amount)}</td>
+                            <td className="v2-mono">{money(r.amount)}</td>
                             <td>
                               <div className="actions">
                                 <button
@@ -814,14 +815,14 @@ export default function Receipts({
                           />
                         </td>
                         <td>
-                          <strong>{r.folio}</strong>
+                          <strong className="v2-mono">{r.folio}</strong>
                           <small>{r.name}</small>
                           <small>Emitido: {dateLabel(r.issued)}</small>
                           {r.concept && <small>{r.concept}</small>}
                         </td>
                         <td>
                           {months[r.month - 1]} {r.year}
-                          <small>{money(r.amount)}</small>
+                          <small className="v2-mono">{money(r.amount)}</small>
                         </td>
                         <td>
                           <div className="actions">

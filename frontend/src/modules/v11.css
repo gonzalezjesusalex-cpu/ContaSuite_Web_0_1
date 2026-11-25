@@ -2033,3 +2033,89 @@ button.v2-cell.is-na {
     transition: none;
   }
 }
+
+/* Rediseño v2, paso 10: Recibos (contasuite_recibos). Mismo flujo (individual, en masa, historial) con el
+   lenguaje nuevo: interruptor de modalidad, tarjetas con borde, tablas con folio e importes en monoespaciada y
+   vista previa del PDF como papel. Sin timbrado, XML ni estados: Recibos emite PDF con folio. */
+.receipts-module .receipt-tabs {
+  display: inline-flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.receipts-module .receipt-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.receipts-module .receipt-tabs > button.active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--elev-control);
+}
+.receipts-module .receipt-tabs > button.active::after {
+  display: none;
+}
+.receipts-module .stitch-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.receipts-module .receipt-section-title h2 {
+  font-size: 20px;
+  line-height: 26px;
+}
+.receipts-module .receipt-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+.receipts-module .receipt-table table {
+  font-size: var(--fs-sm);
+}
+.receipts-module .receipt-table th {
+  padding: 12px 16px;
+  background: var(--hover);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.receipts-module .receipt-table td {
+  padding: 12px 16px;
+}
+.receipts-module .receipt-table .v2-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Spline Sans Mono is loaded in 400 and 500: no synthetic bold. */
+.receipts-module .receipt-table strong.v2-mono {
+  font-weight: 500;
+}
+.receipts-module .receipt-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.receipts-module .receipt-paper {
+  background: rgb(var(--md-surface-container-low));
+}
+[data-theme='contrast'] .receipts-module :is(.receipt-tabs, .stitch-card, .receipt-table, .receipt-preview) {
+  border: 2px solid #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .receipts-module .receipt-tabs > button {
+    transition: none;
+  }
+}
