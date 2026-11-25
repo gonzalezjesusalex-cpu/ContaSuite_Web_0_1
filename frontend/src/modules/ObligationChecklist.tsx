@@ -223,6 +223,8 @@ export default function ObligationChecklist({
       const tone = items.some((i) => i.overdue) ? ' is-overdue' : done === items.length ? ' is-done' : '';
       return { done, tone };
     };
+    // List view: only the tax families that some visible company has in the period.
+    const listGroups = groups.filter((g) => shown.some((c) => c.items.some((i) => i.group === g)));
     const typeName = (t: string) => (t === 'Física' ? 'Persona física' : t === 'Moral' ? 'Persona moral' : t || '—');
     return (
       <div className="v11-checklist v2-panel" aria-busy={loading}>
@@ -451,7 +453,7 @@ export default function ObligationChecklist({
                 <tr>
                   <th scope="col">Empresa</th>
                   <th scope="col">Semáforo</th>
-                  {groups.map((g) => (
+                  {listGroups.map((g) => (
                     <th scope="col" key={g}>
                       {g}
                     </th>
@@ -467,7 +469,7 @@ export default function ObligationChecklist({
                       <small className="rfc">{c.rfc}</small>
                     </th>
                     <td>{lights[c.id] ? <DocumentLights company={lights[c.id]} compact /> : '—'}</td>
-                    {groups.map((g) => {
+                    {listGroups.map((g) => {
                       const items = c.items.filter((i) => i.group === g);
                       if (!items.length) return <td key={g}>—</td>;
                       const { done, tone } = groupBar(items);

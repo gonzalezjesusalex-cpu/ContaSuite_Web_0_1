@@ -1928,7 +1928,8 @@ dd {
   .system-indicator span:last-child {
     display: none;
   }
-  .breadcrumbs > span {
+  .breadcrumbs > span,
+  .breadcrumbs > svg {
     display: none;
   }
 }

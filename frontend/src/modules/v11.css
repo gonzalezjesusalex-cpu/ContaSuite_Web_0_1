@@ -490,7 +490,8 @@
   display: block;
   height: 6px;
   border-radius: 999px;
-  background: rgb(var(--md-surface-container-high));
+  /* Track visible on the card and on an open group in every theme. */
+  background: color-mix(in srgb, var(--muted) 28%, transparent);
   overflow: hidden;
 }
 .v2-bar > span {
@@ -710,6 +711,8 @@
 .v2-group .v11-group-count {
   margin: 0;
   font-family: var(--font-mono);
+}
+.v2-group .v11-group-count:not(.is-overdue, .is-done) {
   color: var(--text);
 }
 .v2-list-scroll {
@@ -735,7 +738,11 @@
   font-weight: 600;
 }
 .v2-list tbody th {
+  font-size: var(--fs-sm);
   font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
   white-space: normal;
 }
 .v2-list tbody th small {
@@ -799,6 +806,9 @@
 [data-theme='contrast']
   :is(.v2-kpis .kpi, .v2-filters, .v2-company-card, .v2-list-scroll, .v2-legend, .v2-chip, .v2-segmented) {
   border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-bar {
+  outline: 1px solid #fff;
 }
 [data-theme='contrast'] .v2-group[open] {
   border: 2px solid #fff;
