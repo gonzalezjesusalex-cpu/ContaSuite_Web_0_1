@@ -34,6 +34,7 @@ import Login from './modules/Login';
 import type { State, CurrentUser } from './types';
 import { OriginalIcon, moduleIconNames } from './components/OriginalIcon';
 import { settingsSection } from './settingsSections';
+import { NavAppIcon, navAppTones } from './components/NavAppIcon';
 // Route modules load on demand so the initial bundle only carries the shell, login and home.
 const Companies = lazy(() => import('./modules/Companies'));
 const CompanyForm = lazy(() => import('./modules/CompanyForm'));
@@ -97,7 +98,13 @@ function SidebarLink({ item, tip }: { item: NavItem; tip: TipProps }) {
   return (
     <NavLink to={item.path} end={item.path === '/'} aria-label={item.title} {...tip(item.title)}>
       <span className="nav-icon">
-        {original ? <OriginalIcon name={original} size={32} /> : <item.icon size={18} strokeWidth={1.6} />}
+        {original ? (
+          <OriginalIcon name={original} size={32} />
+        ) : navAppTones[item.path] ? (
+          <NavAppIcon tone={navAppTones[item.path]} />
+        ) : (
+          <item.icon size={18} strokeWidth={1.6} />
+        )}
       </span>
       <span className="sidebar-label">{item.title}</span>
     </NavLink>

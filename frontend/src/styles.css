@@ -6208,3 +6208,110 @@ button.v2-cell.is-na {
     transition: none;
   }
 }
+
+/* Íconos de app del panel (NavAppIcon) para Inicio, Empresas, Tareas y Configuración: misma construcción
+   que los PNG originales 0.6 (mosaico con degradado del tono, borde claro, sombra suave y glifo blanco),
+   en tonos que no se confunden con CFDI (verde), Recopila (azul), Declara (morado) ni Recibos (azul oscuro).
+   Tonos: ámbar, cian, frambuesa y titanio. Sin insignia de esquina. */
+.nav-app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.nav-app-tile {
+  position: relative;
+  width: 88%;
+  height: 88%;
+  display: grid;
+  place-items: center;
+  border-radius: 24%;
+  background: linear-gradient(145deg, var(--app-tile-from), var(--app-tile-to));
+  box-shadow:
+    inset 0 0 0 1px var(--app-tile-edge),
+    0 1px 2px var(--app-tile-shadow);
+}
+.nav-app-tile > svg {
+  grid-area: 1 / 1;
+}
+.nav-app-halo {
+  color: var(--app-halo);
+}
+.nav-app-glyph {
+  color: #fff;
+}
+.nav-app-icon.tone-inicio {
+  --app-tile-from: #fff7e0;
+  --app-tile-to: #fcd98a;
+  --app-tile-edge: #ffffffcc;
+  --app-tile-shadow: #b4530940;
+  --app-halo: #d97706;
+}
+.nav-app-icon.tone-empresas {
+  --app-tile-from: #e3fbff;
+  --app-tile-to: #9be6f3;
+  --app-tile-edge: #ffffffcc;
+  --app-tile-shadow: #0e749040;
+  --app-halo: #0891b2;
+}
+.nav-app-icon.tone-tareas {
+  --app-tile-from: #fff0f2;
+  --app-tile-to: #fdb4c1;
+  --app-tile-edge: #ffffffcc;
+  --app-tile-shadow: #be123c40;
+  --app-halo: #e11d48;
+}
+.nav-app-icon.tone-configuracion {
+  --app-tile-from: #f4f6f9;
+  --app-tile-to: #c4ccd8;
+  --app-tile-edge: #ffffffcc;
+  --app-tile-shadow: #33415540;
+  --app-halo: #475569;
+}
+[data-theme='dark'] .nav-app-icon.tone-inicio {
+  --app-tile-from: #8a4b0f;
+  --app-tile-to: #4a2507;
+  --app-tile-edge: #fbbf2440;
+  --app-halo: #b45309;
+}
+[data-theme='dark'] .nav-app-icon.tone-empresas {
+  --app-tile-from: #155e75;
+  --app-tile-to: #0a3440;
+  --app-tile-edge: #67e8f940;
+  --app-halo: #0e7490;
+}
+[data-theme='dark'] .nav-app-icon.tone-tareas {
+  --app-tile-from: #9f1239;
+  --app-tile-to: #4c0519;
+  --app-tile-edge: #fda4af40;
+  --app-halo: #be123c;
+}
+[data-theme='dark'] .nav-app-icon.tone-configuracion {
+  --app-tile-from: #475569;
+  --app-tile-to: #1e293b;
+  --app-tile-edge: #cbd5e140;
+  --app-halo: #334155;
+}
+[data-theme='dark'] .nav-app-tile {
+  --app-tile-shadow: #00000066;
+}
+/* Alto contraste: base negra, borde de 2 px en el tono del módulo y glifo blanco sin contorno. */
+[data-theme='contrast'] .nav-app-tile {
+  background: #000;
+  box-shadow: inset 0 0 0 2px var(--app-halo-contrast);
+}
+[data-theme='contrast'] .nav-app-halo {
+  display: none;
+}
+[data-theme='contrast'] .nav-app-icon.tone-inicio {
+  --app-halo-contrast: #fbbf24;
+}
+[data-theme='contrast'] .nav-app-icon.tone-empresas {
+  --app-halo-contrast: #22d3ee;
+}
+[data-theme='contrast'] .nav-app-icon.tone-tareas {
+  --app-halo-contrast: #fb7185;
+}
+[data-theme='contrast'] .nav-app-icon.tone-configuracion {
+  --app-halo-contrast: #e2e8f0;
+}
