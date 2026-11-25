@@ -13,6 +13,7 @@ import {
   Search,
   ShieldCheck,
   Table2,
+  X,
 } from 'lucide-react';
 import { api, downloadApi } from '../api';
 import { Kpi } from '../components/ui';
@@ -115,6 +116,84 @@ function Box({
   );
 }
 
+const CADENCE: Record<string, string> = {
+  monthly: 'Mensual',
+  bimonthly: 'Bimestral',
+  quarterly: 'Trimestral',
+  annual: 'Anual',
+};
+function groupBar(items: ChecklistItem[]) {
+  const done = items.filter((i) => i.done).length;
+  const tone = items.some((i) => i.overdue) ? ' is-overdue' : done === items.length ? ' is-done' : '';
+  return { done, tone };
+}
+const typeName = (t: string) => (t === 'Física' ? 'Persona física' : t === 'Moral' ? 'Persona moral' : t || '—');
+
+/** Rediseño v2: one company card (Panel de empresas and Obligaciones › Vista tarjetas): type, RFC, responsible,
+ *  document traffic light and the obligations grouped by tax family, each group with its bar and boxes. */
+function CompanyCard({
+  company: c,
+  lights,
+  groups,
+  busy,
+  onToggle,
+  openAll,
+}: {
+  company: CompanyRow;
+  lights?: CompanyLights;
+  groups: string[];
+  busy: string;
+  onToggle: (c: CompanyRow, i: ChecklistItem) => void;
+  openAll: boolean;
+}) {
+  return (
+    <article className="v2-company-card">
+      <header>
+        <h3>{c.name}</h3>
+        <span className="v2-type">{typeName(c.person_type)}</span>
+        <small>
+          <span className="rfc">{c.rfc}</span>
+          <span>Resp: {c.accountant || '—'}</span>
+          <span className={c.overdue ? 'v11-progress is-overdue' : 'v11-progress'}>
+            {c.done}/{c.total} hechas
+          </span>
+        </small>
+      </header>
+      {lights && <DocumentLights company={lights} />}
+      <div className="v2-groups">
+        {groups.map((g) => {
+          const items = c.items.filter((i) => i.group === g);
+          if (!items.length) return null;
+          const { done, tone } = groupBar(items);
+          return (
+            <details key={g} className="v11-group v2-group" open={items.some((i) => i.overdue) || openAll}>
+              <summary>
+                <ChevronDown size={16} aria-hidden className="v11-chevron" />
+                <span>{g}</span>
+                <span className={'v11-group-count' + tone}>
+                  {done}/{items.length}
+                </span>
+                <span className={'v2-bar' + tone} aria-hidden>
+                  <span style={{ width: (done / items.length) * 100 + '%' }} />
+                </span>
+              </summary>
+              {items.map((i) => (
+                <Box
+                  key={i.obligation_id}
+                  item={i}
+                  company={c}
+                  busy={busy === c.id + i.obligation_id}
+                  onToggle={onToggle}
+                />
+              ))}
+            </details>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
 export default function ObligationChecklist({
   period,
   companyId,
@@ -146,6 +225,8 @@ export default function ObligationChecklist({
   const [docSummary, setDocSummary] = useState<DocSummary | null>(null);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'cards' | 'list'>('cards');
+  // Rediseño v2: cell of the matrix whose detail is shown on the side panel.
+  const [selected, setSelected] = useState<{ company: string; obligation: string } | null>(null);
   const params = new URLSearchParams({
     year: String(year),
     month: String(month),
@@ -218,14 +299,8 @@ export default function ObligationChecklist({
     const setPeriodPart = (y: number, m: number) => onPeriod?.(`${y}-${String(m).padStart(2, '0')}`);
     const sat = docSummary?.sat;
     const hasOpinions = !!sat && sat.positive + sat.negative > 0;
-    const groupBar = (items: ChecklistItem[]) => {
-      const done = items.filter((i) => i.done).length;
-      const tone = items.some((i) => i.overdue) ? ' is-overdue' : done === items.length ? ' is-done' : '';
-      return { done, tone };
-    };
     // List view: only the tax families that some visible company has in the period.
     const listGroups = groups.filter((g) => shown.some((c) => c.items.some((i) => i.group === g)));
-    const typeName = (t: string) => (t === 'Física' ? 'Persona física' : t === 'Moral' ? 'Persona moral' : t || '—');
     return (
       <div className="v11-checklist v2-panel" aria-busy={loading}>
         <div className="v2-kpis">
@@ -398,51 +473,15 @@ export default function ObligationChecklist({
         {data && view === 'cards' && shown.length > 0 && (
           <div className="v2-company-cards">
             {shown.map((c) => (
-              <article key={c.id} className="v2-company-card">
-                <header>
-                  <h3>{c.name}</h3>
-                  <span className="v2-type">{typeName(c.person_type)}</span>
-                  <small>
-                    <span className="rfc">{c.rfc}</span>
-                    <span>Resp: {c.accountant || '—'}</span>
-                  </small>
-                </header>
-                {lights[c.id] && <DocumentLights company={lights[c.id]} />}
-                <div className="v2-groups">
-                  {groups.map((g) => {
-                    const items = c.items.filter((i) => i.group === g);
-                    if (!items.length) return null;
-                    const { done, tone } = groupBar(items);
-                    return (
-                      <details
-                        key={g}
-                        className="v11-group v2-group"
-                        open={items.some((i) => i.overdue) || !!companyId}
-                      >
-                        <summary>
-                          <ChevronDown size={16} aria-hidden className="v11-chevron" />
-                          <span>{g}</span>
-                          <span className={'v11-group-count' + tone}>
-                            {done}/{items.length}
-                          </span>
-                          <span className={'v2-bar' + tone} aria-hidden>
-                            <span style={{ width: (done / items.length) * 100 + '%' }} />
-                          </span>
-                        </summary>
-                        {items.map((i) => (
-                          <Box
-                            key={i.obligation_id}
-                            item={i}
-                            company={c}
-                            busy={busy === c.id + i.obligation_id}
-                            onToggle={toggle}
-                          />
-                        ))}
-                      </details>
-                    );
-                  })}
-                </div>
-              </article>
+              <CompanyCard
+                key={c.id}
+                company={c}
+                lights={lights[c.id]}
+                groups={groups}
+                busy={busy}
+                onToggle={toggle}
+                openAll={!!companyId}
+              />
             ))}
           </div>
         )}
@@ -514,214 +553,328 @@ export default function ObligationChecklist({
     );
   }
 
+  const selectedCompany = selected ? data?.companies.find((c) => c.id === selected.company) : undefined;
+  const selectedItem = selectedCompany?.items.find((i) => i.obligation_id === selected?.obligation);
   return (
-    <div className="v11-checklist" aria-busy={loading}>
-      <div className="toolbar">
-        {!companyId && (
-          <>
-            <select
-              aria-label="Contador responsable"
-              value={responsible}
-              onChange={(e) => setResponsible(e.target.value)}
-            >
-              <option value="">Todos los contadores</option>
-              {accountants.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select aria-label="Tipo de persona" value={personType} onChange={(e) => setPersonType(e.target.value)}>
-              <option value="">Físicas y morales</option>
-              <option value="Física">Personas físicas</option>
-              <option value="Moral">Personas morales</option>
-            </select>
-            <label className="check-option">
-              <input type="checkbox" checked={pending} onChange={(e) => setPending(e.target.checked)} /> Con pendientes
-            </label>
-          </>
-        )}
-        <div className="actions">
+    <div className="v11-checklist v2-obligations" aria-busy={loading}>
+      <section className="v2-filters" aria-label="Vista y filtros de obligaciones">
+        <div className="v2-filter-row">
+          {!companyId && (
+            <div className="v2-segmented" role="group" aria-label="Vista de obligaciones">
+              <button type="button" aria-pressed={mode === 'cards'} onClick={() => setMode('cards')}>
+                <LayoutGrid size={16} aria-hidden /> Vista tarjetas
+              </button>
+              <button type="button" aria-pressed={mode === 'matrix'} onClick={() => setMode('matrix')}>
+                <Table2 size={16} aria-hidden /> Vista matriz
+              </button>
+            </div>
+          )}
+          {s && (
+            <ul className="v2-totals" aria-label="Resumen del periodo">
+              <li className="is-done">
+                <CheckCircle2 size={16} aria-hidden /> Hechas <strong>{s.done}</strong>
+                <span className="muted">/{s.total}</span>
+              </li>
+              <li>
+                <Clock3 size={16} aria-hidden /> Pendientes <strong>{s.pending}</strong>
+              </li>
+              <li className="is-overdue">
+                <AlertCircle size={16} aria-hidden /> Vencidas <strong>{s.overdue}</strong>
+              </li>
+              <li>
+                <Building2 size={16} aria-hidden /> Empresas <strong>{data!.companies.length}</strong>
+              </li>
+            </ul>
+          )}
+        </div>
+        <div className="v2-filter-row">
           {!companyId && (
             <>
-              <button
-                className={mode === 'cards' ? stitchPrimary : stitchButton}
-                aria-pressed={mode === 'cards'}
-                onClick={() => setMode('cards')}
+              <select
+                aria-label="Contador responsable"
+                value={responsible}
+                onChange={(e) => setResponsible(e.target.value)}
               >
-                <LayoutGrid size={16} aria-hidden /> Tarjetas
-              </button>
-              <button
-                className={mode === 'matrix' ? stitchPrimary : stitchButton}
-                aria-pressed={mode === 'matrix'}
-                onClick={() => setMode('matrix')}
-              >
-                <Table2 size={16} aria-hidden /> Matriz
+                <option value="">Todos los contadores</option>
+                {accountants.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select aria-label="Tipo de persona" value={personType} onChange={(e) => setPersonType(e.target.value)}>
+                <option value="">Físicas y morales</option>
+                <option value="Física">Personas físicas</option>
+                <option value="Moral">Personas morales</option>
+              </select>
+              <button type="button" className="v2-chip" aria-pressed={pending} onClick={() => setPending((v) => !v)}>
+                Con pendientes
               </button>
             </>
           )}
-          <button
-            className={stitchButton}
-            onClick={() =>
-              downloadApi('/fiscal-control/checklist.xlsx?' + params, `obligaciones_${period}.xlsx`).catch((e) =>
-                notify(e.message),
-              )
-            }
-          >
-            <Download size={16} aria-hidden /> Excel
-          </button>
-          {!companyId && (
+          <div className="v2-filter-actions">
             <button
-              className={showCatalog ? stitchPrimary : stitchButton}
-              aria-pressed={showCatalog}
-              onClick={() => setShowCatalog((v) => !v)}
+              type="button"
+              className={stitchButton}
+              onClick={() =>
+                downloadApi('/fiscal-control/checklist.xlsx?' + params, `obligaciones_${period}.xlsx`).catch((e) =>
+                  notify(e.message),
+                )
+              }
             >
-              Catálogo
+              <Download size={16} aria-hidden /> Excel
             </button>
-          )}
+            {!companyId && (
+              <button
+                type="button"
+                className={showCatalog ? stitchPrimary : stitchButton}
+                aria-pressed={showCatalog}
+                onClick={() => setShowCatalog((v) => !v)}
+              >
+                Catálogo
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+        <ul className="v2-cell-legend" aria-label="Leyenda de la matriz">
+          <li>
+            <span className="v2-cell is-done" aria-hidden>
+              <CheckCircle2 size={15} />
+            </span>
+            Hecha
+          </li>
+          <li>
+            <span className="v2-cell" aria-hidden>
+              <Clock3 size={15} />
+            </span>
+            Pendiente
+          </li>
+          <li>
+            <span className="v2-cell is-overdue" aria-hidden>
+              <AlertCircle size={15} />
+            </span>
+            Vencida
+          </li>
+          <li>
+            <span className="v2-cell is-na" aria-hidden>
+              <MinusCircle size={15} />
+            </span>
+            No aplica
+          </li>
+        </ul>
+      </section>
       {error && (
         <p role="alert" className="error-banner">
           {error}
         </p>
       )}
       {loading && !data && <p role="status">Consultando obligaciones…</p>}
-      {s && (
-        <div className="kpi-grid four">
-          <Kpi label="Hechas" value={`${s.done}/${s.total}`} detail="Obligaciones del periodo" tone="green" />
-          <Kpi label="Pendientes" value={s.pending} detail="Sin marcar como hechas" tone="amber" />
-          <Kpi label="Vencidas" value={s.overdue} detail="Sin marcar después de su vencimiento" tone="red" />
-          <Kpi label="Empresas" value={data!.companies.length} detail="Dentro de los filtros" />
-        </div>
-      )}
       {data && data.companies.length === 0 && (
-        <p className="muted">
+        <p className="v2-empty muted">
           No hay obligaciones de constancia asignadas en este periodo. Se proponen al registrar o actualizar una empresa
           con su Constancia de Situación Fiscal.
         </p>
       )}
-      {data && mode === 'cards' && (
-        <div className="v11-company-cards">
+      {data && mode === 'cards' && data.companies.length > 0 && (
+        <div className="v2-company-cards">
           {data.companies.map((c) => (
-            <article key={c.id} className="v11-company-card">
-              <header>
-                <div>
-                  <h3>{c.name}</h3>
-                  <small className="muted">
-                    {c.rfc} · {c.accountant}
-                  </small>
-                </div>
-                <strong className={c.overdue ? 'v11-progress is-overdue' : 'v11-progress'}>
-                  {c.done}/{c.total}
-                </strong>
-              </header>
-              {lights[c.id] && <DocumentLights company={lights[c.id]} compact />}
-              {groups.map((g) => {
-                const items = c.items.filter((i) => i.group === g);
-                if (!items.length) return null;
-                const done = items.filter((i) => i.done).length;
-                return (
-                  <details key={g} className="v11-group" open={items.some((i) => i.overdue) || !!companyId}>
-                    <summary>
-                      <ChevronDown size={16} aria-hidden className="v11-chevron" />
-                      <span>{g}</span>
-                      <span
-                        className={
-                          'v11-group-count' +
-                          (items.some((i) => i.overdue) ? ' is-overdue' : done === items.length ? ' is-done' : '')
-                        }
-                      >
-                        {done}/{items.length}
-                      </span>
-                    </summary>
-                    {items.map((i) => (
-                      <Box
-                        key={i.obligation_id}
-                        item={i}
-                        company={c}
-                        busy={busy === c.id + i.obligation_id}
-                        onToggle={toggle}
-                      />
-                    ))}
-                  </details>
-                );
-              })}
-            </article>
+            <CompanyCard
+              key={c.id}
+              company={c}
+              lights={lights[c.id]}
+              groups={groups}
+              busy={busy}
+              onToggle={toggle}
+              openAll={!!companyId}
+            />
           ))}
         </div>
       )}
       {data && mode === 'matrix' && data.companies.length > 0 && (
-        <div className="v11-matrix-scroll">
-          <table className="v11-matrix">
-            <thead>
-              <tr>
-                <th rowSpan={2} scope="col">
-                  Empresa
-                </th>
-                {groups.map((g) => {
-                  const n = used.filter((d) => d.group === g).length;
-                  return n ? (
-                    <th key={g} colSpan={n} scope="colgroup">
-                      {g}
-                    </th>
-                  ) : null;
-                })}
-                <th rowSpan={2} scope="col">
-                  Avance
-                </th>
-              </tr>
-              <tr>
-                {groups.flatMap((g) =>
-                  used
-                    .filter((d) => d.group === g)
-                    .map((d) => (
-                      <th key={d.id} scope="col" title={d.official_name}>
-                        {d.short_name}
-                      </th>
-                    )),
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {data.companies.map((c) => (
-                <tr key={c.id}>
-                  <th scope="row">
-                    {c.name}
-                    <small className="muted"> {c.rfc}</small>
+        <div className={'v2-matrix-layout' + (selectedItem ? ' has-detail' : '')}>
+          <div className="v11-matrix-scroll v2-matrix-scroll">
+            <table className="v11-matrix v2-matrix">
+              <thead>
+                <tr>
+                  <th rowSpan={2} scope="col">
+                    Empresa / RFC
                   </th>
+                  {groups.map((g) => {
+                    const n = used.filter((d) => d.group === g).length;
+                    return n ? (
+                      <th key={g} colSpan={n} scope="colgroup">
+                        {g}
+                      </th>
+                    ) : null;
+                  })}
+                  <th rowSpan={2} scope="col">
+                    Avance
+                  </th>
+                </tr>
+                <tr>
                   {groups.flatMap((g) =>
                     used
                       .filter((d) => d.group === g)
-                      .map((d) => {
-                        const item = c.items.find((i) => i.obligation_id === d.id);
-                        if (!item)
+                      .map((d) => (
+                        <th key={d.id} scope="col" title={d.official_name}>
+                          {d.short_name}
+                        </th>
+                      )),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {data.companies.map((c) => (
+                  <tr key={c.id}>
+                    <th scope="row">
+                      {c.name}
+                      <small className="rfc">{c.rfc}</small>
+                    </th>
+                    {groups.flatMap((g) =>
+                      used
+                        .filter((d) => d.group === g)
+                        .map((d) => {
+                          const item = c.items.find((i) => i.obligation_id === d.id);
+                          if (!item)
+                            return (
+                              <td key={d.id} className="v11-na">
+                                <span className="v2-cell is-na" title="No aplica">
+                                  <MinusCircle size={15} aria-hidden />
+                                  <span className="sr-only">No aplica</span>
+                                </span>
+                              </td>
+                            );
+                          const isSelected = selected?.company === c.id && selected.obligation === d.id;
+                          const select = () => setSelected({ company: c.id, obligation: d.id });
+                          if (item.not_applicable)
+                            return (
+                              <td key={d.id} className="v11-na">
+                                <button
+                                  type="button"
+                                  className={'v2-cell is-na' + (isSelected ? ' is-selected' : '')}
+                                  aria-label={`${d.official_name}, ${c.name}: no aplica. Ver detalle`}
+                                  onClick={select}
+                                >
+                                  <MinusCircle size={15} aria-hidden />
+                                </button>
+                              </td>
+                            );
+                          const state = item.done ? 'hecha' : item.overdue ? 'vencida' : 'pendiente';
                           return (
-                            <td key={d.id} className="v11-na" aria-label="No aplica">
-                              —
+                            <td
+                              key={d.id}
+                              className={item.done ? 'is-done' : item.overdue ? 'is-overdue' : ''}
+                              onClick={select}
+                            >
+                              <label
+                                className={
+                                  'v2-cell' +
+                                  (item.done ? ' is-done' : item.overdue ? ' is-overdue' : '') +
+                                  (isSelected ? ' is-selected' : '')
+                                }
+                                title={item.due_date ? 'Vence ' + date(item.due_date) : d.official_name}
+                              >
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${d.official_name}, ${c.name}: ${state}`}
+                                  checked={item.done}
+                                  disabled={busy === c.id + d.id}
+                                  onChange={() => toggle(c, item)}
+                                  onFocus={select}
+                                />
+                                {item.done ? (
+                                  <CheckCircle2 size={15} aria-hidden />
+                                ) : item.overdue ? (
+                                  <AlertCircle size={15} aria-hidden />
+                                ) : (
+                                  <Clock3 size={15} aria-hidden />
+                                )}
+                              </label>
                             </td>
                           );
-                        return (
-                          <td key={d.id} className={item.done ? 'is-done' : item.overdue ? 'is-overdue' : ''}>
-                            <input
-                              type="checkbox"
-                              aria-label={`${d.official_name}, ${c.name}: ${item.done ? 'hecha' : item.overdue ? 'vencida' : 'pendiente'}`}
-                              title={item.due_date ? 'Vence ' + date(item.due_date) : d.official_name}
-                              checked={item.done}
-                              disabled={busy === c.id + d.id}
-                              onChange={() => toggle(c, item)}
-                            />
-                          </td>
-                        );
-                      }),
+                        }),
+                    )}
+                    <td
+                      className={'v2-progress-cell ' + (c.overdue ? 'is-overdue' : c.done === c.total ? 'is-done' : '')}
+                    >
+                      {c.done}/{c.total}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {selectedItem && selectedCompany && (
+            <aside className="v2-detail" aria-label="Detalle de la obligación">
+              <header>
+                <span
+                  className={
+                    'v2-state ' +
+                    (selectedItem.not_applicable
+                      ? 'is-na'
+                      : selectedItem.done
+                        ? 'is-done'
+                        : selectedItem.overdue
+                          ? 'is-overdue'
+                          : '')
+                  }
+                >
+                  {selectedItem.not_applicable ? (
+                    <MinusCircle size={14} aria-hidden />
+                  ) : selectedItem.done ? (
+                    <CheckCircle2 size={14} aria-hidden />
+                  ) : selectedItem.overdue ? (
+                    <AlertCircle size={14} aria-hidden />
+                  ) : (
+                    <Clock3 size={14} aria-hidden />
                   )}
-                  <td className={c.overdue ? 'is-overdue' : c.done === c.total ? 'is-done' : ''}>
-                    {c.done}/{c.total}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  {selectedItem.not_applicable
+                    ? 'No aplica'
+                    : selectedItem.done
+                      ? 'Hecha'
+                      : selectedItem.overdue
+                        ? 'Vencida'
+                        : 'Pendiente'}
+                </span>
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label="Cerrar detalle"
+                  onClick={() => setSelected(null)}
+                >
+                  <X size={18} />
+                </button>
+              </header>
+              <h3>{selectedItem.official_name}</h3>
+              <dl>
+                <dt>Empresa y RFC</dt>
+                <dd>
+                  {selectedCompany.name}
+                  <span className="rfc">{selectedCompany.rfc}</span>
+                </dd>
+                <dt>Fecha de vencimiento</dt>
+                <dd>{selectedItem.due_date ? date(selectedItem.due_date) : selectedItem.due_text || '—'}</dd>
+                <dt>Periodicidad</dt>
+                <dd>{CADENCE[selectedItem.cadence] || selectedItem.cadence || '—'}</dd>
+                <dt>Registro de cumplimiento</dt>
+                <dd>
+                  {selectedItem.marked_by && selectedItem.marked_at
+                    ? `${selectedItem.marked_by} · ${new Date(selectedItem.marked_at).toLocaleString('es-MX')}`
+                    : 'Sin registrar'}
+                </dd>
+              </dl>
+              {!selectedItem.not_applicable && (
+                <button
+                  type="button"
+                  className={selectedItem.done ? stitchButton : stitchPrimary}
+                  disabled={busy === selectedCompany.id + selectedItem.obligation_id}
+                  onClick={() => toggle(selectedCompany, selectedItem)}
+                >
+                  {selectedItem.done ? 'Marcar como pendiente' : 'Marcar como hecha'}
+                </button>
+              )}
+            </aside>
+          )}
         </div>
       )}
       {showCatalog && <ObligationCatalog notify={notify} />}
