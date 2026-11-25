@@ -1753,3 +1753,146 @@ button.v2-cell.is-na {
     transition: none;
   }
 }
+
+/* Rediseño v2, paso 8: CFDI (organizador). Mismo flujo en una página; pestañas de salto a cada sección, tabla
+   de auditoría con tipo y estado con icono y texto, y detalle del archivo como tarjeta. */
+.v2-section-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 20px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.v2-section-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-section-tabs button:hover {
+    background: var(--hover);
+  }
+}
+.v2-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(var(--md-surface-container));
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 18px;
+  text-align: center;
+}
+.v2-count.is-warn {
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.organizador-module .v2-kpis {
+  margin-bottom: 20px;
+}
+.v2-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.v2-kind.is-issued {
+  background: var(--info-bg);
+  color: var(--info-strong);
+}
+.v2-kind.is-received {
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-kind.is-report {
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.v2-state,
+.v2-kind {
+  white-space: nowrap;
+}
+.v2-cal-totals div {
+  padding: 0;
+  border: 0;
+}
+.v2-cal-totals dd {
+  text-align: left;
+}
+.v2-state.is-error {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-strong);
+}
+.v2-state.is-ready {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--info-strong);
+}
+.v2-state.is-muted {
+  color: var(--muted);
+}
+.v2-audit-filters {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.v2-audit-table thead th {
+  background: var(--hover);
+}
+.v2-audit-table tbody tr.is-selected td {
+  background: color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.v2-audit-table .organizador-path {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.v2-file-detail {
+  margin-top: 16px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-file-detail header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.v2-file-detail h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.v2-file-detail-pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+[data-theme='contrast'] :is(.v2-section-tabs, .v2-file-detail, .v2-audit-filters, .v2-kind) {
+  border: 2px solid #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-section-tabs button {
+    transition: none;
+  }
+}

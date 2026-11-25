@@ -2,7 +2,23 @@ import CfdiCalendar from './CfdiCalendar';
 import { can } from '../permissions';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Archive, Download, FileText, FolderOpen, FolderTree, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle,
+  Archive,
+  ArrowDownLeft,
+  ArrowUpRight,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  FolderOpen,
+  FolderTree,
+  MinusCircle,
+  RefreshCw,
+  X,
+} from 'lucide-react';
 import { api, dateLabel, getToken } from '../api';
 import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
@@ -58,6 +74,34 @@ const labels: Record<string, string> = {
   generated: 'Terminado',
   error: 'Revisar error',
 };
+/** Rediseño v2: type and state of an audit row with icon and text (never color alone). */
+function KindPill({ kind }: { kind: string }) {
+  const report = kind.startsWith('Reporte');
+  const issued = /emitid/i.test(kind);
+  const Icon = report ? FileSpreadsheet : issued ? ArrowUpRight : ArrowDownLeft;
+  return (
+    <span className={'v2-kind ' + (report ? 'is-report' : issued ? 'is-issued' : 'is-received')}>
+      <Icon size={13} aria-hidden /> {kind}
+    </span>
+  );
+}
+function StatePill({ state }: { state: string }) {
+  const tone =
+    state === 'Error' ? 'is-error' : state === 'Copiado' ? 'is-done' : state === 'Listo' ? 'is-ready' : 'is-muted';
+  const Icon =
+    state === 'Error' ? AlertCircle : state === 'Copiado' ? CheckCircle2 : state === 'Listo' ? Clock3 : MinusCircle;
+  return (
+    <span className={'v2-state ' + tone}>
+      <Icon size={13} aria-hidden /> {state}
+    </span>
+  );
+}
+/** Jumps to a section of the page; every section stays visible (the flow is one page). */
+function jump(id: string) {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.getElementById(id)?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}
+
 const initial: Options = {
   rfc: '',
   year: new Date().getFullYear(),
@@ -237,11 +281,23 @@ export default function Organizador({
         title="CFDI"
         description="Organiza Emitidos, Recibidos y reportes Excel por las rutas de origen, RFC y ejercicio."
         actions={
-          <button className={stitchPrimary} disabled={working || detail?.run.status !== 'analyzed'} onClick={generate}>
-            <FolderTree size={17} />
-            {detail?.run.status === 'generating' ? 'Organizando…' : 'Organizar copias'}
-            {detail?.run.status === 'analyzed' && <Badge>{summary.ready || 0} listos</Badge>}
-          </button>
+          <>
+            {company && (
+              <button className={stitchButton} onClick={() => jump('cfdi-calendario')}>
+                <CalendarDays size={17} aria-hidden />
+                Calendario CFDI
+              </button>
+            )}
+            <button
+              className={stitchPrimary}
+              disabled={working || detail?.run.status !== 'analyzed'}
+              onClick={generate}
+            >
+              <FolderTree size={17} />
+              {detail?.run.status === 'generating' ? 'Organizando…' : 'Organizar copias'}
+              {detail?.run.status === 'analyzed' && <Badge>{summary.ready || 0} listos</Badge>}
+            </button>
+          </>
         }
       />
       <p className="organizador-mode">
@@ -259,7 +315,31 @@ export default function Organizador({
           </button>
         </div>
       )}
-      <div className="kpi-grid four">
+      <div className="v2-section-tabs" role="group" aria-label="Secciones de CFDI">
+        <button type="button" onClick={() => jump('cfdi-origen')}>
+          <FolderOpen size={16} aria-hidden /> Organizar
+        </button>
+        <button type="button" onClick={() => jump('cfdi-auditoria')}>
+          <FileText size={16} aria-hidden /> Auditoría
+          <span className="v2-count">{records.length}</span>
+          {Object.values(detail?.review || {}).filter((r) => r.incoherence.length).length > 0 && (
+            <span className="v2-count is-warn" title="Archivos con incoherencias">
+              {Object.values(detail?.review || {}).filter((r) => r.incoherence.length).length}
+            </span>
+          )}
+        </button>
+        {detail && ['analyzed', 'generated'].includes(detail.run.status) && (
+          <button type="button" onClick={() => jump('cfdi-expediente-title')}>
+            <Archive size={16} aria-hidden /> Expediente
+          </button>
+        )}
+        {company && (
+          <button type="button" onClick={() => jump('cfdi-calendario')}>
+            <CalendarDays size={16} aria-hidden /> Calendario
+          </button>
+        )}
+      </div>
+      <div className="kpi-grid four v2-kpis">
         <Kpi label="Archivos listos" value={summary.ready ?? '—'} detail="Rutas y filtros seleccionados" />
         <Kpi
           label="Copias verificadas"
@@ -281,7 +361,7 @@ export default function Organizador({
         />
       </div>
       <div className="organizador-workspace">
-        <section className={stitchCard + ' padded organizador-source'}>
+        <section id="cfdi-origen" className={stitchCard + ' padded organizador-source'}>
           <h2>
             <FolderOpen size={19} />
             Origen y parámetros
@@ -527,7 +607,7 @@ export default function Organizador({
             )}
           </div>
         </section>
-        <section className={stitchCard + ' organizador-audit'}>
+        <section id="cfdi-auditoria" className={stitchCard + ' organizador-audit'}>
           <div className="organizador-panel-head">
             <h2>Auditoría de archivos</h2>
             {detail && (
@@ -544,7 +624,7 @@ export default function Organizador({
                 {w}
               </p>
             ))}
-            <div className="organizador-filters">
+            <div className="organizador-filters v2-audit-filters">
               <Field label="Buscar archivo, ruta o periodo">
                 <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filtrar archivos…" />
               </Field>
@@ -557,7 +637,7 @@ export default function Organizador({
                 </select>
               </Field>
             </div>
-            <div className="receipt-table">
+            <div className="receipt-table v2-audit-table">
               <table>
                 <thead>
                   <tr>
@@ -570,23 +650,27 @@ export default function Organizador({
                 </thead>
                 <tbody>
                   {visible.map((r, i) => (
-                    <tr key={r.source + ':' + i}>
+                    <tr key={r.source + ':' + i} className={selected === r ? 'is-selected' : undefined}>
                       <td>
                         <button className="receipt-text-button" onClick={() => setSelected(r)}>
                           <strong>{r.source.split('/').pop()}</strong>
                           <small>{r.date}</small>
                         </button>
                       </td>
-                      <td>{r.kind}</td>
                       <td>
-                        <Badge tone={r.state === 'Error' ? 'red' : r.state === 'Copiado' ? 'green' : 'neutral'}>
-                          {r.state}
-                        </Badge>
+                        <KindPill kind={r.kind} />
+                      </td>
+                      <td>
+                        <StatePill state={r.state} />
                       </td>
                       <td>
                         {detail?.review?.[r.source] ? (
                           <>
-                            {detail.review[r.source].uuid && <small>{detail.review[r.source].uuid.slice(0, 8)}…</small>}
+                            {detail.review[r.source].uuid && (
+                              <small className="rfc" title={detail.review[r.source].uuid}>
+                                {detail.review[r.source].uuid.slice(0, 8)}…
+                              </small>
+                            )}
                             {detail.review[r.source].incoherence.map((c) => (
                               <Badge key={c} tone="red">
                                 {INCOHERENCE[c] || c}
@@ -635,8 +719,18 @@ export default function Organizador({
               </button>
             </div>
             {selected && (
-              <div className="organizador-selection">
-                <h3>Detalle del archivo</h3>
+              <aside className="organizador-selection v2-file-detail" aria-label="Detalle del archivo">
+                <header>
+                  <h3>Detalle del archivo</h3>
+                  <button className="icon-button" aria-label="Cerrar detalle" onClick={() => setSelected(null)}>
+                    <X size={18} />
+                  </button>
+                </header>
+                <p className="v2-file-detail-pills">
+                  <KindPill kind={selected.kind} />
+                  <StatePill state={selected.state} />
+                  {selected.date && <span className="muted">{selected.date}</span>}
+                </p>
                 <p>
                   <strong>Origen:</strong> {selected.source}
                 </p>
@@ -644,7 +738,7 @@ export default function Organizador({
                   <strong>Destino:</strong> {selected.destination || 'Sin destino'}
                 </p>
                 <p>{selected.reason}</p>
-              </div>
+              </aside>
             )}
             {!!detail?.omitted?.length && (
               <details className="organizador-omitted">
@@ -690,7 +784,13 @@ export default function Organizador({
         />
       )}
       {company && (
-        <CfdiCalendar companyId={company} canRebuild={can(state.current_user, 'documentos.subir', company)} notify={notify} />
+        <div id="cfdi-calendario">
+          <CfdiCalendar
+            companyId={company}
+            canRebuild={can(state.current_user, 'documentos.subir', company)}
+            notify={notify}
+          />
+        </div>
       )}
     </div>
   );
