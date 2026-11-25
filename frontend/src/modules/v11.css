@@ -1448,3 +1448,308 @@ button.v2-cell.is-na {
     transition: none;
   }
 }
+
+/* Rediseño v2, paso 7: Gestor de contraseñas (contasuite_gestor_de_contrase_as). Revisión local arriba, lista de
+   empresas a la izquierda y, a la derecha, firmas electrónicas en tarjetas y accesos a portales en filas. Los
+   secretos nunca se muestran por defecto. */
+.v2-vault {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.v2-vault-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.v2-vault-health {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-md);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-vault-health span {
+  font-weight: 400;
+}
+.v2-vault-health.is-ok {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-vault-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.v2-vault-layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.v2-vault-layout.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+.v2-vault-companies {
+  position: sticky;
+  top: 80px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-vault-companies ul {
+  display: grid;
+  gap: 4px;
+  max-height: 60vh;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.v2-vault-companies li > button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.v2-vault-companies li > button small {
+  color: var(--muted);
+}
+.v2-vault-companies li > button[aria-pressed='true'] {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-vault-companies li > button[aria-pressed='true'] small {
+  color: var(--on-primary-container);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-vault-companies li > button:hover:not([aria-pressed='true']) {
+    background: var(--hover);
+  }
+}
+.v2-vault-detail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.v2-vault-company {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.v2-vault-company h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+}
+.v2-vault-company .rfc {
+  color: var(--muted);
+}
+.v2-vault-detail > .v2-segmented {
+  justify-self: start;
+}
+.v2-vault-heading {
+  margin: 8px 0 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+.v2-signatures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+.v2-signature {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-signature header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.v2-signature h4 {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: 16px;
+  font-weight: 600;
+}
+.v2-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v2-files li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.v2-secret {
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  overflow-wrap: anywhere;
+}
+.v2-signature .actions,
+.v2-portals .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v2-portals {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.v2-portals li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(120px, auto) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+}
+.v2-portals li + li {
+  border-top: 1px solid var(--border);
+}
+.v2-portal-icon {
+  color: var(--primary);
+}
+.v2-portal-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  min-width: 0;
+}
+.v2-portal-name strong {
+  flex-basis: 100%;
+  font-size: var(--fs-sm);
+}
+.v2-portal-name .link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  cursor: copy;
+}
+.v2-secret-inline {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.v2-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.v2-flag.is-weak {
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.v2-flag.is-repeated {
+  background: var(--danger-bg);
+  color: var(--danger-strong);
+}
+.v2-vault-log {
+  overflow: auto;
+  padding: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-vault-log > p {
+  padding: 16px;
+  margin: 0;
+}
+.v2-vault-log .v2-list {
+  border: 0;
+}
+.v2-vault-log .v2-list td {
+  white-space: normal;
+}
+.v2-vault-log .v2-list td:first-child {
+  white-space: nowrap;
+}
+[data-theme='contrast']
+  :is(.v2-vault-companies, .v2-signature, .v2-portals, .v2-vault-log, .v2-vault-health, .v2-files li) {
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-flag {
+  border: 1px solid currentColor;
+}
+@media (max-width: 1100px) {
+  .v2-vault-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-vault-companies {
+    position: static;
+  }
+  .v2-vault-companies ul {
+    max-height: 240px;
+  }
+}
+@media (max-width: 700px) {
+  .v2-portals li {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+  .v2-portals li > .v2-secret-inline,
+  .v2-portals li > .actions {
+    grid-column: 2;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-vault-companies li > button {
+    transition: none;
+  }
+}

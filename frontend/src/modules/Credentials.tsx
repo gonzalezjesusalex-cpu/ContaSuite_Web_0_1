@@ -111,7 +111,14 @@ export default function Credentials({
         Contraseñas cifradas con reautenticación para verlas o usarlas, archivos FIEL/CSD y vigencia de certificados
         públicos (sin validación ante el SAT).
       </p>
-      <PasswordManager companyId={companyId || company || undefined} notify={setMessage} />
+      <PasswordManager
+        companyId={companyId || company || undefined}
+        notify={setMessage}
+        users={Object.fromEntries([
+          ...(state.responsibles || []).map((r) => [r.id, r.display_name]),
+          [state.current_user.id, state.current_user.display_name],
+        ])}
+      />
       {!companyId && (
         <div className="toolbar">
           <select
