@@ -1,8 +1,17 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  MinusCircle,
+  RefreshCw,
+} from 'lucide-react';
 import { api, download } from '../api';
 import { Modal } from '../components/ui';
-import { stitchButton, stitchCard } from '../components/stitch';
+import { stitchButton, stitchPrimary } from '../components/stitch';
 import './v11.css';
 
 type Side = { count: number; total: number };
@@ -25,7 +34,20 @@ type Row = {
   currency: string | null;
   stamped_on: string | null;
 };
-const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const MONTHS = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
 const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const money = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
@@ -60,6 +82,7 @@ export default function CfdiCalendar({
 }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState<number | null>(null);
+  const [day, setDay] = useState<number | null>(null);
   const [data, setData] = useState<YearData | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -93,8 +116,14 @@ export default function CfdiCalendar({
   async function rebuild() {
     setRebuilding(true);
     try {
-      const r = await api<{ indexed: number; skipped: number; pending: boolean }>(`/cfdi-calendar/${companyId}/rebuild`, 'POST');
-      notify(`Calendario actualizado: ${r.indexed} CFDI indexados` + (r.pending ? '; quedan más, vuelve a actualizar.' : '.'));
+      const r = await api<{ indexed: number; skipped: number; pending: boolean }>(
+        `/cfdi-calendar/${companyId}/rebuild`,
+        'POST',
+      );
+      notify(
+        `Calendario actualizado: ${r.indexed} CFDI indexados` +
+          (r.pending ? '; quedan más, vuelve a actualizar.' : '.'),
+      );
       setReload((n) => n + 1);
     } catch (e) {
       notify((e as Error).message);
@@ -103,85 +132,160 @@ export default function CfdiCalendar({
     }
   }
   const first = month ? (new Date(year, month - 1, 1).getDay() + 6) % 7 : 0;
+  // Rediseño v2: totals of the year (sum of the months the API already returns) and the selected day.
+  const yearTotals = (data?.months || []).reduce(
+    (t, m) => ({
+      issued: { count: t.issued.count + m.issued.count, total: t.issued.total + m.issued.total },
+      received: { count: t.received.count + m.received.count, total: t.received.total + m.received.total },
+    }),
+    { issued: { count: 0, total: 0 }, received: { count: 0, total: 0 } },
+  );
+  const monthCell = month ? data?.months.find((m) => m.month === month) : undefined;
+  const dayCell = day && data?.days ? data.days.find((d) => d.day === day) : undefined;
+  const dayLabel = (n: number) =>
+    month
+      ? new Date(year, month - 1, n).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '';
   return (
-    <section className={stitchCard + ' padded v11-calendar'} aria-busy={loading}>
-      <div className="card-title">
-        <div>
-          <h2>
-            <CalendarDays size={19} aria-hidden /> Calendario de CFDI
-          </h2>
-          <p>
-            CFDI registrados en ContaSuite por fecha de emisión. Emitida o recibida según el RFC de la empresa. No hay
-            descarga ni consulta al SAT.
-          </p>
-        </div>
-        <div className="actions">
-          <button className={stitchButton} aria-label="Año anterior" onClick={() => setYear((y) => y - 1)}>
+    <section className="v11-calendar v2-calendar" aria-busy={loading}>
+      <div className="v2-cal-summary">
+        <span className="v2-cal-icon" aria-hidden>
+          <CalendarDays size={20} />
+        </span>
+        <div className="v2-cal-year" role="group" aria-label="Año del calendario">
+          <button
+            className={stitchButton + ' icon-only'}
+            aria-label="Año anterior"
+            onClick={() => setYear((y) => y - 1)}
+          >
             <ChevronLeft size={16} aria-hidden />
           </button>
-          <strong aria-live="polite">{year}</strong>
-          <button className={stitchButton} aria-label="Año siguiente" onClick={() => setYear((y) => y + 1)}>
+          <strong aria-live="polite">Ejercicio {year}</strong>
+          <button
+            className={stitchButton + ' icon-only'}
+            aria-label="Año siguiente"
+            onClick={() => setYear((y) => y + 1)}
+          >
             <ChevronRight size={16} aria-hidden />
           </button>
-          {canRebuild && (
-            <button className={stitchButton} disabled={rebuilding} onClick={rebuild}>
-              <RefreshCw size={16} aria-hidden /> {rebuilding ? 'Actualizando…' : 'Actualizar calendario'}
-            </button>
-          )}
         </div>
+        <dl className="v2-cal-totals">
+          <div>
+            <dt>Emitidas (año)</dt>
+            <dd className="is-issued">
+              {yearTotals.issued.count} · {money(yearTotals.issued.total)}
+            </dd>
+          </div>
+          <div>
+            <dt>Recibidas (año)</dt>
+            <dd className="is-received">
+              {yearTotals.received.count} · {money(yearTotals.received.total)}
+            </dd>
+          </div>
+          <div>
+            <dt>Importe total</dt>
+            <dd>{money(yearTotals.issued.total + yearTotals.received.total)}</dd>
+          </div>
+        </dl>
+        {canRebuild && (
+          <button className={stitchButton} disabled={rebuilding} onClick={rebuild}>
+            <RefreshCw size={16} aria-hidden /> {rebuilding ? 'Actualizando…' : 'Actualizar calendario'}
+          </button>
+        )}
       </div>
-      <ul className="v11-calendar-legend" aria-label="Simbología">
-        {(
-          [
-            ['cfdi-both', 'Emitidas y recibidas'],
-            ['cfdi-issued', 'Sólo emitidas'],
-            ['cfdi-received', 'Sólo recibidas'],
-            ['cfdi-none', 'Sin CFDI registrados'],
-          ] as const
-        ).map(([k, l]) => (
-          <li key={k} className={k}>
-            <span className="v11-swatch" aria-hidden />
-            <span style={{ color: 'var(--text)' }}>{l}</span>
-          </li>
-        ))}
-      </ul>
+      <p className="muted v2-cal-note">
+        CFDI registrados en ContaSuite por fecha de emisión. Emitida o recibida según el RFC de la empresa. No hay
+        descarga ni consulta al SAT.
+      </p>
       {error && (
         <p role="alert" className="error-banner">
           {error}
         </p>
       )}
+      {loading && !data && <p role="status">Consultando calendario…</p>}
       {data && data.indexed === 0 && (
-        <p className="muted">
+        <p className="v2-empty muted">
           No hay CFDI indexados para esta empresa.{' '}
           {canRebuild && 'Si ya hay XML en su expediente, usa «Actualizar calendario» para indexarlos.'}
         </p>
       )}
       {data && (
-        <div className="v11-months">
-          {data.months.map((m) => (
-            <button
-              key={m.month}
-              className={'v11-month ' + state(m)}
-              aria-pressed={month === m.month}
-              aria-label={`${MONTHS[m.month - 1]} ${year}: ${stateText(m)}. ${sideText('Emitidas', m.issued)}. ${sideText('Recibidas', m.received)}.`}
-              onClick={() => setMonth(month === m.month ? null : m.month)}
-            >
-              <h4>
-                <span className="v11-swatch" aria-hidden />
-                <span style={{ color: 'var(--text)' }}>{MONTHS[m.month - 1]}</span>
-              </h4>
-              <p className={m.issued.count ? '' : 'is-missing'}>{sideText('Emitidas', m.issued)}</p>
-              <p className={m.received.count ? '' : 'is-missing'}>{sideText('Recibidas', m.received)}</p>
-            </button>
-          ))}
-        </div>
+        <>
+          <h2 className="v2-cal-heading">
+            <CalendarDays size={19} aria-hidden /> Meses del ejercicio {year}
+          </h2>
+          <div className="v11-months v2-months">
+            {data.months.map((m) => (
+              <button
+                key={m.month}
+                className={'v11-month v2-month ' + state(m)}
+                aria-pressed={month === m.month}
+                aria-label={`${MONTHS[m.month - 1]} ${year}: ${stateText(m)}. ${sideText('Emitidas', m.issued)}. ${sideText('Recibidas', m.received)}.`}
+                onClick={() => {
+                  setMonth(month === m.month ? null : m.month);
+                  setDay(null);
+                }}
+              >
+                <span className="v2-month-name">
+                  {MONTHS[m.month - 1]}
+                  {month === m.month && <small>Abierto</small>}
+                </span>
+                <span className={m.issued.count ? 'is-issued' : 'is-missing'}>{sideText('Emitidas', m.issued)}</span>
+                <span className={m.received.count ? 'is-received' : 'is-missing'}>
+                  {sideText('Recibidas', m.received)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
       {data?.days && month && (
-        <>
-          <h3>
-            {MONTHS[month - 1]} {year}
-          </h3>
-          <div className="v11-days" role="grid" aria-label={`Días de ${MONTHS[month - 1]} ${year}`}>
+        <div className="v2-cal-days">
+          <div className="v2-cal-days-head">
+            <div>
+              <h3>
+                {MONTHS[month - 1]} {year} · Vista diaria
+              </h3>
+              <p className="muted">Pulsa un día para consultar sus conteos e importes y abrir el listado de CFDI.</p>
+            </div>
+            {monthCell && (
+              <span className="v2-cal-month-totals">
+                {sideText('Emitidas', monthCell.issued)} · {sideText('Recibidas', monthCell.received)}
+              </span>
+            )}
+          </div>
+          {dayCell && (
+            <div className="v2-cal-selected" role="status">
+              <span className="v2-cal-icon" aria-hidden>
+                <CalendarDays size={18} />
+              </span>
+              <div>
+                <small>Día seleccionado</small>
+                <strong>{dayLabel(dayCell.day)}</strong>
+              </div>
+              <span className="is-issued">
+                <ArrowUp size={15} aria-hidden /> Emitidos (E):{' '}
+                {dayCell.issued.count
+                  ? `${dayCell.issued.count} · ${money(dayCell.issued.total)}`
+                  : 'no hay registrados'}
+              </span>
+              <span className="is-received">
+                <ArrowDown size={15} aria-hidden /> Recibidos (R):{' '}
+                {dayCell.received.count
+                  ? `${dayCell.received.count} · ${money(dayCell.received.total)}`
+                  : 'no hay registrados'}
+              </span>
+              {(dayCell.issued.count > 0 || dayCell.received.count > 0) && (
+                <button
+                  className={stitchPrimary}
+                  onClick={() => open(dayCell.day, dayCell.issued.count ? 'issued' : 'received')}
+                >
+                  Ver listado de CFDI <ArrowRight size={16} aria-hidden />
+                </button>
+              )}
+            </div>
+          )}
+          <div className="v11-days v2-days" role="grid" aria-label={`Días de ${MONTHS[month - 1]} ${year}`}>
             {WEEKDAYS.map((d) => (
               <span key={d} className="v11-weekday" role="columnheader">
                 {d}
@@ -192,25 +296,61 @@ export default function CfdiCalendar({
             ))}
             {data.days.map((d) => {
               const label = `${d.day} de ${MONTHS[month - 1].toLowerCase()}: ${stateText(d)}. ${sideText('Emitidas', d.issued)}. ${sideText('Recibidas', d.received)}.`;
-              const kind = d.issued.count ? 'issued' : d.received.count ? 'received' : null;
               return (
                 <button
                   key={d.day}
                   role="gridcell"
-                  className={'v11-day ' + state(d)}
+                  className={'v11-day v2-day ' + state(d)}
                   title={label}
                   aria-label={label}
-                  disabled={!kind}
-                  onClick={() => kind && open(d.day, kind)}
+                  aria-selected={day === d.day}
+                  onClick={() => setDay(d.day)}
                 >
-                  <strong style={{ color: 'var(--text)' }}>{d.day}</strong>
-                  {d.issued.count > 0 && <span>E {d.issued.count}</span>}
-                  {d.received.count > 0 && <span>R {d.received.count}</span>}
+                  <strong>{d.day}</strong>
+                  <span className="v2-day-counts">
+                    {d.issued.count > 0 && (
+                      <span className="v2-pill is-issued">
+                        <ArrowUp size={11} aria-hidden />
+                        {d.issued.count}E
+                      </span>
+                    )}
+                    {d.received.count > 0 && (
+                      <span className="v2-pill is-received">
+                        <ArrowDown size={11} aria-hidden />
+                        {d.received.count}R
+                      </span>
+                    )}
+                    {!d.issued.count && !d.received.count && <MinusCircle size={12} aria-hidden />}
+                  </span>
                 </button>
               );
             })}
           </div>
-        </>
+          <ul className="v11-calendar-legend v2-cal-legend" aria-label="Simbología">
+            <li>
+              <span className="v2-swatch cfdi-none" aria-hidden>
+                <MinusCircle size={12} />
+              </span>
+              Sin CFDI
+            </li>
+            <li>
+              <span className="v2-pill is-issued" aria-hidden>
+                <ArrowUp size={11} />E
+              </span>
+              Emitidos (E)
+            </li>
+            <li>
+              <span className="v2-pill is-received" aria-hidden>
+                <ArrowDown size={11} />R
+              </span>
+              Recibidos (R)
+            </li>
+            <li>
+              <span className="v2-swatch cfdi-both" aria-hidden />
+              Ambos (E y R)
+            </li>
+          </ul>
+        </div>
       )}
       {list && (
         <Modal
@@ -252,7 +392,10 @@ export default function CfdiCalendar({
                         {r.currency && r.currency !== 'MXN' ? ' ' + r.currency : ''}
                       </td>
                       <td>
-                        <button className={stitchButton} onClick={() => download(r.document_id, r.name).catch((e) => notify(e.message))}>
+                        <button
+                          className={stitchButton}
+                          onClick={() => download(r.document_id, r.name).catch((e) => notify(e.message))}
+                        >
                           Descargar
                         </button>
                       </td>
@@ -262,7 +405,9 @@ export default function CfdiCalendar({
               </table>
             </div>
           ) : (
-            <p className="muted">No hay {list.kind === 'issued' ? 'emitidas' : 'recibidas'} registradas en ContaSuite este día.</p>
+            <p className="muted">
+              No hay {list.kind === 'issued' ? 'emitidas' : 'recibidas'} registradas en ContaSuite este día.
+            </p>
           )}
         </Modal>
       )}

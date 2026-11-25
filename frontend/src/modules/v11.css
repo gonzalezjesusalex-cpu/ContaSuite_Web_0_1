@@ -1087,3 +1087,364 @@ button.v2-cell.is-na {
     transition: none;
   }
 }
+
+/* Rediseño v2, paso 6: Calendario de CFDI (contasuite_calendario_de_cfdi). Resumen del ejercicio, tarjetas de
+   meses, vista diaria con día seleccionado y celdas índigo (emitidos), menta (recibidos) o divididas (ambos). */
+.v2-calendar {
+  display: grid;
+  gap: 16px;
+}
+.v2-cal-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding: 20px 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-cal-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-cal-year {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.v2-cal-year strong {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  font-family: var(--font-headline);
+}
+.v2-cal-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 0 0 0 auto;
+}
+.v2-cal-totals div {
+  display: grid;
+  gap: 2px;
+}
+.v2-cal-totals dt {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.v2-cal-totals dd {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.v2-calendar .is-issued {
+  color: var(--primary);
+}
+.v2-calendar .is-received {
+  color: var(--ok);
+}
+.v2-calendar .is-missing {
+  color: var(--muted);
+}
+.v2-cal-note {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.v2-cal-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 22px;
+  line-height: 28px;
+}
+.v2-months {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.v2-month {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  font-size: var(--fs-sm);
+  transition:
+    border-color var(--motion-state) var(--ease-state),
+    background-color var(--motion-state) var(--ease-state);
+}
+.v2-month-name {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+  font-family: var(--font-headline);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+.v2-month-name small {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  color: var(--primary);
+}
+.v2-month[aria-pressed='true'] {
+  outline: none;
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--panel));
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-month:hover {
+    border-color: var(--primary);
+  }
+}
+.v2-cal-days {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-cal-days-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.v2-cal-days-head h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 24px;
+}
+.v2-cal-days-head p {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm);
+}
+.v2-cal-month-totals {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-cal-selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  color: var(--text);
+}
+.v2-cal-selected > div {
+  display: grid;
+}
+.v2-cal-selected small {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--muted);
+}
+.v2-cal-selected strong {
+  font-family: var(--font-headline);
+  font-size: 18px;
+}
+.v2-cal-selected > span:not(.v2-cal-icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-md);
+}
+.v2-cal-selected > span.is-issued,
+.v2-cal-selected > span.is-received {
+  color: var(--text);
+}
+.v2-cal-selected > button {
+  margin-left: auto;
+}
+.v2-days {
+  gap: 6px;
+  margin: 0;
+}
+.v2-days .v11-weekday {
+  padding-bottom: 6px;
+  font-weight: 600;
+}
+.v2-day {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgb(var(--md-surface-container-low));
+  color: var(--text);
+  transition: box-shadow var(--motion-state) var(--ease-state);
+}
+/* The previous calendar styles every span of a day as a block; the counts and pills are inline here. */
+.v2-day .v2-day-counts {
+  display: flex;
+  font-size: 11px;
+}
+.v2-day .v2-pill {
+  display: inline-flex;
+}
+.v2-day > strong {
+  font-size: var(--fs-sm);
+}
+.v2-day-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  color: var(--muted);
+}
+.v2-day.cfdi-issued {
+  background: var(--primary-container);
+  border-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-day.cfdi-received {
+  background: rgb(var(--md-secondary-container));
+  border-color: rgb(var(--md-secondary-container));
+  color: rgb(var(--md-on-secondary-container));
+}
+.v2-day.cfdi-both {
+  background: linear-gradient(
+    to bottom right,
+    var(--primary-container) 0 50%,
+    rgb(var(--md-secondary-container)) 50% 100%
+  );
+  border-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-day[aria-selected='true'] {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--primary);
+}
+.v2-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.v2-pill.is-issued {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+}
+.v2-pill.is-received {
+  background: rgb(var(--md-secondary-container));
+  color: rgb(var(--md-on-secondary-container));
+}
+.v2-calendar .v2-pill.is-issued {
+  color: var(--on-primary-container);
+}
+.v2-calendar .v2-pill.is-received {
+  color: rgb(var(--md-on-secondary-container));
+}
+.v2-cal-legend {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  gap: 12px 24px;
+}
+.v2-cal-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.v2-swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.v2-swatch.cfdi-none {
+  background: rgb(var(--md-surface-container-low));
+  color: var(--muted);
+}
+.v2-swatch.cfdi-both {
+  background: linear-gradient(
+    to bottom right,
+    var(--primary-container) 0 50%,
+    rgb(var(--md-secondary-container)) 50% 100%
+  );
+}
+[data-theme='contrast'] :is(.v2-cal-summary, .v2-month, .v2-cal-days, .v2-cal-selected) {
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-day {
+  border: 2px solid #fff;
+  background: #000;
+  color: #fff;
+}
+[data-theme='contrast'] .v2-day.cfdi-issued {
+  border-color: #c3c0ff;
+}
+[data-theme='contrast'] .v2-day.cfdi-received {
+  border-color: #68dba9;
+}
+[data-theme='contrast'] .v2-swatch.cfdi-both {
+  background: #000;
+  border: 2px solid #c3c0ff;
+  box-shadow: inset 0 0 0 3px #68dba9;
+}
+[data-theme='contrast'] .v2-day.cfdi-both {
+  border-color: #c3c0ff;
+  box-shadow: inset 0 0 0 3px #68dba9;
+}
+[data-theme='contrast'] .v2-pill.is-issued,
+[data-theme='contrast'] .v2-calendar .v2-pill.is-issued {
+  background: #000;
+  color: #c3c0ff;
+  box-shadow: inset 0 0 0 1px #c3c0ff;
+}
+[data-theme='contrast'] .v2-pill.is-received,
+[data-theme='contrast'] .v2-calendar .v2-pill.is-received {
+  background: #000;
+  color: #68dba9;
+  box-shadow: inset 0 0 0 1px #68dba9;
+}
+@media (max-width: 1200px) {
+  .v2-months {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .v2-months {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .v2-cal-totals {
+    margin-left: 0;
+  }
+  .v2-day {
+    min-height: 52px;
+    padding: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-month,
+  .v2-day {
+    transition: none;
+  }
+}
