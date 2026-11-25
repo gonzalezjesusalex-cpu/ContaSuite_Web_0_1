@@ -3,7 +3,6 @@ import { agentLabel, pairLocalAgent } from './agentPairing';
 import { can, canAnywhere, canRegisterCompanies, type Action } from './permissions';
 import { NavLink, Link, Routes, Route, useLocation, useParams, Navigate } from 'react-router-dom';
 import {
-  ArrowRight,
   Building2,
   CheckCircle2,
   ChevronRight,
@@ -146,53 +145,13 @@ function CompanyRoute({ editing = false, ...props }: Shared & { editing?: boolea
     <Dossier key={company.id} company={company} {...props} />
   );
 }
-/** Rediseño v2: accesos rápidos de la bienvenida. Descripciones de lo que cada módulo hace hoy; sólo se
- *  muestran los módulos que el usuario puede abrir (mismas acciones que el menú). */
-const QUICK_ACCESS: {
-  path: string;
-  title: string;
-  description: string;
-  tone: string;
-  icon?: typeof Building2;
-  original?: keyof typeof moduleIconNames;
-}[] = [
-  {
-    path: '/empresas',
-    title: 'Empresas',
-    description: 'Expedientes, vigencias documentales y obligaciones por periodo.',
-    tone: 'indigo',
-    icon: Building2,
-  },
-  {
-    path: '/organizador-cfdi',
-    title: 'CFDI',
-    description: 'Organiza emitidos y recibidos y consulta el calendario de cada empresa.',
-    tone: 'green',
-    original: 'organizador-cfdi',
-  },
-  {
-    path: '/recopilador-cfdi',
-    title: 'Recopila',
-    description: 'Relaciona pólizas con sus comprobantes y prepara sus PDF.',
-    tone: 'blue',
-    original: 'recopilador-cfdi',
-  },
-  {
-    path: '/declara',
-    title: 'Declara',
-    description: 'Analiza declaraciones y acuses y lleva el control mensual.',
-    tone: 'orange',
-    original: 'declara',
-  },
-];
-function Welcome({ name, identity }: { name: string; identity: CurrentUser | null }) {
+function Welcome({ name }: { name: string }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
   const greeting = now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches';
-  const cards = QUICK_ACCESS.filter((c) => !MODULE_ACTIONS[c.path] || canAnywhere(identity, MODULE_ACTIONS[c.path]));
   return (
     <div className="welcome">
       <div className="welcome-brand">
@@ -207,29 +166,9 @@ function Welcome({ name, identity }: { name: string; identity: CurrentUser | nul
         {name ? ',' : ''}
       </h1>
       {name && <div className="welcome-name">{name}</div>}
+      <span className="welcome-divider" aria-hidden />
       <p className="welcome-title">Bienvenido a ContaSuite</p>
       <small>Tu espacio de trabajo contable.</small>
-      {cards.length > 0 && (
-        <section className="quick-access" aria-label="Accesos rápidos">
-          {cards.map((c) => {
-            const Icon = c.icon;
-            return (
-              <Link key={c.path} to={c.path} className="quick-card">
-                <span className={'quick-icon tone-' + c.tone} aria-hidden>
-                  {c.original ? (
-                    <OriginalIcon name={moduleIconNames[c.original]} size={26} />
-                  ) : (
-                    Icon && <Icon size={20} />
-                  )}
-                </span>
-                <ArrowRight className="quick-arrow" size={18} aria-hidden />
-                <strong>{c.title}</strong>
-                <span>{c.description}</span>
-              </Link>
-            );
-          })}
-        </section>
-      )}
     </div>
   );
 }
@@ -596,7 +535,7 @@ export default function App() {
           <ModuleBoundary route={location.pathname}>
             <Suspense fallback={<ModuleLoading />}>
               <Routes>
-                <Route path="/" element={<Welcome name={name} identity={identity} />} />
+                <Route path="/" element={<Welcome name={name} />} />
                 <Route path="/empresas" element={<CompaniesRoute {...shared} />} />
                 <Route
                   path="/empresas/nueva"
