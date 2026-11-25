@@ -1,10 +1,24 @@
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Archive, Download, Eye, FileText, FolderOpen, RefreshCw, Upload } from 'lucide-react';
+import {
+  AlertTriangle,
+  Archive,
+  CheckCircle2,
+  Clock3,
+  Download,
+  Eye,
+  FileText,
+  FolderOpen,
+  History,
+  MinusCircle,
+  RefreshCw,
+  Upload,
+} from 'lucide-react';
 import { api, getToken, dateLabel } from '../api';
 import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
 import type { State } from '../types';
+import './v11.css';
 // Counters reported by the Recopila engine adapter; any other keys are informative only.
 type RunSummary = {
   policy_pages?: number;
@@ -97,6 +111,26 @@ const labels: Record<string, string> = {
   generated: 'Terminado',
   error: 'Revisar error',
 };
+/** Rediseño v2: state of a policy and of an analysis with icon and text (never color alone). */
+function PolicyState({ status }: { status: string }) {
+  const done = status === 'RELACIONADO';
+  const diary = status === 'POLIZA_SOLA_DIARIO';
+  const Icon = done ? CheckCircle2 : diary ? MinusCircle : AlertTriangle;
+  return (
+    <span className={'v2-state ' + (done ? 'is-done' : diary ? 'is-muted' : 'is-warn')}>
+      <Icon size={13} aria-hidden /> {states[status] || status}
+    </span>
+  );
+}
+function RunState({ status }: { status: string }) {
+  const Icon = status === 'generated' ? CheckCircle2 : status === 'error' ? AlertTriangle : Clock3;
+  const tone = status === 'generated' ? 'is-done' : status === 'error' ? 'is-error' : 'is-ready';
+  return (
+    <span className={'v2-state ' + tone}>
+      <Icon size={13} aria-hidden /> {labels[status] || status}
+    </span>
+  );
+}
 const states: Record<string, string> = {
   RELACIONADO: 'Relacionado',
   POLIZA_SOLA_DIARIO: 'Póliza de diario',
@@ -370,19 +404,31 @@ export default function Recopila({
         title="Recopila"
         description="Relaciona pólizas con sus comprobantes y prepara los PDF del recopilador."
       />
-      <div className="recopila-steps">
-        <Badge tone={detail ? 'green' : 'blue'}>1 · Cargar y analizar</Badge>
-        <Badge tone={detail?.policies.length ? 'blue' : 'neutral'}>2 · Revisar coincidencias</Badge>
-        <Badge tone={detail?.run.status === 'generated' ? 'green' : 'neutral'}>3 · Generar archivos</Badge>
-      </div>
+      <ol className="recopila-steps v2-steps" aria-label="Pasos de Recopila">
+        {(
+          [
+            ['1 · Cargar y analizar', !!detail, !detail],
+            ['2 · Revisar coincidencias', detail?.run.status === 'generated', !!detail?.policies.length],
+            ['3 · Generar archivos', detail?.run.status === 'generated', false],
+          ] as const
+        ).map(([label, done, current]) => (
+          <li key={label} className={done ? 'is-done' : current ? 'is-current' : ''}>
+            {done && <CheckCircle2 size={15} aria-hidden />}
+            {label}
+            {done && <span className="sr-only"> (completado)</span>}
+          </li>
+        ))}
+      </ol>
       {error && (
         <div className="error-banner" role="alert">
           {error}
           <button onClick={() => setError('')}>Cerrar</button>
         </div>
       )}
-      <section className={stitchCard + ' padded'}>
-        <div className="recopila-source-grid">
+      <div className="v2-recopila-top">
+        <section className={stitchCard + ' padded v2-recopila-params'}>
+          <h2>Documentos a relacionar</h2>
+          <p className="muted">Pólizas del «Impreso de pólizas» de CONTPAQi con los PDF y XML de sus CFDI.</p>
           <div>
             <Field label="Empresa (opcional)">
               <select value={company} disabled={working} onChange={(e) => setCompany(e.target.value)}>
@@ -465,23 +511,34 @@ export default function Recopila({
               Hasta 100 MB de carga. Se trabaja con copias; los originales de tu equipo se conservan.
             </small>
           </div>
-          <div className="recopila-source-actions">
-            <button className={stitchPrimary} disabled={working || !files.length} onClick={analyze}>
-              {uploading ? 'Cargando…' : working ? 'Proceso en curso…' : 'Analizar documentos'}
-            </button>
-            <Field label="Análisis anteriores">
-              <select value={id} disabled={working} onChange={(e) => openRun(e.target.value)}>
-                <option value="">Selecciona un análisis</option>
-                {runs.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {dateLabel(r.created_at)} · {r.name} · {labels[r.status]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-        </div>
-      </section>
+          <button className={stitchPrimary + ' v2-wide'} disabled={working || !files.length} onClick={analyze}>
+            {uploading ? 'Cargando…' : working ? 'Proceso en curso…' : 'Analizar documentos'}
+          </button>
+        </section>
+        <section className={stitchCard + ' padded v2-recopila-history'} aria-labelledby="recopila-history-title">
+          <h2 id="recopila-history-title">
+            <History size={19} aria-hidden /> Historial de análisis
+          </h2>
+          <p className="muted">Abre un análisis anterior para revisarlo, generar sus archivos o guardarlo.</p>
+          {runs.length ? (
+            <ul>
+              {runs.map((r) => (
+                <li key={r.id}>
+                  <button type="button" aria-pressed={r.id === id} disabled={working} onClick={() => openRun(r.id)}>
+                    <span>
+                      <strong>{r.name}</strong>
+                      <small>{dateLabel(r.created_at)}</small>
+                    </span>
+                    <RunState status={r.status} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="v2-empty muted">Todavía no hay análisis.</p>
+          )}
+        </section>
+      </div>
       {detail && (
         <>
           <div className="recopila-status" role="status">
@@ -518,7 +575,7 @@ export default function Recopila({
               </ul>
             </details>
           )}
-          <div className="kpi-grid four">
+          <div className="kpi-grid four v2-kpis">
             <Kpi
               label="Pólizas detectadas"
               value={summary.policy_pages || 0}
@@ -616,9 +673,7 @@ export default function Recopila({
                             </small>
                           </td>
                           <td>
-                            <Badge tone={p.status === 'RELACIONADO' ? 'green' : 'amber'}>
-                              {states[p.status] || p.status}
-                            </Badge>
+                            <PolicyState status={p.status} />
                             {p.support && (
                               <small>
                                 <Badge tone={support[p.support] || 'neutral'}>{p.support}</Badge>
