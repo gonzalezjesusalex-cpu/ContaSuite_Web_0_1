@@ -4634,3 +4634,118 @@ button.header-cert-chip {
   padding: 0;
   font-size: var(--fs-xs);
 }
+
+/* Rediseño v2, paso 11: Configuración (contasuite_configuracion). Navegación lateral fija que lleva a cada
+   sección; todas las secciones siguen visibles en la página (perfil, tema, servicios, almacenamiento, cuenta,
+   equipo y auditoría) y el gestor de contraseñas enlaza a Empresas › Credenciales. */
+.v2-settings {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.v2-settings-nav {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-settings-nav > button,
+.v2-settings-nav > a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-state) var(--ease-state);
+}
+.v2-settings-nav > a {
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding-top: 12px;
+}
+.v2-settings-nav .v2-settings-out {
+  margin-left: auto;
+  color: var(--muted);
+}
+.v2-settings-nav > button[aria-current='true'] {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+@media (hover: hover) and (pointer: fine) {
+  .v2-settings-nav > button:hover:not([aria-current='true']),
+  .v2-settings-nav > a:hover {
+    background: var(--hover);
+  }
+}
+.v2-settings-content {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.v2-settings-content > section,
+.v2-settings-content > .stitch-card {
+  margin: 0;
+  scroll-margin-top: 88px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.v2-settings-content > section > h2 {
+  margin-bottom: 4px;
+  font-size: 20px;
+  line-height: 26px;
+}
+.v2-settings-content > section > h2 + p.muted {
+  margin: 0 0 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+}
+.v2-settings-content [id^='cfg-'] {
+  scroll-margin-top: 88px;
+}
+[data-theme='contrast'] .v2-settings-nav,
+[data-theme='contrast'] .v2-settings-content > section {
+  border: 2px solid #fff;
+}
+[data-theme='contrast'] .v2-settings-nav > button[aria-current='true'] {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+@media (max-width: 1000px) {
+  .v2-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .v2-settings-nav {
+    position: static;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  .v2-settings-nav > a {
+    margin-top: 0;
+    border-top: 0;
+    border-radius: var(--radius-md);
+    padding-top: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-settings-nav > button,
+  .v2-settings-nav > a {
+    transition: none;
+  }
+}

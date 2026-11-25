@@ -94,7 +94,7 @@ export default function StorageConnector({ notify }: { notify: (m: string) => vo
     }
   }
   return (
-    <section className={stitchCard + ' padded storage-connector stitch-live-module'}>
+    <section id="cfg-almacenamiento" className={stitchCard + ' padded storage-connector stitch-live-module'}>
       <div className="documents-header">
         <div>
           <h2>Almacenamiento documental</h2>

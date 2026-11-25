@@ -119,7 +119,7 @@ export default function AccountSecurity({
           {error}
         </p>
       )}
-      <section className={stitchCard + ' padded'}>
+      <section id="cfg-cuenta" className={stitchCard + ' padded'}>
         <h2>Mi cuenta</h2>
         <p className="muted">
           {identity.display_name} · {ROLE_LABELS[identity.role] || 'Colaborador'}
@@ -168,7 +168,7 @@ export default function AccountSecurity({
       </section>
       {manager && (
         <>
-          <section className={stitchCard + ' padded'}>
+          <section id="cfg-equipo" className={stitchCard + ' padded'}>
             <div className="documents-header">
               <h2>{identity.admin ? 'Usuarios y permisos' : 'Auxiliares de mis empresas'}</h2>
               <button className={stitchPrimary} onClick={() => setEdit('new')}>
@@ -223,7 +223,7 @@ export default function AccountSecurity({
       {identity.admin && <ResponsibleReconciliation notify={notify} />}
       {identity.admin && (
         <>
-          <section className={stitchCard + ' padded'}>
+          <section id="cfg-auditoria" className={stitchCard + ' padded'}>
             <div className="documents-header">
               <h2>Auditoría de accesos y operaciones</h2>
               <button className={stitchButton} onClick={() => setReload((v) => v + 1)}>
