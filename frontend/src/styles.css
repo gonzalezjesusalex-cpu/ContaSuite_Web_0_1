@@ -1692,26 +1692,99 @@ dd {
   padding: 25px;
   background: radial-gradient(ellipse, rgb(var(--md-surface-container-low)), rgb(var(--md-surface)));
 }
+/* Rediseño v2, paso 12: tarjeta de acceso (contasuite_iniciar_sesion). */
+.login-page {
+  flex-direction: column;
+  gap: 24px;
+}
 .login-card {
-  width: 410px;
-  padding: 35px;
+  width: min(448px, 100%);
+  padding: 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 21px;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+.login-card > h1 {
+  margin-top: -4px;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
 }
 .login-card > p {
+  margin-top: -14px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.login-card .field:has(.login-password) {
+  position: relative;
+}
+.login-card input.login-password {
+  padding-right: 44px;
+}
+.login-reveal {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .login-reveal:hover {
+    background: var(--hover);
+    color: var(--text);
+  }
+}
+.login-card .btn.primary,
+.login-card .stitch-button.primary {
+  min-height: 44px;
+  justify-content: center;
+  font-size: var(--fs-md);
+}
+.login-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-bg);
+  color: var(--danger-strong);
+  font-size: var(--fs-sm);
+}
+.login-error svg {
+  flex: none;
+  margin-top: 1px;
+}
+.login-footer {
   color: var(--muted);
   font-size: var(--fs-xs);
+}
+[data-theme='contrast'] .login-card {
+  border: 2px solid #fff;
 }
 .login-card .field,
 .login-card .btn {
   width: 100%;
 }
 .login-card > small {
+  width: 100%;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
   text-align: center;
   color: var(--muted);
-  line-height: 1.8;
+  line-height: 1.6;
 }
 .toast {
   position: fixed;
