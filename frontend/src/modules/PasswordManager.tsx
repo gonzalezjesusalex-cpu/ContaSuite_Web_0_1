@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { api, authHeaders } from '../api';
 import { Badge, Field, Modal } from '../components/ui';
-import { stitchButton, stitchCard, stitchDanger, stitchPrimary } from '../components/stitch';
+import { stitchButton, stitchDanger, stitchPrimary } from '../components/stitch';
 import './v11.css';
 
 /** Plan v1.1, Cambio 4: password manager per company and portal (Chrome-style) on the existing vault. */
