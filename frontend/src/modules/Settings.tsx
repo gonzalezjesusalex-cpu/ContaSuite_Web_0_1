@@ -5,10 +5,13 @@ import { agentLabel } from '../agentPairing';
 import { Badge, Field, Heading } from '../components/ui';
 import { markFormSaved } from '../dirtyForms';
 import { SETTINGS_SECTIONS, settingsSection } from '../settingsSections';
+import { PASSWORD_MANAGER_PATH } from '../companyNavigation';
+import { useRecentAlerts } from '../alertFeed';
 import type { CurrentUser, State } from '../types';
 const AgentAdmin = lazy(() => import('./AgentAdmin'));
 const AccountSecurity = lazy(() => import('./AccountSecurity'));
 const StorageConnector = lazy(() => import('./StorageConnector'));
+const AlertsSettings = lazy(() => import('./AlertsSettings'));
 
 type Props = {
   state: State;
@@ -30,6 +33,9 @@ export default function Settings(props: Props) {
   const { identity } = props;
   const current = settingsSection(slug, identity);
   const content = useRef<HTMLDivElement>(null);
+  const alerts = useRecentAlerts();
+  const label = (s: { slug: string; label: string }) =>
+    s.slug === 'alertas' && alerts ? `${s.label} (${alerts.active_total})` : s.label;
   const first = useRef(true);
   useEffect(() => {
     if (!current) return;
@@ -56,13 +62,13 @@ export default function Settings(props: Props) {
       />
       <div className="v2-settings">
         <nav className="v2-settings-nav" aria-label="Secciones de Configuración">
-          {sections.map(({ slug: id, label, icon: Icon }) => (
-            <NavLink key={id} to={'/configuracion/' + id}>
-              <Icon size={17} aria-hidden />
-              {label}
+          {sections.map((s) => (
+            <NavLink key={s.slug} to={'/configuracion/' + s.slug}>
+              <s.icon size={17} aria-hidden />
+              {label(s)}
             </NavLink>
           ))}
-          <Link to="/empresas?tab=Credenciales" className="v2-settings-external">
+          <Link to={PASSWORD_MANAGER_PATH} className="v2-settings-external">
             <KeyRound size={17} aria-hidden />
             Gestor de contraseñas
             <ChevronRight size={15} aria-hidden className="v2-settings-out" />
@@ -73,12 +79,12 @@ export default function Settings(props: Props) {
             <select value={current.slug} onChange={(e) => navigate('/configuracion/' + e.target.value)}>
               {sections.map((s) => (
                 <option key={s.slug} value={s.slug}>
-                  {s.label}
+                  {label(s)}
                 </option>
               ))}
             </select>
           </Field>
-          <Link to="/empresas?tab=Credenciales" className="v2-settings-external">
+          <Link to={PASSWORD_MANAGER_PATH} className="v2-settings-external">
             <KeyRound size={17} aria-hidden />
             Gestor de contraseñas
             <ChevronRight size={15} aria-hidden className="v2-settings-out" />
@@ -166,6 +172,7 @@ function Section({ slug, state, identity, notify, onEnded, ...props }: Props & {
       </section>
     );
   if (slug === 'almacenamiento') return <StorageConnector notify={notify} />;
+  if (slug === 'alertas') return <AlertsSettings state={state} notify={notify} />;
   if (!identity) return null;
   return (
     <AccountSecurity
