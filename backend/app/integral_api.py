@@ -651,3 +651,7 @@ register_calendar(router)
 from .lote4_lifecycle import register as register_lifecycle
 
 register_lifecycle(router)
+
+from .alert_feed import register as register_alert_feed
+
+register_alert_feed(router)

@@ -218,7 +218,8 @@ def select_certificate(db, p, cid, payload):
 
 class ActionIn(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    state: Literal['pending', 'acknowledged', 'snoozed', 'resolved', 'obsolete']
+    # Dashboard principal: «dismissed» is Descartar (reason required); it stays closed while the condition holds.
+    state: Literal['pending', 'acknowledged', 'snoozed', 'resolved', 'obsolete', 'dismissed']
     revision: int = Field(ge=0)
     reason: str = Field(min_length=3, max_length=1000)
     snooze_until: date | None = None
@@ -271,7 +272,8 @@ def evaluate(db, p, candidates, *, commit=True, today=None):
     from .credential_alerts import alert_key
 
     for item in candidates:
-        if item['source'] not in ('certificate', 'obligation') or item['kind'] == 'documentation_review':
+        # Quality items (company data, documents) joined the lifecycle with the Configuración › Alertas list.
+        if item['source'] not in ('certificate', 'obligation', 'quality') or item['kind'] == 'documentation_review':
             continue
         ident = alert_key(item['source'], item['reference'], item['kind'])
         active.add(ident)
@@ -311,7 +313,11 @@ def evaluate(db, p, candidates, *, commit=True, today=None):
         )
     # Only managed alerts are aged out; unavailable documentary sources are untouched.
     for row in db.execute(select(alerts).join(tracking, tracking.c.alert_id == alerts.c.id)).mappings():
-        if row['id'] not in active and row['kind'] != 'documentation_review' and row['state'] != 'obsolete':
+        if (
+            row['id'] not in active
+            and row['kind'] != 'documentation_review'
+            and row['state'] not in ('obsolete', 'dismissed')
+        ):
             db.execute(update(alerts).where(alerts.c.id == row['id']).values(state='obsolete'))
             db.execute(
                 update(tracking)
@@ -537,6 +543,6 @@ def evaluate_sources(db, p):
     ready(db)
     lock(db)
     p.require_admin()
-    from .credential_alerts import candidates
+    from .alert_feed import all_candidates
 
-    return evaluate(db, p, candidates(db, p))
+    return evaluate(db, p, all_candidates(db, p))

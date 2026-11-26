@@ -25,7 +25,7 @@ def exists(db, name):
     return has_table(db, name)
 
 
-def dashboard(db, p, year, month, company=None, regime=None, responsible=None, include_archived=False):
+def dashboard(db, p, year, month, company=None, regime=None, responsible=None, include_archived=False, alert_limit=100):
     companies = db.scalars(select(Company).where(True if p.admin else Company.id.in_(p.company_ids))).all()
     companies = [c for c in companies if (not company or c.id == company) and (not regime or c.regime == regime)]
     from .company_lifecycle import archive_metadata
@@ -320,7 +320,8 @@ def dashboard(db, p, year, month, company=None, regime=None, responsible=None, i
     quality_total = len(quality_items)
     alerts_total = len(alerts)
     quality_items = quality_items[:200]
-    alerts = alerts[:100]
+    if alert_limit is not None:
+        alerts = alerts[:alert_limit]
     return dict(
         quality_total=quality_total,
         alerts_total=alerts_total,
