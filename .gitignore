@@ -13,3 +13,5 @@ frontend/dist/
 .qa/
 frontend/test-results/
 frontend/playwright-report/
+frontend/.dist-staging/
+frontend/.dist-previous/
