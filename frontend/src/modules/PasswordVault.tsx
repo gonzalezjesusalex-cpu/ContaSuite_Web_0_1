@@ -5,9 +5,10 @@ import { Heading } from '../components/ui';
 import { PASSWORD_MANAGER_PATH } from '../companyNavigation';
 import type { State } from '../types';
 import Credentials from './Credentials';
+import VaultGate from './VaultGate';
 
 /** Gestor de contraseñas: módulo propio con el contenido de la antigua pestaña «Credenciales» del dashboard,
- *  sin cambios de cifrado ni de permisos. `?company_id=` lo abre filtrado a una empresa (desde su expediente). */
+ *  detrás de la bóveda con contraseña maestra (VaultGate). `?company_id=` lo abre filtrado a una empresa. */
 export default function PasswordVault({ state }: { state: State }) {
   const [params] = useSearchParams();
   const requested = params.get('company_id') || '';
@@ -32,7 +33,9 @@ export default function PasswordVault({ state }: { state: State }) {
           </Link>
         </p>
       )}
-      <Credentials key={company?.id || 'all'} state={state} companyId={company?.id} />
+      <VaultGate>
+        <Credentials key={company?.id || 'all'} state={state} companyId={company?.id} />
+      </VaultGate>
     </>
   );
 }

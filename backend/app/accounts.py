@@ -154,6 +154,9 @@ def cookie_secure(request):
 
 
 def revoke(db, user_id):
+    from .vault_session import lock_user
+
+    lock_user(user_id)  # every unlocked vault of the person locks with their sessions
     db.execute(
         update(UserSession)
         .where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
@@ -274,7 +277,10 @@ def login(payload: Login, request: Request, response: Response):
         if not user.enabled or user.revision != revision:
             raise HTTPException(401, 'La cuenta cambió. Inicia sesión de nuevo.')
         old = request.cookies.get(SESSION_COOKIE, '')
+        from .vault_session import lock as lock_vault
+
         if old:
+            lock_vault(digest(old))
             db.execute(update(UserSession).where(UserSession.id == digest(old)).values(revoked_at=now()))
         active = db.scalars(
             select(UserSession)
@@ -282,6 +288,7 @@ def login(payload: Login, request: Request, response: Response):
             .order_by(UserSession.created_at.desc())
         ).all()
         for previous in active[4:]:
+            lock_vault(previous.id)
             previous.revoked_at = now()
         db.add(
             UserSession(id=digest(raw), user_id=user_id, csrf_hash=digest(csrf), expires_at=now() + timedelta(hours=12))
@@ -306,6 +313,9 @@ def me(principal: PrincipalDep):
 @router.post('/logout')
 def logout(principal: PrincipalDep, response: Response):
     if principal.session_id:
+        from .vault_session import lock
+
+        lock(principal.session_id)  # logging out locks the vault
         with SessionLocal.begin() as db:
             db.execute(update(UserSession).where(UserSession.id == principal.session_id).values(revoked_at=now()))
             db.add(SecurityEvent(actor_id=principal.subject, action='logout', outcome='success'))

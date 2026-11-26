@@ -11,7 +11,7 @@ from .database import session
 from .models import Company, Document, DocumentCompanyLink, now
 from .security import auth, Principal, utc
 from .credential_models import metadata, services, grants, credentials, versions, certificates, audit, settings
-from .credential_crypto import VaultCipher, VaultLocked
+from .credential_crypto import VaultLocked
 from .schema_cache import tables_ready
 
 PERMISSIONS = {'metadata', 'create', 'modify', 'reveal', 'certificates', 'history', 'alerts', 'permissions'}
@@ -173,6 +173,7 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
     no_cache(response)
     ready(db)
     allowed(p, db, cid, 'metadata')
+    require_unlocked(db, p, cid, None)  # a locked vault shows no company data at all
     repeated = repeated_fingerprints(db)
     items = [
         public_credential(r, repeated)
@@ -204,18 +205,16 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
         certificates=certs,
         services=[dict(r) for r in db.execute(select(services)).mappings()],
         permissions=perms,
-        reveal_enabled='reveal' in perms and vault_unlocked(),
-        vault_unlocked=vault_unlocked(),
+        reveal_enabled='reveal' in perms and vault_unlocked(p),
+        vault_unlocked=vault_unlocked(p),
         thresholds=thresholds,
     )
 
 
-def vault_unlocked():
-    try:
-        VaultCipher.from_environment()
-        return True
-    except VaultLocked:
-        return False
+def vault_unlocked(p):
+    from . import vault_session
+
+    return vault_session.unlocked(p.session_id)
 
 
 class CredentialIn(BaseModel):
@@ -276,12 +275,9 @@ def store(
         from .credential_crypto import strength
 
         secret = payload.secret.get_secret_value()
-        try:
-            cipher = VaultCipher.from_environment()
-            envelope = cipher.seal(secret, cid, ident)
-            visible['fingerprint'] = cipher.fingerprint(secret)
-        except VaultLocked:
-            raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+        cipher = require_unlocked(db, p, cid, ident)
+        envelope = cipher.seal(secret, cid, ident)
+        visible['fingerprint'] = cipher.fingerprint(secret)
         visible['strength'] = strength(secret, db.get(Company, cid).rfc)
         del secret
     revision = payload.revision + 1
@@ -327,26 +323,6 @@ def store(
     return {'id': ident, 'revision': revision}
 
 
-REAUTH_SECONDS = 300
-
-
-def recent_reauth(db, p):
-    """The person re-entered their password in this session within the last five minutes."""
-    from datetime import timedelta
-
-    from .models import UserSession
-
-    if p.bootstrap or not p.session_id:
-        return False
-    current = db.get(UserSession, p.session_id)
-    return bool(
-        current
-        and current.reauth_at
-        and not current.revoked_at
-        and utc(current.reauth_at) >= now() - timedelta(seconds=REAUTH_SECONDS)
-    )
-
-
 def credential_row(db, cid, ident):
     row = (
         db.execute(select(credentials).where(credentials.c.id == ident, credentials.c.company_id == cid))
@@ -358,13 +334,16 @@ def credential_row(db, cid, ident):
     return row
 
 
-def require_recent(db, p, cid, ident):
-    if not recent_reauth(db, p):
-        event(db, p, cid, 'reveal_blocked', ident, {'reason': 'reauth_required'})
+def require_unlocked(db, p, cid, ident):
+    """The cipher of this session's unlocked vault (renovación del gestor, fase 1); 423 and a log entry if locked."""
+    from . import vault_session
+
+    try:
+        return vault_session.cipher(p.session_id)
+    except VaultLocked:
+        event(db, p, cid, 'reveal_blocked', ident, {'reason': 'vault_locked'})
         db.commit()
-        raise HTTPException(
-            428, 'Confirma tu contraseña para ver o usar secretos.', headers={'Cache-Control': 'no-store'}
-        )
+        raise HTTPException(423, 'La bóveda está bloqueada.', headers={'Cache-Control': 'no-store'}) from None
 
 
 class RevealIn(BaseModel):
@@ -382,7 +361,7 @@ def reveal(
     db=Depends(session),
     payload: RevealIn | None = None,
 ):
-    """Plan v1.1: the password of one credential, after recent re-authentication, for an authorized person.
+    """Plan v1.1: the password of one credential, with the vault unlocked, for an authorized person.
 
     Every view or copy is written to the vault log (who, when, which company, why). The value travels only in
     this no-store response; it is never logged, listed or exported here.
@@ -392,11 +371,11 @@ def reveal(
     allowed(p, db, cid, 'reveal')
     payload = payload or RevealIn()
     row = credential_row(db, cid, ident)
-    require_recent(db, p, cid, ident)
+    cipher = require_unlocked(db, p, cid, ident)
     try:
-        secret = VaultCipher.from_environment().open(row['envelope'], cid, ident, authorize_recent=lambda: True)
+        secret = cipher.open(row['envelope'], cid, ident, authorize_recent=lambda: True)
     except VaultLocked:
-        raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+        raise HTTPException(409, 'Este secreto no se pudo abrir con la llave de la bóveda.') from None
     action = 'secret_copied' if payload.action == 'copy' else 'secret_revealed'
     event(db, p, cid, action, ident, {'reason': payload.reason})
     db.commit()
@@ -502,6 +481,7 @@ def history(cid: str, response: Response, p: Principal = Depends(auth), db=Depen
     no_cache(response)
     ready(db)
     allowed(p, db, cid, 'history')
+    require_unlocked(db, p, cid, None)
     rows = [
         dict(r)
         for r in db.execute(

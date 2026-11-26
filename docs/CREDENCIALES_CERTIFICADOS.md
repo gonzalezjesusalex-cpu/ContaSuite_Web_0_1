@@ -41,6 +41,18 @@ La migración define `upgrade(connection)` para un operador autorizado después 
 
 ## Seguridad de la bóveda
 
+### Contraseña maestra (renovación del gestor, fase 1 · cs_0022)
+
+- **Esquema de sobre.** Una llave de datos aleatoria de 256 bits envuelve la llave propia de cada secreto (AES-256-GCM, con la empresa y el registro como datos asociados). La llave de datos sólo se guarda envuelta: una copia por persona autorizada, derivada de su contraseña maestra con Argon2id (3 iteraciones, 4 carriles, 64 MiB; los parámetros viajan con cada copia), y otra con el código de recuperación (24 símbolos, se muestra una sola vez). Tablas `vault_config` y `vault_keys`; ninguna guarda la contraseña maestra.
+- **Desbloqueo.** La bóveda empieza bloqueada en cada sesión. Con la contraseña maestra la llave de datos queda sólo en la memoria del servidor (`app/vault_session.py`; la API corre con un solo proceso). Nunca va al navegador, al disco, a cookies ni a registros.
+- **Bloqueo.** Solo tras `auto_lock_minutes` sin uso (5 por omisión, de 1 a 60), con «Bloquear ahora», al cerrar sesión, al revocar sesiones o al quitar el acceso a la persona. Tras 5 intentos fallidos se esperan 5 minutos. Cada intento queda en la bitácora.
+- **Con la bóveda bloqueada** la lista, la ficha de empresa, la bitácora, la importación y la exportación responden 423: no se ve ningún dato de las empresas.
+- **Personas autorizadas.** El administrador da acceso con un código temporal (que la persona cambia al primer desbloqueo) y lo quita. Con el código de recuperación sólo un administrador puede desbloquear; después elige una contraseña maestra nueva.
+- **Migración.** Al crear la bóveda, los sobres guardados con el llavero DPAPI anterior se re-envuelven con la llave de datos en una sola transacción, sin volver a cifrar el contenido (los de versión 1 se vuelven a sellar). Si el llavero anterior no se puede leer en ese equipo, no se crea nada.
+- Endpoints: `GET /api/credentials/vault/state`, `POST /vault/setup`, `/vault/unlock`, `/vault/lock`, `/vault/touch`, `/vault/password`, `/vault/recovery`, `PUT /vault/settings`, `GET|POST /vault/members`, `DELETE /vault/members/{user_id}`. La reautenticación con la contraseña de inicio de sesión (`/reauth`) se retiró.
+
+### Antes de la fase 1
+
 - AES-256-GCM mediante `cryptography`, ya presente. Nonce aleatorio de 96 bits por escritura; empresa, ID de credencial, contexto y versión de clave se autentican como AAD.
 - La base conserva ciphertext, nonce, algoritmo y versión; no contiene claves de cifrado.
 - El proveedor de referencia recibe `CONTA_VAULT_KEYRING` y `CONTA_VAULT_ACTIVE_KEY` exclusivamente del entorno del proceso provisionado externamente. Nunca escribirlos en `.env`, repositorio o configuración versionada. No se generaron ni instalaron claves reales. Antes de producción se requiere un gestor de secretos/servicio de claves con política de acceso, respaldos y recuperación.

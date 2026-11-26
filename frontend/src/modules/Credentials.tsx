@@ -7,6 +7,7 @@ import { Field, Modal, Kpi } from '../components/ui';
 import { stitchButton, stitchPrimary, stitchCard } from '../components/stitch';
 import type { Job, State } from '../types';
 import DetectedCertificates from './DetectedCertificates';
+import { isLockedError, useVault } from './VaultGate';
 type Secret = { id: string; service_id: string; label: string; revision: number; archived: boolean };
 type Cert = {
   id: string;
@@ -40,6 +41,7 @@ export default function Credentials({
   companyId?: string;
   scanJob?: Job;
 }) {
+  const vault = useVault();
   const [company, setCompany] = useState(companyId || ''),
     [data, setData] = useState<Snapshot | null>(null),
     [error, setError] = useState(''),
@@ -69,13 +71,15 @@ export default function Credentials({
     api<Snapshot>('/credentials/companies/' + company, 'GET', undefined, c.signal)
       .then(setData)
       .catch((e) => {
-        if (!c.signal.aborted) setError(e.message);
+        if (c.signal.aborted) return;
+        if (isLockedError(e)) vault.locked();
+        else setError(e.message);
       })
       .finally(() => {
         if (!c.signal.aborted) setLoading(false);
       });
     return () => c.abort();
-  }, [company, reload]);
+  }, [company, reload, vault]);
   const can = (p: string) => data?.permissions.includes(p) || false;
   const certs = (data?.certificates || []).filter(
     (c) =>
@@ -108,7 +112,7 @@ export default function Credentials({
     <section className={stitchCard + ' padded stitch-live-module'}>
       <h2>Credenciales y Certificados</h2>
       <p>
-        Contraseñas cifradas con reautenticación para verlas o usarlas, archivos FIEL/CSD y vigencia de certificados
+        Contraseñas cifradas con la contraseña maestra de la bóveda, archivos FIEL/CSD y vigencia de certificados
         públicos (sin validación ante el SAT).
       </p>
       <PasswordManager

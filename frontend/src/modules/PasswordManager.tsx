@@ -29,6 +29,7 @@ import {
 import { api, authHeaders } from '../api';
 import { Badge, Field, Modal } from '../components/ui';
 import { stitchButton, stitchDanger, stitchPrimary } from '../components/stitch';
+import { isLockedError, useVault } from './VaultGate';
 import './v11.css';
 
 /** Plan v1.1, Cambio 4: password manager per company and portal (Chrome-style) on the existing vault. */
@@ -78,10 +79,18 @@ type LogRow = { id: string; actor_id: string; action: string; record_id: string 
 const LOG_ACTIONS: Record<string, string> = {
   secret_revealed: 'Vio una contraseña',
   secret_copied: 'Copió una contraseña',
-  reveal_blocked: 'Intento de ver o copiar sin permiso o sin reautenticación',
+  reveal_blocked: 'Intento de ver o copiar con la bóveda bloqueada',
   reauth_confirmed: 'Confirmó su contraseña',
   reauth_failed: 'Contraseña de confirmación incorrecta',
   reauth_required: 'Se pidió confirmar la contraseña',
+  vault_setup: 'Creó la bóveda',
+  vault_unlock_failed: 'Intento fallido de desbloqueo',
+  vault_locked: 'Bloqueó la bóveda',
+  vault_password_changed: 'Cambió su contraseña maestra',
+  vault_recovery_regenerated: 'Generó un código de recuperación nuevo',
+  vault_settings_changed: 'Cambió el autobloqueo',
+  vault_member_added: 'Dio acceso a la bóveda',
+  vault_member_removed: 'Quitó el acceso a la bóveda',
   autofill_ticket_issued: 'Usó el acceso con la extensión',
   credential_created: 'Creó un acceso',
   credential_modified: 'Modificó un acceso',
@@ -165,13 +174,13 @@ export default function PasswordManager({
   /** Names of the people the page already knows (id → name), to show in the log instead of internal ids. */
   users?: Record<string, string>;
 }) {
+  const vault = useVault();
   const [data, setData] = useState<Vault | null>(null);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [service, setService] = useState('');
   const [reload, setReload] = useState(0);
   const [shown, setShown] = useState<Record<string, string>>({});
-  const [reauth, setReauth] = useState<null | (() => Promise<void>)>(null);
   const [editing, setEditing] = useState<Item | 'new' | null>(null);
   const [filesOf, setFilesOf] = useState<Item | null>(null);
   const [importing, setImporting] = useState(false);
@@ -190,7 +199,11 @@ export default function PasswordManager({
           setData(d);
           setError('');
         })
-        .catch((e) => !abort.signal.aborted && setError(e.message));
+        .catch((e) => {
+          if (abort.signal.aborted) return;
+          if (isLockedError(e)) vault.locked();
+          else setError(e.message);
+        });
     }, 250);
     return () => {
       clearTimeout(t);
@@ -199,12 +212,12 @@ export default function PasswordManager({
   }, [query, service, companyId, reload]);
   useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
 
-  /** Runs `action`; when the server asks for the password again, opens the dialog and retries after it. */
+  /** Runs `action`; when the vault locked itself meanwhile, the screen goes back to the lock card. */
   async function withReauth(action: () => Promise<void>) {
     try {
       await action();
     } catch (e) {
-      if (/Confirma tu contraseña/.test((e as Error).message)) setReauth(() => action);
+      if (isLockedError(e)) vault.locked();
       else notify((e as Error).message);
     }
   }
@@ -403,15 +416,9 @@ export default function PasswordManager({
         </div>
       </div>
       <p className="muted v2-vault-note">
-        <Lock size={14} aria-hidden /> Cifradas en el servidor. Para ver, copiar o usar una contraseña se pide de nuevo
-        tu contraseña y queda en la bitácora. No guardes contraseñas en nombres ni notas.
+        <Lock size={14} aria-hidden /> Cada vista o copia queda en la bitácora. No guardes contraseñas en nombres ni
+        notas.
       </p>
-      {data && !data.vault_unlocked && (
-        <p role="alert" className="error-banner">
-          La bóveda está bloqueada: falta el llavero maestro del servidor (scripts/vault_keyring.py). Puedes consultar
-          los registros, pero no guardar ni ver contraseñas.
-        </p>
-      )}
       {error && (
         <p role="alert" className="error-banner">
           {error}
@@ -605,16 +612,6 @@ export default function PasswordManager({
           {data && !currentCompany && <p className="v2-empty muted">No hay empresas con accesos para mostrar.</p>}
         </div>
       </div>
-      {reauth && (
-        <ReauthDialog
-          onClose={() => setReauth(null)}
-          onDone={async () => {
-            const retry = reauth;
-            setReauth(null);
-            await retry().catch((e) => notify((e as Error).message));
-          }}
-        />
-      )}
       {editing && data && (
         <CredentialForm
           item={editing === 'new' ? null : editing}
@@ -645,63 +642,11 @@ export default function PasswordManager({
           companies={data.companies}
           companyId={companyId}
           onClose={() => setExporting(false)}
-          onNeedReauth={(retry) => setReauth(() => retry)}
+          onLocked={vault.locked}
           notify={notify}
         />
       )}
     </section>
-  );
-}
-
-function ReauthDialog({ onClose, onDone }: { onClose: () => void; onDone: () => Promise<void> }) {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const field = useRef<HTMLInputElement>(null);
-  // The dialog focuses its close button first; the password field is what the person types into.
-  useEffect(() => {
-    const t = window.setTimeout(() => field.current?.focus(), 0);
-    return () => clearTimeout(t);
-  }, []);
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    try {
-      await api('/credentials/reauth', 'POST', { password });
-      setPassword('');
-      await onDone();
-    } catch (err) {
-      setPassword('');
-      setError((err as Error).message);
-    }
-  }
-  return (
-    <Modal title="Confirma tu contraseña" onClose={onClose}>
-      <form onSubmit={submit} className="form-grid">
-        <p className="wide">
-          Por seguridad, ver, copiar o usar secretos pide tu contraseña de ContaSuite. Vale cinco minutos.
-        </p>
-        <Field label="Tu contraseña de ContaSuite">
-          <input
-            ref={field}
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </Field>
-        {error && (
-          <p role="alert" className="error-banner wide">
-            {error}
-          </p>
-        )}
-        <div className="actions wide">
-          <button type="button" className={stitchButton} onClick={onClose}>
-            Cancelar
-          </button>
-          <button className={stitchPrimary}>Confirmar</button>
-        </div>
-      </form>
-    </Modal>
   );
 }
 
@@ -1137,13 +1082,13 @@ function ExportDialog({
   companies,
   companyId,
   onClose,
-  onNeedReauth,
+  onLocked,
   notify,
 }: {
   companies: Vault['companies'];
   companyId?: string;
   onClose: () => void;
-  onNeedReauth: (retry: () => Promise<void>) => void;
+  onLocked: () => void;
   notify: (s: string) => void;
 }) {
   const [reason, setReason] = useState('');
@@ -1155,8 +1100,8 @@ function ExportDialog({
       headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason, company_ids: onlyThis && companyId ? [companyId] : companies.map((c) => c.id) }),
     });
-    if (response.status === 428) {
-      onNeedReauth(run);
+    if (response.status === 423) {
+      onLocked();
       return;
     }
     if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || 'No se pudo exportar.');

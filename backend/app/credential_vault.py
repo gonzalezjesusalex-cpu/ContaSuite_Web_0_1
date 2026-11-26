@@ -1,7 +1,7 @@
 """Plan v1.1, Cambio 4: password manager on the existing vault (same router, tables and log).
 
-- Re-authentication: the person types their password again; revealing, copying, using or exporting a secret
-  needs it within the last five minutes (credential_api.recent_reauth).
+- Revealing, copying, using, importing or exporting a secret needs the vault unlocked in this session with the
+  master password (app/vault_master.py; the data key lives only in server memory, app/vault_session.py).
 - List by company and portal with search; user visible, password hidden; strength and repetition checked
   locally (no breach service).
 - FIEL/CSD/IMSS files encrypted outside the document folders, never indexed by CS-Storage nor sent to the agent,
@@ -20,7 +20,7 @@ from datetime import timedelta
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import Depends, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import Depends, File, Form, HTTPException, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, update
@@ -36,61 +36,19 @@ from .credential_api import (
     public_credential,
     ready,
     repeated_fingerprints,
-    require_recent,
+    require_unlocked,
     router,
 )
-from .credential_crypto import VaultCipher, VaultLocked, strength
+from . import vault_session
+from .credential_crypto import VaultLocked, strength
 from .credential_models import certificates, credentials, files, services, tickets, versions
 from .database import session
-from .models import Company, UserAccount, UserSession, now
+from .models import Company, now
 from .security import Principal, auth, utc
 
 MAX_FILE = 64 * 1024
 MAX_XLSX = 5 * 1024 * 1024
 TICKET_SECONDS = 60
-
-
-# ---------------------------------------------------------------- re-authentication
-
-
-class ReauthIn(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    password: str = Field(min_length=1, max_length=128)
-
-
-@router.post('/reauth')
-def reauth(payload: ReauthIn, request: Request, response: Response, p: Principal = Depends(auth), db=Depends(session)):
-    """Confirm the session owner's password; opens a five-minute window to see or use secrets."""
-    from .accounts import password_matches, throttle
-
-    no_cache(response)
-    if p.bootstrap or not p.session_id:
-        raise HTTPException(403, 'Se requiere una sesión personal.')
-    user = db.get(UserAccount, p.subject)
-    current = db.get(UserSession, p.session_id)
-    if not user or not current or current.revoked_at:
-        raise HTTPException(401, 'Sesión no válida.')
-    throttle(request, 'reauth:' + user.username)
-    if not password_matches(payload.password, user.password_hash):
-        event(db, p, None, 'reauth_failed')
-        db.commit()
-        raise HTTPException(403, 'Contraseña incorrecta.')
-    current.reauth_at = now()
-    event(db, p, None, 'reauth_confirmed')
-    db.commit()
-    return {'valid_seconds': 300}
-
-
-@router.get('/reauth')
-def reauth_state(response: Response, p: Principal = Depends(auth), db=Depends(session)):
-    from .credential_api import REAUTH_SECONDS, recent_reauth
-
-    no_cache(response)
-    current = db.get(UserSession, p.session_id) if p.session_id else None
-    left = 0
-    if recent_reauth(db, p):
-        left = max(0, REAUTH_SECONDS - int((now() - utc(current.reauth_at)).total_seconds()))
-    return {'active': left > 0, 'seconds_left': left}
 
 
 # ---------------------------------------------------------------- list and health
@@ -108,6 +66,7 @@ def vault_list(
     """Every credential the person may see, by company and portal, with search. Never a secret."""
     no_cache(response)
     ready(db)
+    require_unlocked(db, p, company_id, None)  # a locked vault shows no company data at all
     companies = db.scalars(select(Company).order_by(Company.name)).all()
     visible = {
         c.id: c
@@ -152,6 +111,7 @@ def vault_list(
     db.commit()
     from .credential_api import vault_unlocked
 
+    vault_session.touch(p.session_id)
     return {
         'items': items,
         'services': [{'id': k, 'label': v} for k, v in sorted(labels.items(), key=lambda kv: kv[1])],
@@ -163,7 +123,7 @@ def vault_list(
             'repeated': sum(1 for i in items if i['repeated']),
             'unknown': sum(1 for i in items if i['strength'] is None),
         },
-        'vault_unlocked': vault_unlocked(),
+        'vault_unlocked': vault_unlocked(p),
         'can_export': p.admin,
     }
 
@@ -244,10 +204,7 @@ async def add_file(
     elif data.lstrip().startswith(b'-----BEGIN') is False and data[:1] != b'\x30':
         raise HTTPException(422, 'No parece una llave privada .key del SAT.')
     file_id = str(uuid4())
-    try:
-        envelope = VaultCipher.from_environment().seal_bytes(data, cid, 'file:' + file_id)
-    except VaultLocked:
-        raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+    envelope = require_unlocked(db, p, cid, ident).seal_bytes(data, cid, 'file:' + file_id)
     db.execute(files.delete().where(files.c.credential_id == ident, files.c.file_kind == kind))
     db.execute(
         files.insert().values(
@@ -308,12 +265,14 @@ def ticket(
     ready(db)
     allowed(p, db, cid, 'reveal')
     row = credential_row(db, cid, ident)
-    require_recent(db, p, cid, ident)
+    require_unlocked(db, p, cid, ident)
     if payload.purpose == 'sat_fiel':
         kinds = {r[0] for r in db.execute(select(files.c.file_kind).where(files.c.credential_id == ident))}
         if not {'cer', 'key'} <= kinds:
             raise HTTPException(422, 'La FIEL necesita su .cer y su .key en el gestor.')
     token = tokens.token_urlsafe(32)
+    # The extension has no session: the ticket is exchanged with the data key of the session that issued it.
+    vault_session.remember_ticket(hashlib.sha256(token.encode()).hexdigest(), p.session_id, TICKET_SECONDS)
     db.execute(
         tickets.insert().values(
             token_hash=hashlib.sha256(token.encode()).hexdigest(),
@@ -348,7 +307,7 @@ def redeem(payload: dict, response: Response, db=Depends(session)):
     cred = credential_row(db, cid, ident)
     company = db.get(Company, cid)
     try:
-        cipher = VaultCipher.from_environment()
+        cipher = vault_session.cipher(vault_session.ticket_session(digest))
         secret = cipher.open(cred['envelope'], cid, ident, authorize_recent=lambda: True)
         out = {'purpose': row['purpose'], 'rfc': company.rfc, 'username': cred['username'], 'password': secret}
         if row['purpose'] == 'sat_fiel':
@@ -589,6 +548,7 @@ async def import_preview(
     no_cache(response)
     ready(db)
     p.require_admin()
+    require_unlocked(db, p, None, None)
     data = await file.read(MAX_XLSX + 1)
     await file.close()
     if len(data) > MAX_XLSX:
@@ -622,10 +582,7 @@ async def import_confirm(
     chosen = {int(r) for r in rows.split(',') if r.strip().isdigit()}
     records = [r for r in parse_workbook(data) if r['row'] in chosen]
     del data
-    try:
-        cipher = VaultCipher.from_environment()
-    except VaultLocked:
-        raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
+    cipher = require_unlocked(db, p, None, None)
     companies = {c.rfc.upper(): c for c in db.scalars(select(Company))}
     existing = {
         (r['company_id'], r['service_id'], r['holder'] or '', r['label'] or '')
@@ -709,18 +666,14 @@ class ExportIn(BaseModel):
 
 @router.post('/export')
 def export(payload: ExportIn, response: Response, p: Principal = Depends(auth), db=Depends(session)):
-    """Administrators only, with re-authentication and a reason: an Excel with the passwords in clear. The
+    """Administrators only, with the vault unlocked and a reason: an Excel with the passwords in clear. The
     screen warns that the file must be protected and deleted after use."""
     no_cache(response)
     ready(db)
     p.require_admin()
-    require_recent(db, p, None, None)
+    cipher = require_unlocked(db, p, None, None)
     from openpyxl import Workbook
 
-    try:
-        cipher = VaultCipher.from_environment()
-    except VaultLocked:
-        raise HTTPException(423, 'Bóveda bloqueada: falta configurar el proveedor de claves.') from None
     labels = dict(db.execute(select(services.c.id, services.c.label)).all())
     query = select(credentials, Company.name, Company.rfc).join(Company, Company.id == credentials.c.company_id)
     query = query.where(credentials.c.archived.is_(False))

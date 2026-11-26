@@ -1,5 +1,9 @@
 """Master keyring of the password manager (plan v1.1, Cambio 4). Run by the operator, never at startup.
 
+Since the renovación del gestor (fase 1, cs_0022) secrets are opened with the vault's master password, not with this
+keyring. It is read only once, when an administrator creates the vault from the screen, to re-wrap the envelopes
+sealed before; keep it (and its offline backup) until that is done and checked on the office computer.
+
 The keyring is protected with Windows DPAPI and written to <data-dir>/vault/keyring.dpapi; it never goes to the
 database, to .env or to the repository. Without it a database backup does not recover any secret, so make the
 offline backup right after creating it and keep it apart (USB in a safe, printed sheet…).

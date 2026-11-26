@@ -38,6 +38,10 @@ def vault(core, monkeypatch):
     lifecycle.create_all(sessions.kw['bind'])
     monkeypatch.setenv('CONTA_VAULT_KEYRING', json.dumps({'test-v1': base64.b64encode(os.urandom(32)).decode()}))
     monkeypatch.setenv('CONTA_VAULT_ACTIVE_KEY', 'test-v1')
+    from app import vault_session
+
+    # Fase 1: the synthetic administrator's session has the vault unlocked with a random data key.
+    vault_session.unlock(ADMIN.session_id, ADMIN.subject, 'dk-test', os.urandom(32), 5)
     return sessions
 
 
@@ -82,12 +86,16 @@ def test_store_redaction_isolation_history_and_reveal(vault):
         outsider = Principal('outsider', 'Outsider', False, frozenset({'company-b'}), session_id='fake')
         with pytest.raises(HTTPException):
             overview('company-a', Response(), outsider, db)
+        assert reveal('company-a', saved['id'], Response(), ADMIN, db)['secret'] == secret
+        from app import vault_session
+
+        vault_session.lock(ADMIN.session_id)
         with pytest.raises(HTTPException) as forbidden:
             reveal('company-a', saved['id'], Response(), ADMIN, db)
-        assert forbidden.value.status_code == 428  # allowed role, but no recent re-authentication
+        assert forbidden.value.status_code == 423  # allowed role, but the vault is locked
         from app.credential_models import grants
 
-        # Test explicit reveal grant still cannot bypass missing recent-auth adapter.
+        # An explicit reveal grant still cannot bypass a locked vault.
         from app.models import UserAccount
 
         db.add(
@@ -100,7 +108,8 @@ def test_store_redaction_isolation_history_and_reveal(vault):
         db.commit()
         with pytest.raises(HTTPException) as locked:
             reveal('company-a', saved['id'], Response(), ADMIN, db)
-        assert locked.value.status_code == 428
+        assert locked.value.status_code == 423
+        vault_session.unlock(ADMIN.session_id, ADMIN.subject, 'dk-test', os.urandom(32), 5)
         store(
             'company-a',
             CredentialIn(service_id='sat_password', secret='Other-synthetic', revision=1),
@@ -114,9 +123,10 @@ def test_store_redaction_isolation_history_and_reveal(vault):
         assert db.execute(select(credentials.c.archived)).scalar()
 
 
-def test_missing_keys_fail_closed(vault, monkeypatch):
-    monkeypatch.delenv('CONTA_VAULT_KEYRING')
-    monkeypatch.delenv('CONTA_VAULT_ACTIVE_KEY')
+def test_locked_vault_fails_closed(vault):
+    from app import vault_session
+
+    vault_session.lock(ADMIN.session_id)
     with vault() as db:
         with pytest.raises(HTTPException) as e:
             store(

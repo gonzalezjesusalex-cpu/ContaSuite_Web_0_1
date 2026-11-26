@@ -105,8 +105,14 @@ def test_responsible_rules_in_other_screens(office):
         'grants': [],
     }
     assert c.put('/api/auth/users/' + ana['id'], json=demote).status_code == 409
+    # Renovación del gestor, fase 1: the vault opens with a master password; Ana gets a temporary code.
+    master = 'Maestra-Sintetica-2026!'
+    assert c.post('/api/credentials/vault/setup', json={'password': master, 'confirm': master}).status_code == 201
+    code = c.post('/api/credentials/vault/members', json={'user_id': ana['id']}).json()['temporary_code']
     login(c, 'ana')
     assert assign(c, a, users['luis'], current=users['ana'], previous='keep').status_code == 403
+    assert c.get('/api/credentials/companies/' + a).status_code == 423  # locked: no company data
+    assert c.post('/api/credentials/vault/unlock', json={'password': code}).status_code == 200
     # Credentials: the responsible holds them (except reveal); another accountant with write does not.
     overview = c.get('/api/credentials/companies/' + a)
     assert overview.status_code == 200, overview.text

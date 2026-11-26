@@ -619,6 +619,20 @@ def keyring(monkeypatch):
     monkeypatch.setenv('CONTA_VAULT_ACTIVE_KEY', 'k1')
 
 
+MASTER = 'Maestra-Sintetica-2026!'
+
+
+def open_vault(client, password=MASTER):  # noqa: F811
+    """Create the vault the first time (administrator) or unlock it with the master password."""
+    if not client.get('/api/credentials/vault/state').json()['configured']:
+        made = client.post('/api/credentials/vault/setup', json={'password': password, 'confirm': password})
+        assert made.status_code == 201, made.text
+        return made.json()
+    opened = client.post('/api/credentials/vault/unlock', json={'password': password})
+    assert opened.status_code == 200, opened.text
+    return opened.json()
+
+
 def test_envelope_v2_strength_and_fingerprint():
     c = VaultCipher({'k1': os.urandom(32)}, 'k1')
     sealed = c.seal('Secreto-Sintetico-1!', 'c', 'r')
@@ -628,9 +642,10 @@ def test_envelope_v2_strength_and_fingerprint():
     assert strength('123456') <= 1 and strength('Secr3to!Largo2026') == 4 and strength('ssb100abcdefgh', RFC) <= 1
 
 
-def test_reveal_needs_permission_and_recent_reauth_and_is_logged(client, keyring):  # noqa: F811
+def test_reveal_needs_permission_and_unlocked_vault_and_is_logged(client, keyring):  # noqa: F811
     cid = company(client, name='Servicios Sintéticos', rfc=RFC).json()['id']
     setup(client)
+    open_vault(client)
     made = client.post(
         f'/api/credentials/companies/{cid}/secrets',
         json={'service_id': 'sat_password', 'secret': 'Secreto-Sintetico-1!', 'username': RFC},
@@ -643,9 +658,10 @@ def test_reveal_needs_permission_and_recent_reauth_and_is_logged(client, keyring
     listed = client.get('/api/credentials/vault').json()
     assert listed['health']['repeated'] == 2 and 'Secreto' not in json.dumps(listed)
     assert listed['items'][0]['username'] in (RFC, None)
-    assert client.post(f'/api/credentials/companies/{cid}/secrets/{ident}/reveal', json={}).status_code == 428
-    assert client.post('/api/credentials/reauth', json={'password': 'wrong'}).status_code == 403
-    assert client.post('/api/credentials/reauth', json={'password': PASSWORD}).status_code == 200
+    client.post('/api/credentials/vault/lock')
+    assert client.post(f'/api/credentials/companies/{cid}/secrets/{ident}/reveal', json={}).status_code == 423
+    assert client.post('/api/credentials/vault/unlock', json={'password': 'wrong'}).status_code == 403
+    open_vault(client)
     shown = client.post(
         f'/api/credentials/companies/{cid}/secrets/{ident}/reveal', json={'action': 'copy', 'reason': 'x'}
     )
@@ -669,13 +685,13 @@ def test_reveal_needs_permission_and_recent_reauth_and_is_logged(client, keyring
     add_user(client, 'aux', grants=[(cid, 'write')])
     client.cookies.clear()
     login(client, 'aux')
-    client.post('/api/credentials/reauth', json={'password': PASSWORD})
     assert client.post(f'/api/credentials/companies/{cid}/secrets/{ident}/reveal').status_code == 403
 
 
 def test_single_use_ticket_for_the_extension(client, keyring):  # noqa: F811
     cid = company(client, name='Servicios Sintéticos', rfc=RFC).json()['id']
     setup(client)
+    open_vault(client)
     ident = client.post(
         f'/api/credentials/companies/{cid}/secrets',
         json={'service_id': 'sat_password', 'secret': 'Secreto-Sintetico-1!'},
@@ -684,9 +700,16 @@ def test_single_use_ticket_for_the_extension(client, keyring):  # noqa: F811
         client.post(
             f'/api/credentials/companies/{cid}/secrets/{ident}/ticket', json={'purpose': 'sat_password'}
         ).status_code
-        == 428
+        == 200
     )
-    client.post('/api/credentials/reauth', json={'password': PASSWORD})
+    client.post('/api/credentials/vault/lock')
+    assert (
+        client.post(
+            f'/api/credentials/companies/{cid}/secrets/{ident}/ticket', json={'purpose': 'sat_password'}
+        ).status_code
+        == 423
+    )
+    open_vault(client)
     ticket = client.post(
         f'/api/credentials/companies/{cid}/secrets/{ident}/ticket', json={'purpose': 'sat_password'}
     ).json()['ticket']
@@ -722,6 +745,7 @@ def workbook(sheets):
 def test_import_of_both_excel_formats_never_shows_passwords(client, keyring):  # noqa: F811
     cid = company(client, name='Servicios Sintéticos', rfc=RFC).json()['id']
     setup(client)
+    open_vault(client)
     office = workbook(
         {
             'Hoja1': [
@@ -806,13 +830,15 @@ def test_import_of_both_excel_formats_never_shows_passwords(client, keyring):  #
         assert (c.workers, c.repse, c.business_activity) == (12, True, 'Comercio')
 
 
-def test_export_is_for_admins_with_reauth(client, keyring):  # noqa: F811
+def test_export_is_for_admins_with_unlocked_vault(client, keyring):  # noqa: F811
     cid = company(client, name='Servicios Sintéticos', rfc=RFC).json()['id']
     setup(client)
+    open_vault(client)
     client.post(
         f'/api/credentials/companies/{cid}/secrets', json={'service_id': 'sat_password', 'secret': 'Sec-1-Sint!'}
     )
-    assert client.post('/api/credentials/export', json={'reason': 'respaldo'}).status_code == 428
-    client.post('/api/credentials/reauth', json={'password': PASSWORD})
+    client.post('/api/credentials/vault/lock')
+    assert client.post('/api/credentials/export', json={'reason': 'respaldo'}).status_code == 423
+    open_vault(client)
     out = client.post('/api/credentials/export', json={'reason': 'respaldo'})
     assert out.status_code == 200 and out.content[:2] == b'PK'

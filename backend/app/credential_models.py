@@ -107,6 +107,37 @@ audit = Table(
     Column('created_at', DateTime(timezone=True), nullable=False),
     Column('metadata', JSON, nullable=False),
 )
+# cs_0022, renovación del gestor: one row per installation. Never stores the master password nor the data key.
+vault_config = Table(
+    'vault_config',
+    metadata,
+    Column('id', Integer, primary_key=True),
+    Column('data_key_id', String(36), nullable=False),
+    Column('auto_lock_minutes', Integer, nullable=False),
+    Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('created_by', String(100), nullable=False),
+    # How many sealed envelopes of the previous DPAPI keyring were re-wrapped when the vault was created.
+    Column('migrated', JSON, nullable=False),
+)
+# cs_0022: one wrapped copy of the data key per authorized person, plus the recovery code's copy. `kind` is
+# 'user' (own master password), 'invite' (temporary code given by the administrator; must be changed) or
+# 'recovery'. Failed attempts and the wait after five failures are kept on the person's own row.
+vault_keys = Table(
+    'vault_keys',
+    metadata,
+    Column('id', String(36), primary_key=True),
+    Column('kind', String(10), nullable=False),
+    Column('user_id', ForeignKey(UserAccount.id)),
+    Column('salt', String(64), nullable=False),
+    Column('kdf', JSON, nullable=False),
+    Column('wrapped_key', String(200), nullable=False),
+    Column('nonce', String(32), nullable=False),
+    Column('failed_attempts', Integer, nullable=False),
+    Column('blocked_until', DateTime(timezone=True)),
+    Column('created_at', DateTime(timezone=True), nullable=False),
+    Column('created_by', String(100), nullable=False),
+    UniqueConstraint('kind', 'user_id'),
+)
 settings = Table(
     'vault_alert_settings',
     metadata,

@@ -5585,6 +5585,88 @@ button.v2-cell.is-na {
   margin: 0;
   font-size: var(--fs-sm);
 }
+/* Renovación del gestor, fase 1: lock card, master password wizard and the unlocked bar. */
+.v2-vault-gatebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.v2-vault-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.v2-vault-lock {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 440px;
+  margin: 48px auto;
+  text-align: center;
+}
+.v2-vault-lock h2 {
+  margin: 0;
+}
+.v2-vault-lock-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-vault-lock-form {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+.v2-vault-recovery {
+  margin: 0;
+  padding: 12px 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.v2-link-button {
+  justify-self: center;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.v2-link-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+@media print {
+  .v2-vault-lock {
+    margin: 0;
+    box-shadow: none;
+  }
+  .v2-vault-lock button,
+  .v2-vault-lock .check-option {
+    display: none;
+  }
+}
 .v2-vault-layout {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
