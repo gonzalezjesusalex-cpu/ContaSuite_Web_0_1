@@ -351,7 +351,7 @@ export default function PilotImport({ onBack }: { onBack: () => void }) {
                   <Link to={'/empresas/' + id + '?tab=Documentos'}>Abrir expediente {i + 1}</Link>
                 </p>
               ))}
-              <Link to="/empresas?tab=Documentos">Consultar Documentos y bandeja de revisión</Link>
+              <Link to="/empresas?tab=documentos&sub=expedientes">Consultar Documentos y bandeja de revisión</Link>
             </div>
           ) : (
             <>

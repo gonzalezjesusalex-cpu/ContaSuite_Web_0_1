@@ -10,6 +10,17 @@ export const discardMessage = 'Hay cambios sin guardar. ¿Descartarlos y continu
 export const sidebar = (page: Page, name: string) =>
   page.getByRole('navigation').getByRole('link', { name, exact: true }).click();
 
+/** Dashboard principal › Empresas › Directorio (tab and sub-tab links). */
+export async function openDirectory(page: Page) {
+  await page
+    .getByRole('navigation', { name: 'Pestañas del Dashboard principal' })
+    .getByRole('link', { name: /^Empresas/ })
+    .click();
+  await page
+    .getByRole('navigation', { name: 'Subpestañas de Empresas' })
+    .getByRole('link', { name: 'Directorio' })
+    .click();
+}
 export async function login(page: Page) {
   await page.goto('/');
   await page.getByLabel('Usuario').fill(user);

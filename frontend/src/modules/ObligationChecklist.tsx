@@ -7,16 +7,11 @@ import {
   Clock3,
   Download,
   LayoutGrid,
-  List,
-  ListChecks,
   MinusCircle,
-  Search,
-  ShieldCheck,
   Table2,
   X,
 } from 'lucide-react';
 import { api, downloadApi } from '../api';
-import { Kpi } from '../components/ui';
 import { stitchButton, stitchPrimary } from '../components/stitch';
 import DocumentLights, { type CompanyLights } from './DocumentLights';
 import ObligationCatalog from './ObligationCatalog';
@@ -57,29 +52,6 @@ type Checklist = {
   companies: CompanyRow[];
   summary: Totals;
 };
-
-/** Summary of /integral/document-status (Plan v1.1, Cambio 1) used by the panel KPIs. */
-type DocSummary = {
-  active_rfcs: number;
-  physical: number;
-  moral: number;
-  sat: { positive: number; negative: number; none: number; percent: number };
-  expiring: { days: number; count: number };
-};
-const MONTHS = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
-];
 
 const date = (iso: string | null) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX') : '');
 
@@ -129,7 +101,7 @@ function groupBar(items: ChecklistItem[]) {
 }
 const typeName = (t: string) => (t === 'Física' ? 'Persona física' : t === 'Moral' ? 'Persona moral' : t || '—');
 
-/** Rediseño v2: one company card (Panel de empresas and Obligaciones › Vista tarjetas): type, RFC, responsible,
+/** Rediseño v2: one company card (Obligaciones › Matriz del mes, vista tarjetas): type, RFC, responsible,
  *  document traffic light and the obligations grouped by tax family, each group with its bar and boxes. */
 function CompanyCard({
   company: c,
@@ -198,15 +170,10 @@ export default function ObligationChecklist({
   period,
   companyId,
   notify,
-  variant,
-  onPeriod,
 }: {
   period: string;
   companyId?: string;
   notify: (s: string) => void;
-  /** Rediseño v2: «panel» is the Panel de empresas (KPIs, filters, cards or list); same data and boxes. */
-  variant?: 'panel';
-  onPeriod?: (period: string) => void;
 }) {
   const [year, month] = period.split('-').map(Number);
   const [data, setData] = useState<Checklist | null>(null);
@@ -222,9 +189,6 @@ export default function ObligationChecklist({
   const [busy, setBusy] = useState('');
   const [reload, setReload] = useState(0);
   const [showCatalog, setShowCatalog] = useState(false);
-  const [docSummary, setDocSummary] = useState<DocSummary | null>(null);
-  const [query, setQuery] = useState('');
-  const [view, setView] = useState<'cards' | 'list'>('cards');
   // Rediseño v2: cell of the matrix whose detail is shown on the side panel.
   const [selected, setSelected] = useState<{ company: string; obligation: string } | null>(null);
   const params = new URLSearchParams({
@@ -243,20 +207,14 @@ export default function ObligationChecklist({
       .then(setData)
       .catch((e) => !abort.signal.aborted && setError(e.message))
       .finally(() => !abort.signal.aborted && setLoading(false));
-    api<{ companies: CompanyLights[]; summary?: DocSummary }>(
+    api<{ companies: CompanyLights[] }>(
       '/integral/document-status' + (companyId ? '?company_id=' + companyId : ''),
       'GET',
       undefined,
       abort.signal,
     )
-      .then((d) => {
-        setLights(Object.fromEntries(d.companies.map((c) => [c.company_id, c])));
-        setDocSummary(d.summary || null);
-      })
-      .catch(() => {
-        setLights({});
-        setDocSummary(null);
-      });
+      .then((d) => setLights(Object.fromEntries(d.companies.map((c) => [c.company_id, c]))))
+      .catch(() => setLights({}));
     return () => abort.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.toString(), reload]);
@@ -290,269 +248,6 @@ export default function ObligationChecklist({
     data?.companies.some((c) => c.items.some((i) => i.obligation_id === d.id)),
   );
   const s = data?.summary;
-  if (variant === 'panel') {
-    const q = query.trim().toLowerCase();
-    const shown = (data?.companies || []).filter((c) => !q || (c.name + ' ' + c.rfc).toLowerCase().includes(q));
-    const totalCompanies = docSummary?.active_rfcs ?? Object.keys(lights).length;
-    const nowYear = new Date().getFullYear();
-    const years = Array.from({ length: nowYear + 1 - 2019 }, (_, i) => nowYear + 1 - i);
-    const setPeriodPart = (y: number, m: number) => onPeriod?.(`${y}-${String(m).padStart(2, '0')}`);
-    const sat = docSummary?.sat;
-    const hasOpinions = !!sat && sat.positive + sat.negative > 0;
-    // List view: only the tax families that some visible company has in the period.
-    const listGroups = groups.filter((g) => shown.some((c) => c.items.some((i) => i.group === g)));
-    return (
-      <div className="v11-checklist v2-panel" aria-busy={loading}>
-        <div className="v2-kpis">
-          <Kpi
-            label="Empresas activas"
-            icon={<Building2 size={18} aria-hidden />}
-            value={docSummary ? docSummary.active_rfcs : '—'}
-            detail={
-              docSummary ? `${docSummary.physical} físicas · ${docSummary.moral} morales` : 'Sin datos del semáforo'
-            }
-          />
-          <Kpi
-            label="Opinión SAT positiva"
-            icon={<ShieldCheck size={18} aria-hidden />}
-            value={hasOpinions ? sat!.percent + '%' : '—'}
-            detail={
-              sat
-                ? `${sat.positive} positivas · ${sat.negative} negativas · ${sat.none} sin opinión`
-                : 'Sin datos del semáforo'
-            }
-            tone={hasOpinions ? (sat!.negative ? 'red' : 'green') : 'neutral'}
-          />
-          <Kpi
-            label={'Obligaciones de ' + MONTHS[month - 1].toLowerCase()}
-            icon={<ListChecks size={18} aria-hidden />}
-            value={
-              s && s.total ? (
-                <>
-                  {s.done}/{s.total} <small>hechas</small>
-                </>
-              ) : (
-                '—'
-              )
-            }
-            detail={
-              s && s.total
-                ? `${s.pending} pendientes · ${s.overdue} vencidas`
-                : 'Sin obligaciones asignadas en el periodo'
-            }
-          >
-            {s && s.total > 0 && (
-              <span className="v2-bar" role="img" aria-label={`${Math.round((s.done / s.total) * 100)}% hechas`}>
-                <span style={{ width: (s.done / s.total) * 100 + '%' }} />
-              </span>
-            )}
-          </Kpi>
-          <Kpi
-            label="Documentos por vencer"
-            icon={<Clock3 size={18} aria-hidden />}
-            value={docSummary ? docSummary.expiring.count : '—'}
-            detail={
-              docSummary
-                ? `FIEL, opiniones y constancias en los próximos ${docSummary.expiring.days} días`
-                : 'Sin datos del semáforo'
-            }
-            tone={docSummary?.expiring.count ? 'amber' : 'neutral'}
-          />
-        </div>
-        <section className="v2-filters" aria-label="Filtros del panel">
-          <div className="v2-filter-row">
-            <select
-              aria-label="Año"
-              value={year}
-              disabled={!onPeriod}
-              onChange={(e) => setPeriodPart(Number(e.target.value), month)}
-            >
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  Año: {y}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Mes"
-              value={month}
-              disabled={!onPeriod}
-              onChange={(e) => setPeriodPart(year, Number(e.target.value))}
-            >
-              {MONTHS.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  Mes: {m}
-                </option>
-              ))}
-            </select>
-            {!companyId && (
-              <select
-                aria-label="Contador responsable"
-                value={responsible}
-                onChange={(e) => setResponsible(e.target.value)}
-              >
-                <option value="">Contador: Todos</option>
-                {accountants.map(([id, name]) => (
-                  <option key={id} value={id}>
-                    Contador: {name}
-                  </option>
-                ))}
-              </select>
-            )}
-            <label className="v2-search">
-              <Search size={16} aria-hidden />
-              <input
-                type="search"
-                aria-label="Buscar por nombre o RFC"
-                placeholder="Buscar por nombre o RFC…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="v2-filter-row">
-            {!companyId && (
-              <div className="v2-chips" role="group" aria-label="Filtros rápidos">
-                <button type="button" className="v2-chip" aria-pressed={pending} onClick={() => setPending((v) => !v)}>
-                  Con pendientes
-                </button>
-                <button
-                  type="button"
-                  className="v2-chip"
-                  aria-pressed={personType === 'Moral'}
-                  onClick={() => setPersonType((v) => (v === 'Moral' ? '' : 'Moral'))}
-                >
-                  Morales
-                </button>
-                <button
-                  type="button"
-                  className="v2-chip"
-                  aria-pressed={personType === 'Física'}
-                  onClick={() => setPersonType((v) => (v === 'Física' ? '' : 'Física'))}
-                >
-                  Físicas
-                </button>
-              </div>
-            )}
-            <div className="v2-filter-actions">
-              <div className="v2-segmented" role="group" aria-label="Vista del panel">
-                <button type="button" aria-pressed={view === 'cards'} onClick={() => setView('cards')}>
-                  <LayoutGrid size={16} aria-hidden /> Tarjetas
-                </button>
-                <button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')}>
-                  <List size={16} aria-hidden /> Lista
-                </button>
-              </div>
-              <button
-                type="button"
-                className={stitchButton}
-                onClick={() =>
-                  downloadApi('/fiscal-control/checklist.xlsx?' + params, `obligaciones_${period}.xlsx`).catch((e) =>
-                    notify(e.message),
-                  )
-                }
-              >
-                <Download size={16} aria-hidden /> Exportar a Excel
-              </button>
-            </div>
-          </div>
-        </section>
-        {error && (
-          <p role="alert" className="error-banner">
-            {error}
-          </p>
-        )}
-        {loading && !data && <p role="status">Consultando empresas y obligaciones…</p>}
-        {data && shown.length === 0 && (
-          <p className="v2-empty muted">
-            {data.companies.length
-              ? 'Ninguna empresa coincide con la búsqueda.'
-              : 'No hay obligaciones asignadas en este periodo. Se proponen al registrar o actualizar una empresa con su Constancia de Situación Fiscal.'}
-          </p>
-        )}
-        {data && view === 'cards' && shown.length > 0 && (
-          <div className="v2-company-cards">
-            {shown.map((c) => (
-              <CompanyCard
-                key={c.id}
-                company={c}
-                lights={lights[c.id]}
-                groups={groups}
-                busy={busy}
-                onToggle={toggle}
-                openAll={!!companyId}
-              />
-            ))}
-          </div>
-        )}
-        {data && view === 'list' && shown.length > 0 && (
-          <div className="v2-list-scroll">
-            <table className="v2-list">
-              <thead>
-                <tr>
-                  <th scope="col">Empresa</th>
-                  <th scope="col">Semáforo</th>
-                  {listGroups.map((g) => (
-                    <th scope="col" key={g}>
-                      {g}
-                    </th>
-                  ))}
-                  <th scope="col">Avance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((c) => (
-                  <tr key={c.id}>
-                    <th scope="row">
-                      {c.name}
-                      <small className="rfc">{c.rfc}</small>
-                    </th>
-                    <td>{lights[c.id] ? <DocumentLights company={lights[c.id]} compact /> : '—'}</td>
-                    {listGroups.map((g) => {
-                      const items = c.items.filter((i) => i.group === g);
-                      if (!items.length) return <td key={g}>—</td>;
-                      const { done, tone } = groupBar(items);
-                      return (
-                        <td key={g} className={'v11-group-count' + tone}>
-                          {done}/{items.length}
-                        </td>
-                      );
-                    })}
-                    <td className={c.overdue ? 'v11-progress is-overdue' : 'v11-progress'}>
-                      {c.done}/{c.total}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <footer className="v2-legend">
-          <ul aria-label="Leyenda del semáforo">
-            <li className="is-green">
-              <CheckCircle2 size={16} aria-hidden /> Vigente
-            </li>
-            <li className="is-amber">
-              <Clock3 size={16} aria-hidden /> Por vencer
-            </li>
-            <li className="is-red">
-              <AlertCircle size={16} aria-hidden /> Vencido o negativo
-            </li>
-            <li className="is-gray">
-              <MinusCircle size={16} aria-hidden /> Sin documento o no aplica
-            </li>
-          </ul>
-          {data && (
-            <span>
-              Mostrando {shown.length} de {totalCompanies} empresas activas
-              {totalCompanies > data.companies.length && ' · las demás no tienen obligaciones asignadas en el periodo'}
-            </span>
-          )}
-        </footer>
-      </div>
-    );
-  }
-
   const selectedCompany = selected ? data?.companies.find((c) => c.id === selected.company) : undefined;
   const selectedItem = selectedCompany?.items.find((i) => i.obligation_id === selected?.obligation);
   return (

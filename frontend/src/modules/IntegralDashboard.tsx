@@ -1,9 +1,8 @@
-import DocumentSummary from './DocumentSummary';
 import { useEffect, useState } from 'react';
 import { can } from '../permissions';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { Kpi, Modal, Field } from '../components/ui';
+import { Modal, Field } from '../components/ui';
 import { stitchCard, stitchButton, stitchPrimary } from '../components/stitch';
 import type { Summary } from './fiscalRead';
 import type { State } from '../types';
@@ -98,22 +97,15 @@ type Cfdi = {
   state: string;
   responsible: string;
 };
-const states: Record<string, string> = {
-  fulfilled: 'Cumplidas registradas',
-  pending: 'Pendientes',
-  in_progress: 'En proceso',
-  unreviewed: 'Sin revisar (incluye implícitas)',
-  not_applicable: 'No aplica',
-  overdue: 'Vencidas con fecha verificada',
-};
 export default function IntegralDashboard({
   state,
   period,
-  view = 'Dashboard general',
+  view,
 }: {
   state: State;
   period: string;
-  view?: string;
+  /** Dashboard principal: Empresas › Calidad de datos, Documentos › Opiniones y Obligaciones › Seguimiento CFDI. */
+  view: 'Calidad de datos' | 'Opiniones de cumplimiento' | 'Seguimiento CFDI';
 }) {
   const [context, setContext] = useSearchParams();
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -124,7 +116,6 @@ export default function IntegralDashboard({
     [reload, setReload] = useState(0),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(false),
-    [selected, setSelected] = useState<RecordRow | null>(null),
     [form, setForm] = useState(false),
     [busy, setBusy] = useState(false);
   const [authority, setAuthority] = useState('SAT'),
@@ -221,11 +212,11 @@ export default function IntegralDashboard({
     <section className={stitchCard + ' padded stitch-live-module integral-dashboard'}>
       <div className="card-title">
         <div>
-          <h2>{view === 'Dashboard general' ? 'Dashboard General del Despacho' : view}</h2>
+          <h2>{view}</h2>
           <p>Período {period} · Registros internos; sin consultas automáticas a autoridades.</p>
         </div>
         <button className={stitchButton} onClick={() => setReload((n) => n + 1)}>
-          Actualizar indicadores y alertas
+          Actualizar
         </button>
       </div>
       <div className="toolbar">
@@ -272,214 +263,8 @@ export default function IntegralDashboard({
           {error}
         </p>
       )}
-      {view === 'Dashboard general' && (
-        <DocumentSummary admin={state.current_user.admin} notify={(m) => setError(m)} />
-      )}
       {data && (
         <>
-          {view === 'Dashboard general' && (
-            <section className="card padded">
-              <h3>Alertas y vencimientos</h3>
-              {!data.lifecycle.available ? (
-                <p>Resumen Lote 4 pendiente de activar el esquema.</p>
-              ) : (
-                <>
-                  <p>{data.lifecycle.scope}</p>
-                  <div className="kpi-grid four">
-                    {[
-                      ['Alertas pendientes', data.lifecycle.pending_alerts],
-                      ['Certificados próximos', data.lifecycle.expiring_certificates],
-                      ['Certificados vencidos', data.lifecycle.expired_certificates],
-                      ['Obligaciones próximas', data.lifecycle.upcoming_obligations],
-                      ['Obligaciones vencidas', data.lifecycle.overdue_obligations],
-                      ['Evidencias por revisar', data.lifecycle.evidence_pending],
-                    ].map(([label, value]) => (
-                      <Kpi
-                        key={String(label)}
-                        label={String(label)}
-                        value={value ?? 'Sin información'}
-                        detail="Fuentes autorizadas y filtros actuales"
-                      />
-                    ))}
-                  </div>
-                  <p>{data.lifecycle.evidence_reason}</p>
-                </>
-              )}
-            </section>
-          )}
-          {view === 'Dashboard general' && (
-            <>
-              <div className="kpi-grid four">
-                {[
-                  ['Empresas registradas', data.company_counts.registered],
-                  ['Activas confirmadas', data.company_counts.active_confirmed],
-                  ['Actividad sin confirmar', data.company_counts.activity_unknown],
-                  ['Con obligaciones en período', data.company_counts.in_period],
-                  ['Cumplimiento verificado por despacho', data.obligations.verified_fulfilled],
-                  ['Cumplidas sin verificación', data.obligations.fulfilled_unverified],
-                ].map(([label, value]) => (
-                  <Kpi
-                    key={String(label)}
-                    label={String(label)}
-                    value={value ?? 'Sin información'}
-                    detail="Registros autorizados"
-                  />
-                ))}
-                {Object.entries(data.obligations.counts || {}).map(([key, value]) => (
-                  <Kpi
-                    key={key}
-                    label={states[key] || key}
-                    value={value}
-                    detail={`De ${data.obligations.summary?.universe ?? 0} celdas · ${data.obligations.summary?.registered ?? 0} registradas`}
-                  />
-                ))}
-              </div>
-              {!data.obligations.available && (
-                <p className="info-box">
-                  Control de obligaciones pendiente de activación; no se interpretan sus datos faltantes como cero.
-                </p>
-              )}
-              <h3>Certificados públicos</h3>
-              {!data.certificates.available ? (
-                <p>Fuente de certificados pendiente de activación.</p>
-              ) : (
-                <>
-                  <p>
-                    Sin certificados registrados en empresas con permiso de metadatos:{' '}
-                    {data.certificates.without_registered_certificate}
-                  </p>
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Empresa</th>
-                          <th>Tipo / origen</th>
-                          <th>Vigencia temporal</th>
-                          <th>Días</th>
-                          <th>Última revisión</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.certificates.records.map((c) => (
-                          <tr key={c.id}>
-                            <td>{name(c.company_id)}</td>
-                            <td>
-                              {c.kind} · {c.origin}
-                            </td>
-                            <td>
-                              {c.state} · {c.valid_until?.slice(0, 10) || 'Sin fecha confiable'}
-                            </td>
-                            <td>{c.days_remaining ?? '—'}</td>
-                            <td>{c.reviewed_at.slice(0, 10)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-              <h3>Documentos y disponibilidad</h3>
-              <div className="kpi-grid four">
-                <Kpi label="Documentos indexados" value={data.documents.indexed} detail="Catálogo registrado" />
-                <Kpi label="Asociados" value={data.documents.associated} detail="Empresas del filtro" />
-                <Kpi
-                  label="Pendientes de clasificación virtual"
-                  value={data.documents.pending}
-                  detail="Requieren revisión"
-                />
-                <Kpi
-                  label="Sin documentos vinculados"
-                  value={data.documents.companies_without_documents}
-                  detail="No significa expediente incompleto"
-                />
-              </div>
-              <p>Último escaneo exitoso: {data.documents.last_successful_scan || 'Sin análisis exitoso registrado'}</p>
-              {data.documents.sources?.map((s) => (
-                <p key={s.id}>
-                  Origen {s.id}: {s.state} · {s.checked_at || 'Sin comprobar'}
-                </p>
-              ))}
-              <h3>Trabajo por responsable</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Responsable</th>
-                      <th>Empresas</th>
-                      <th>Pendientes</th>
-                      <th>En proceso</th>
-                      <th>Tareas completadas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.workload.map((w) => (
-                      <tr key={w.responsible}>
-                        <td>{w.responsible}</td>
-                        <td>{w.companies}</td>
-                        <td>{w.pending}</td>
-                        <td>{w.in_progress}</td>
-                        <td>{w.completed_tasks}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p>
-                Las tareas completadas incluyen todos los períodos: no hay fecha de ejecución registrada. Estos conteos
-                no representan por sí solos productividad.
-              </p>
-              <h3>Alertas integradas actuales</h3>
-              <p>
-                Se muestran hasta 100 alertas de {data.alerts_total}. Consulta Documentos para revisar el catálogo
-                completo.
-              </p>
-              {data.alerts.slice(0, 100).map((a) => (
-                <p key={a.id}>
-                  <button
-                    className={stitchButton}
-                    onClick={() => {
-                      const r = data.obligations.records.find((r) => r.id === a.reference);
-                      if (r) setSelected(r);
-                    }}
-                  >
-                    {name(a.company_id)} · {a.kind} · {a.priority}
-                  </button>{' '}
-                  <Link to={a.href}>Abrir expediente · {a.reference}</Link>
-                </p>
-              ))}
-            </>
-          )}
-          {(view === 'Dashboard general' || view === 'Calendario fiscal') && (
-            <>
-              <h3>Obligaciones del período</h3>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Empresa</th>
-                      <th>Obligación</th>
-                      <th>Estado</th>
-                      <th>Fecha límite verificada</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.obligations.records.map((r) => (
-                      <tr key={r.id}>
-                        <td>{name(r.company_id)}</td>
-                        <td>
-                          <button className={stitchButton} onClick={() => setSelected(r)}>
-                            {data.obligations.catalog.find((c) => c.id === r.obligation_id)?.label || r.obligation_id}
-                          </button>
-                        </td>
-                        <td>{states[r.effective_status] || r.effective_status}</td>
-                        <td>{r.due_verified ? r.due_date : 'Sin fecha verificada'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
           {view === 'Calidad de datos' && (
             <>
               <p>Incidencias de revisión, sin eliminación ni corrección automática.</p>
@@ -533,28 +318,6 @@ export default function IntegralDashboard({
             </>
           )}
         </>
-      )}
-      {selected && (
-        <Modal title="Registro exacto de obligación" onClose={() => setSelected(null)}>
-          <div className="padded">
-            <p>
-              ID {selected.id} · Revisión {selected.revision}
-            </p>
-            <p>
-              {name(selected.company_id)} · {period} · {states[selected.effective_status]}
-            </p>
-            <p>La clasificación o presencia de documentos no cambia este estado.</p>
-            {selected.virtual_evidence?.map((e) => (
-              <p key={e.version_id}>Evidencia disponible: {e.document_id} · sin verificación automática</p>
-            ))}
-            <Link
-              className={stitchButton}
-              to={'/empresas/' + selected.company_id + '?tab=Cumplimiento&period=' + period}
-            >
-              Abrir expediente
-            </Link>
-          </div>
-        </Modal>
       )}
       {form && (
         <Modal

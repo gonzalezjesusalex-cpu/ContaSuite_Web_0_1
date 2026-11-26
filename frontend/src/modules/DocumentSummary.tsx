@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Settings2 } from 'lucide-react';
 import { api } from '../api';
 import { stitchButton } from '../components/stitch';
+import { dashboardUrl } from '../companyNavigation';
 import { ICONS, STATE_TEXT, type CompanyLights, type Light } from './DocumentLights';
 import './v11.css';
 
-type Summary = {
+export type DocSummary = {
   active_rfcs: number;
   physical: number;
   moral: number;
@@ -17,49 +19,102 @@ type Summary = {
   };
   states: Record<Light['kind'], Record<Light['state'], number>>;
 };
-type Validity = Record<string, [number, number]>;
-const LABEL: Record<string, string> = {
+export type Validity = Record<string, [number, number]>;
+export type DocStatus = { companies: CompanyLights[]; summary: DocSummary; validity: Validity };
+
+export const DOC_LABEL: Record<Light['kind'], string> = {
+  fiel: 'FIEL',
+  csf: 'Constancia de Situación Fiscal',
+  sat: 'Opinión SAT',
+  imss: 'Opinión IMSS',
+  infonavit: 'Infonavit',
+};
+const VALIDITY_LABEL: Record<string, string> = {
   fiel: 'FIEL (días antes de vencer)',
   csf: 'Constancia de Situación Fiscal',
   sat: 'Opinión SAT',
   infonavit: 'Infonavit',
   imss: 'Opinión IMSS',
 };
-const KINDS: Light['kind'][] = ['fiel', 'csf', 'sat', 'infonavit', 'imss'];
+/** Filas y columnas del semáforo: documentos en su orden y estados por gravedad. */
+export const DOC_KINDS: Light['kind'][] = ['fiel', 'csf', 'sat', 'imss', 'infonavit'];
+export const SEVERITY_ORDER: Light['state'][] = ['red', 'amber', 'gray', 'green', 'na'];
+export const SOON_CHOICES = [3, 7, 15, 30];
 
-/** Plan v1.1: summary cards of the document traffic light for the office dashboard. */
-export default function DocumentSummary({ admin, notify }: { admin: boolean; notify: (s: string) => void }) {
-  const [soon, setSoon] = useState(7);
-  const [data, setData] = useState<{ companies: CompanyLights[]; summary: Summary; validity: Validity } | null>(null);
+/** Vigencia bajo cada documento, leída de la configuración de vigencias (días de ámbar = plazo del documento). */
+export function validityText(kind: Light['kind'], validity: Validity | undefined) {
+  if (kind === 'fiel') return 'según certificado';
+  const days = validity?.[kind]?.[1];
+  const text = days === undefined ? '' : days <= 1 ? 'diaria' : `${days} días`;
+  return kind === 'infonavit' ? [text, 'opcional'].filter(Boolean).join(' · ') : text;
+}
+/** Totales del bloque y de la tarjeta Documentos en riesgo: vencidos (rojo) y por vencer dentro del plazo elegido. */
+export function riskTotals(s: DocSummary) {
+  const count = (state: Light['state']) => DOC_KINDS.reduce((n, k) => n + (s.states[k]?.[state] ?? 0), 0);
+  return { expired: count('red'), soon: s.expiring.count, missing: count('gray') };
+}
+
+/** «Por vencer en»: un solo valor por usuario, compartido por el semáforo y la tarjeta (preferencia del navegador). */
+const soonKey = (userId: string) => 'contasuite-soon-days:' + userId;
+export function savedSoon(userId: string) {
+  try {
+    const value = Number(localStorage.getItem(soonKey(userId)));
+    return SOON_CHOICES.includes(value) ? value : 7;
+  } catch {
+    return 7;
+  }
+}
+export function saveSoon(userId: string, days: number) {
+  try {
+    localStorage.setItem(soonKey(userId), String(days));
+  } catch {
+    /* sin almacenamiento: vuelve a 7 días al recargar */
+  }
+}
+
+/** Plan v1.1 / Dashboard principal: semáforo documental del despacho como tabla (sin barras). */
+export default function DocumentSummary({
+  data,
+  soon,
+  onSoon,
+  admin,
+  onSaved,
+  notify,
+}: {
+  data: DocStatus;
+  soon: number;
+  onSoon: (days: number) => void;
+  admin: boolean;
+  onSaved: () => void;
+  notify: (s: string) => void;
+}) {
   const [editing, setEditing] = useState(false);
-  const [reload, setReload] = useState(0);
-  useEffect(() => {
-    api<{ companies: CompanyLights[]; summary: Summary; validity: Validity }>('/integral/document-status?soon=' + soon)
-      .then(setData)
-      .catch(() => setData(null));
-  }, [soon, reload]);
-  if (!data) return null;
   const s = data.summary;
+  const totals = riskTotals(s);
   async function save(kind: string, green: number, amber: number) {
     try {
       await api('/integral/document-validity', 'PUT', { kind, green_days: green, amber_days: amber });
-      setReload((n) => n + 1);
+      onSaved();
     } catch (e) {
       notify((e as Error).message);
     }
   }
   return (
-    <section className="card padded v11-summary">
+    <section className="card padded v11-summary v2-semaforo" aria-labelledby="semaforo-title">
       <div className="card-title">
         <div>
-          <h3>Semáforo documental</h3>
-          <p className="muted">Vigencias del despacho · lecturas de documentos, sin consulta a autoridades.</p>
+          <h2 id="semaforo-title">Semáforo documental</h2>
+          <p className="muted">Según los documentos cargados; no consulta al SAT ni al IMSS.</p>
+          <p className="v2-semaforo-totals">
+            <span className={totals.expired ? 'is-red' : undefined}>{totals.expired} vencidos</span> ·{' '}
+            <span>{totals.soon} por vencer</span> · <span>{totals.missing} sin documento</span>
+          </p>
         </div>
         <div className="actions">
-          <label>
-            Por vencer en{' '}
-            <select aria-label="Días para por vencer" value={soon} onChange={(e) => setSoon(Number(e.target.value))}>
-              {[3, 7, 15, 30].map((d) => (
+          <label className="v2-inline-field">
+            Por vencer en
+            <select aria-label="Por vencer en" value={soon} onChange={(e) => onSoon(Number(e.target.value))}>
+              {SOON_CHOICES.map((d) => (
                 <option key={d} value={d}>
                   {d} días
                 </option>
@@ -68,54 +123,62 @@ export default function DocumentSummary({ admin, notify }: { admin: boolean; not
           </label>
           {admin && (
             <button className={stitchButton} aria-pressed={editing} onClick={() => setEditing((v) => !v)}>
-              Vigencias
+              <Settings2 size={16} aria-hidden /> Configurar vigencias
             </button>
           )}
         </div>
       </div>
-      {/* Rediseño v2: los KPIs (RFC activos, opinión SAT, por vencer) están en el Panel de empresas. */}
-      <p className="muted v11-expiring-note">
-        {s.expiring.count} documentos por vencer en los próximos {s.expiring.days} días.
-      </p>
-      <div className="v11-state-grid" role="table" aria-label="Estados del semáforo por documento">
-        <div role="row" className="v11-state-head">
-          <span role="columnheader">Documento</span>
-          {(['green', 'amber', 'red', 'gray', 'na'] as const).map((st) => (
-            <span role="columnheader" key={st} className={'is-' + st}>
-              {STATE_TEXT[st]}
-            </span>
-          ))}
-        </div>
-        {KINDS.map((k) => {
-          const Icon = ICONS[k];
-          return (
-            <div role="row" key={k}>
-              <span role="rowheader">
-                <Icon size={15} aria-hidden /> {LABEL[k].replace(' (días antes de vencer)', '')}
-              </span>
-              {(['green', 'amber', 'red', 'gray', 'na'] as const).map((st) => (
-                <span role="cell" key={st}>
-                  {s.states[k]?.[st] ?? 0}
-                </span>
+      <div className="table-wrap">
+        <table className="v2-semaforo-table">
+          <caption className="sr-only">Estados del semáforo por documento</caption>
+          <thead>
+            <tr>
+              <th scope="col">Documento</th>
+              {SEVERITY_ORDER.map((st) => (
+                <th scope="col" key={st} className={'is-' + st}>
+                  {STATE_TEXT[st]}
+                </th>
               ))}
-            </div>
-          );
-        })}
+            </tr>
+          </thead>
+          <tbody>
+            {DOC_KINDS.map((k) => {
+              const Icon = ICONS[k];
+              return (
+                <tr key={k}>
+                  <th scope="row">
+                    <span className="v2-semaforo-doc">
+                      <Icon size={15} aria-hidden />
+                      <span>
+                        {DOC_LABEL[k]}
+                        <small>{validityText(k, data.validity)}</small>
+                      </span>
+                    </span>
+                  </th>
+                  {SEVERITY_ORDER.map((st) => {
+                    const n = s.states[k]?.[st] ?? 0;
+                    return (
+                      <td key={st}>
+                        {n === 0 ? (
+                          <span className="v2-zero">0</span>
+                        ) : (
+                          <Link
+                            className={st === 'na' ? 'v2-count-link' : 'v2-count is-' + st}
+                            to={dashboardUrl('documentos', 'semaforo', { doc: k, estado: st })}
+                            aria-label={`${n} ${DOC_LABEL[k]} en estado ${STATE_TEXT[st].toLowerCase()}`}
+                          >
+                            {n}
+                          </Link>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
-      {s.expiring.items.length > 0 && (
-        <details>
-          <summary>Ver documentos por vencer</summary>
-          <ul>
-            {s.expiring.items.map((e) => (
-              <li key={e.company_id + e.kind}>
-                <Link to={'/empresas/' + e.company_id}>{e.name}</Link> ·{' '}
-                {LABEL[e.kind].replace(' (días antes de vencer)', '')} ·{' '}
-                {new Date(e.expires + 'T12:00:00').toLocaleDateString('es-MX')}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
       {editing && (
         <div className="v11-validity">
           <p className="muted">
@@ -146,7 +209,7 @@ function ValidityRow({
   const [a, setA] = useState(amber);
   return (
     <div className="v11-validity-row">
-      <span>{LABEL[kind] || kind}</span>
+      <span>{VALIDITY_LABEL[kind] || kind}</span>
       {kind !== 'fiel' && (
         <label>
           Verde hasta <input type="number" min={0} max={365} value={g} onChange={(e) => setG(Number(e.target.value))} />{' '}

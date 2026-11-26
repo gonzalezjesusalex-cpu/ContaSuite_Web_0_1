@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
-import { company, password as passwordOf, sidebar, user } from './helpers';
+import { company, password as passwordOf, sidebar, user, openDirectory } from './helpers';
 
 // Minimal end-to-end smoke test against a throwaway synthetic server (scripts/e2e_server.py):
 // first access, login, companies, dossier, and document upload/download. No real data is involved.
@@ -33,12 +33,15 @@ test('primer acceso, sesión, empresas, expediente y documentos', async ({ page 
 
   await test.step('registrar una empresa y verla en el directorio', async () => {
     await sidebar(page, 'Empresas');
-    await expect(page.getByRole('heading', { name: 'Centro de Control Fiscal' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Dashboard principal' })).toBeVisible();
     // Empty directory: real next steps only, no fictitious Stitch/DEMO data offered.
-    await page.getByRole('button', { name: /^Directorio/ }).click();
+    await openDirectory(page);
     const empty = page.locator('.directory .empty');
     await expect(empty.getByRole('heading', { name: 'Comienza con tu primera empresa' })).toBeVisible();
-    await expect(empty.getByRole('link', { name: 'Importar cartera' })).toHaveAttribute('href', /tab=Importar/);
+    await expect(empty.getByRole('link', { name: 'Importar cartera' })).toHaveAttribute(
+      'href',
+      /tab=empresas&sub=importar/,
+    );
     await expect(page.getByText(/ejemplo DEMO|ejemplo de Stitch/)).toHaveCount(0);
     await empty.getByRole('link', { name: 'Registrar empresa' }).click();
     // Bloque 1: the form opens on the Constancia card; this flow captures by hand.
@@ -56,7 +59,7 @@ test('primer acceso, sesión, empresas, expediente y documentos', async ({ page 
     await expect(page).toHaveURL(/\/empresas\/[0-9a-f-]{36}(\?|$)/);
     await expect(page.getByRole('heading', { level: 1, name: company.name })).toBeVisible();
     await sidebar(page, 'Empresas');
-    await page.getByRole('button', { name: /^Directorio/ }).click();
+    await openDirectory(page);
     await expect(page.getByRole('cell', { name: company.rfc })).toBeVisible();
   });
 

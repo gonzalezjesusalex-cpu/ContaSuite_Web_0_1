@@ -1,28 +1,33 @@
 import { writeFile } from 'node:fs/promises';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { company, login, sidebar } from './helpers';
+import { company, login, sidebar, openDirectory } from './helpers';
 
 // WCAG AA text contrast (axe-core rule color-contrast) on the main screens in the three themes.
 const themes = ['light', 'dark', 'contrast'] as const;
 
 async function companyId(page: Page) {
   await sidebar(page, 'Empresas');
-  await page.getByRole('button', { name: /^Directorio/ }).click();
+  await openDirectory(page);
   const href = await page.getByRole('link', { name: 'Abrir ' + company.name }).getAttribute('href');
   return href!.split('?')[0];
 }
 
 const screens: [string, (page: Page, dossier: string) => string][] = [
   ['Inicio', () => '/'],
-  ['Empresas · Panel', () => '/empresas?tab=Panel'],
-  ['Empresas · Directorio', () => '/empresas?tab=Directorio'],
-  ['Empresas · Documentos', () => '/empresas?tab=Documentos'],
-  ['Empresas · Expedientes', () => '/empresas?tab=Documentos&vista=Expedientes+por+empresa'],
-  ['Empresas · Obligaciones', () => '/empresas?tab=Obligaciones'],
-  ['Empresas · Credenciales', () => '/empresas?tab=Credenciales'],
-  ['Empresas · Alertas', () => '/empresas?tab=Credenciales&vista=Centro+de+alertas'],
-  ['Empresas · Importar', () => '/empresas?tab=Importar'],
+  ['Dashboard · Resumen', () => '/empresas?tab=resumen'],
+  ['Dashboard · Directorio', () => '/empresas?tab=empresas&sub=directorio'],
+  ['Dashboard · Calidad de datos', () => '/empresas?tab=empresas&sub=calidad'],
+  ['Dashboard · Importar', () => '/empresas?tab=empresas&sub=importar'],
+  ['Dashboard · Semáforo', () => '/empresas?tab=documentos&sub=semaforo'],
+  ['Dashboard · Opiniones', () => '/empresas?tab=documentos&sub=opiniones'],
+  ['Dashboard · Expedientes', () => '/empresas?tab=documentos&sub=expedientes'],
+  ['Dashboard · Matriz del mes', () => '/empresas?tab=obligaciones&sub=matriz'],
+  ['Dashboard · Seguimiento CFDI', () => '/empresas?tab=obligaciones&sub=cfdi'],
+  ['Dashboard · Calendario', () => '/empresas?tab=obligaciones&sub=calendario'],
+  ['Gestor de contraseñas', () => '/gestor-contrasenas'],
+  ['Configuración · Alertas', () => '/configuracion/alertas'],
+  ['Configuración · Alertas · Historial', () => '/configuracion/alertas?sub=historial'],
   ['Alta de empresa', () => '/empresas/nueva'],
   ['Expediente · Resumen', (_, d) => d],
   ['Expediente · Documentos', (_, d) => d + '?tab=Documentos'],

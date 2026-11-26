@@ -94,14 +94,60 @@ for (const [screen, url] of [
 test('pestañas de secciones con Enter y Espacio', async ({ page }) => {
   await login(page);
   await page.goto('/empresas');
-  const tabs = page.getByRole('group', { name: 'Secciones de Empresas' });
-  await tabs.getByRole('button', { name: 'Obligaciones' }).focus();
+  await expect(page.getByRole('heading', { name: 'Dashboard principal' })).toBeVisible();
+  await expect(page.getByText('Lo que requiere tu atención este periodo.')).toBeVisible();
+  const tabs = page.getByRole('navigation', { name: 'Pestañas del Dashboard principal' });
+  await expect(tabs.getByRole('link', { name: 'Resumen' })).toHaveAttribute('aria-current', 'page');
+  await tabs.getByRole('link', { name: 'Obligaciones' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/tab=Obligaciones/);
-  await tabs.getByRole('button', { name: /^Directorio/ }).focus();
-  await page.keyboard.press('Space');
-  await expect(page).toHaveURL(/tab=Directorio/);
-  await expect(tabs.getByRole('button', { name: /^Directorio/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page).toHaveURL(/tab=obligaciones&sub=matriz/);
+  await expect(page.getByLabel('Periodo')).toBeVisible();
+  await tabs.getByRole('link', { name: /^Empresas/ }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/tab=empresas&sub=directorio/);
+  await expect(tabs.getByRole('link', { name: /^Empresas/ })).toHaveAttribute('aria-current', 'page');
+  // Empresas does not depend on the period: no period control there.
+  await expect(page.getByLabel('Periodo')).toHaveCount(0);
+  // The view survives a reload.
+  await page.reload();
+  await expect(
+    page.getByRole('navigation', { name: 'Subpestañas de Empresas' }).getByRole('link', { name: 'Directorio' }),
+  ).toHaveAttribute('aria-current', 'page');
+});
+
+test('campana de alertas: se abre, se cierra con Escape y lleva a Configuración › Alertas', async ({ page }) => {
+  await login(page);
+  await page.goto('/empresas');
+  const bell = page.getByRole('button', { name: /^Alertas:/ });
+  await bell.click();
+  const menu = page.getByRole('region', { name: 'Alertas activas más recientes' });
+  await expect(menu).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(bell).toBeFocused();
+  await bell.click();
+  await menu.getByRole('link', { name: 'Ver todas' }).click();
+  await expect(page).toHaveURL(/\/configuracion\/alertas/);
+  await expect(page.getByRole('heading', { name: /^Alertas/ })).toBeVisible();
+  // Never the internal code nor the identifier in the list.
+  await expect(page.locator('.v2-alerts-table')).not.toContainText(
+    /missing_responsible|document_pending_classification|evidence_review/,
+  );
+});
+
+test('enlaces viejos del dashboard llegan a su nuevo destino', async ({ page }) => {
+  await login(page);
+  await page.goto('/empresas?tab=Panel&vista=Seguimiento+CFDI');
+  await expect(page).toHaveURL(/tab=obligaciones&sub=cfdi/);
+  await page.goto('/empresas?tab=Credenciales');
+  await expect(page).toHaveURL(/\/gestor-contrasenas$/);
+  await expect(page.getByRole('heading', { name: 'Gestor de contraseñas' })).toBeVisible();
+  await page.goto('/empresas?tab=Credenciales&vista=Centro+de+alertas');
+  await expect(page).toHaveURL(/\/configuracion\/alertas$/);
+  await page.goto('/empresas?tab=Importar');
+  await expect(page).toHaveURL(/tab=empresas&sub=importar/);
+  await page.goto('/empresas?tab=obligaciones&sub=inexistente');
+  await expect(page).toHaveURL(/tab=resumen/);
 });
 
 test('diálogo: el foco entra, no sale con Tab y vuelve al cerrar con Escape', async ({ page }) => {
@@ -148,6 +194,6 @@ test('flujo completo sin ratón: iniciar sesión y abrir una sección', async ({
     await page.keyboard.press('Tab');
   await expect(empresas).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { name: 'Centro de Control Fiscal' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dashboard principal' })).toBeVisible();
   await sidebar(page, 'Inicio');
 });

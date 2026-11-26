@@ -10,6 +10,7 @@ import {
   Files,
   FolderTree,
   Home,
+  KeyRound,
   ListTodo,
   LogOut,
   Menu,
@@ -28,7 +29,8 @@ import {
 import { UnsavedNavigation } from './navigationGuard';
 import { updateArchiveWarnings } from './archiveWarnings';
 import { api } from './api';
-import { companiesSection } from './companyNavigation';
+import { dashboardCrumb, dashboardTarget, PASSWORD_MANAGER_PATH } from './companyNavigation';
+import AlertBell from './components/AlertBell';
 import { Logo, Empty } from './components/ui';
 import Login from './modules/Login';
 import type { State, CurrentUser } from './types';
@@ -45,6 +47,7 @@ const Recopila = lazy(() => import('./modules/Recopila'));
 const Organizador = lazy(() => import('./modules/Organizador'));
 const Declara = lazy(() => import('./modules/Declara'));
 const SettingsPage = lazy(() => import('./modules/Settings'));
+const PasswordVault = lazy(() => import('./modules/PasswordVault'));
 function ModuleLoading() {
   return (
     <div className="empty" role="status">
@@ -80,6 +83,7 @@ type NavItem = { path: string; title: string; icon: LucideIcon };
 const nav: NavItem[] = [
   { path: '/', title: 'Inicio', icon: Home },
   { path: '/empresas', title: 'Empresas', icon: Building2 },
+  { path: PASSWORD_MANAGER_PATH, title: 'Gestor de contraseñas', icon: KeyRound },
   { path: '/tareas', title: 'Tareas y vencimientos', icon: ListTodo },
   { path: '/organizador-cfdi', title: 'CFDI', icon: FolderTree },
   { path: '/recopilador-cfdi', title: 'Recopila', icon: CloudDownload },
@@ -123,8 +127,16 @@ function CompaniesRoute(props: Shared) {
     params.set('tab', 'calendario');
     return <Navigate to={'/tareas?' + params.toString()} replace />;
   }
-  const target = companiesSection(params.get('tab'), params.get('vista'));
-  if ('redirect' in target) return <Navigate to={target.redirect} replace />;
+  // Dashboard principal: old tabs (Panel, Credenciales, Importar, alertas…) land on their new place.
+  const target = dashboardTarget(params.get('tab'), params.get('sub'), params.get('vista'));
+  if ('redirect' in target) {
+    const company = params.get('company_id');
+    const to =
+      target.redirect === PASSWORD_MANAGER_PATH && company
+        ? target.redirect + '?company_id=' + company
+        : target.redirect;
+    return <Navigate to={to} replace />;
+  }
   return <Companies {...props} />;
 }
 function CompanyRoute({ editing = false, ...props }: Shared & { editing?: boolean }) {
@@ -397,6 +409,8 @@ export default function App() {
     ? settingsSection(location.pathname.split('/')[2], identity)
     : undefined;
   const active = [...nav, settingsItem].find((i) => i.path !== '/' && location.pathname.startsWith(i.path));
+  // Dashboard principal: ContaSuite › Workspace Fiscal › Dashboard principal › <pestaña>.
+  const dashboardTab = location.pathname === '/empresas' ? dashboardCrumb(location.search) : '';
   const shared = state ? { state, refresh, notify } : null;
   const agentOnline = state?.agent_link?.state === 'online';
   return (
@@ -471,15 +485,26 @@ export default function App() {
           <Link to="/">ContaSuite</Link>
           <ChevronRight size={13} />
           <span>Workspace Fiscal</span>
-          {active && (
+          {dashboardTab ? (
             <>
               <ChevronRight size={13} />
-              {settingsCrumb ? (
-                <Link to="/configuracion">{active.title}</Link>
-              ) : (
-                <span className="current">{active.title}</span>
-              )}
+              <span>Dashboard principal</span>
+              <ChevronRight size={13} />
+              <span className="current crumb-section" aria-current="page">
+                {dashboardTab}
+              </span>
             </>
+          ) : (
+            active && (
+              <>
+                <ChevronRight size={13} />
+                {settingsCrumb ? (
+                  <Link to="/configuracion">{active.title}</Link>
+                ) : (
+                  <span className="current">{active.title}</span>
+                )}
+              </>
+            )
           )}
           {settingsCrumb && (
             <>
@@ -522,6 +547,7 @@ export default function App() {
           <span className={'dot ' + (agentOnline ? 'green' : 'neutral')} />
           <span>{agentLabel(state?.agent_link, localAgent)}</span>
         </div>
+        {identity && <AlertBell userId={identity.id} />}
         <button
           className="icon-button"
           onClick={() =>
@@ -597,6 +623,7 @@ export default function App() {
                 />
                 <Route path="/empresas/:id" element={<CompanyRoute {...shared} />} />
                 <Route path="/tareas" element={<TasksAndDeadlines {...shared} />} />
+                <Route path={PASSWORD_MANAGER_PATH} element={<PasswordVault state={shared.state} />} />
                 <Route
                   path="/recopilador-cfdi"
                   element={

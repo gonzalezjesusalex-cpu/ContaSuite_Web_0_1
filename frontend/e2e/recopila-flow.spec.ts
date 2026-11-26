@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { company, expectNoOverflow, login, sidebar } from './helpers';
+import { company, expectNoOverflow, login, sidebar, openDirectory } from './helpers';
 import { cfdi, pdf, uuid, zip } from './synthetic';
 
 // Flujo Recopila con datos sintéticos: analizar pólizas y CFDI, generar archivos y guardarlos en el expediente.
@@ -44,7 +44,7 @@ test('Recopila: analizar, generar y guardar en el expediente', async ({ page }) 
   if (shots) await page.screenshot({ path: shots + '/recopila-3-guardado.png', fullPage: true });
 
   await sidebar(page, 'Empresas');
-  await page.getByRole('button', { name: /^Directorio/ }).click();
+  await openDirectory(page);
   await page.getByRole('link', { name: 'Abrir ' + company.name }).click();
   await page
     .getByRole('button', { name: /^Documentos/ })

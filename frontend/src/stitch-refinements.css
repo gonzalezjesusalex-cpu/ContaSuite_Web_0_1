@@ -69,7 +69,7 @@
 .tabs {
   gap: 12px;
 }
-.tabs button {
+.tabs :is(button, a) {
   font-size: 13px;
   line-height: 18px;
 }
@@ -78,7 +78,7 @@
   min-height: 40px;
   margin-top: -8px;
 }
-.tabs.subtabs button {
+.tabs.subtabs :is(button, a) {
   padding: 10px 5px;
   font-size: var(--fs-sm);
   line-height: 16px;
@@ -176,7 +176,7 @@
     white-space: normal;
     text-align: center;
   }
-  .tabs button {
+  .tabs :is(button, a) {
     white-space: nowrap;
   }
 }

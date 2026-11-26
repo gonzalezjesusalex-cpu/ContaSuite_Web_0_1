@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { answerNextConfirm, company, forbidDialogs, login, sidebar } from './helpers';
+import { answerNextConfirm, company, forbidDialogs, login, sidebar, openDirectory } from './helpers';
 
 // Unsaved-changes guards in the real browser (plan, point 24): cancelling keeps the user and the typed
 // values where they were; accepting discards and continues without asking again.
@@ -26,7 +26,7 @@ test('enlace del menú con un formulario de alta modificado', async ({ page }) =
   await expect(page.getByText('Bienvenido a ContaSuite')).toBeVisible();
   const stop = forbidDialogs(page);
   await sidebar(page, 'Empresas');
-  await expect(page.getByRole('heading', { name: 'Centro de Control Fiscal' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Dashboard principal' })).toBeVisible();
   stop();
 });
 
@@ -72,7 +72,7 @@ test('cambio de sección con un formulario fijo modificado', async ({ page }) =>
 
 test('cierre de un diálogo con cambios: Escape, botón Cerrar y clic fuera', async ({ page }) => {
   await sidebar(page, 'Empresas');
-  await page.getByRole('button', { name: /^Directorio/ }).click();
+  await openDirectory(page);
   await page.getByRole('link', { name: 'Abrir ' + company.name }).click();
   await page
     .getByRole('button', { name: /^Documentos/ })

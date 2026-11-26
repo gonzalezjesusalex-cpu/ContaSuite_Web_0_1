@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { company, login, sidebar } from './helpers';
+import { company, login, sidebar, openDirectory } from './helpers';
 
 // Prompt Maestro, Bloques 3, 5 and 6: dossier header, fiscal calendar as the default view, motion rules.
 
 test('encabezado del expediente: empresa, vistas y menú de más acciones', async ({ page }) => {
   await login(page);
   await sidebar(page, 'Empresas');
-  await page.getByRole('button', { name: /^Directorio/ }).click();
+  await openDirectory(page);
   await page.getByRole('link', { name: 'Abrir ' + company.name }).click();
 
   const switcher = page.getByRole('combobox', { name: 'Cambiar empresa' });

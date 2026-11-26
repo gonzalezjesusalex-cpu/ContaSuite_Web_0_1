@@ -13,7 +13,9 @@ test('company switch preserves compatible section, period and directory filters;
   assert.equal(url.searchParams.get('archive'), 'all');
   assert.equal(url.searchParams.has('document_id'), false);
   assert.equal(url.searchParams.has('view'), false);
-  assert.equal(new URL(directoryUrl(url.searchParams), 'http://synthetic').searchParams.get('tab'), 'Directorio');
+  const back = new URL(directoryUrl(url.searchParams), 'http://synthetic').searchParams;
+  assert.equal(back.get('tab'), 'empresas');
+  assert.equal(back.get('sub'), 'directorio');
 });
 test('legacy sections map to compatible new sections', () => {
   assert.equal(dossierSection('e.firma y CSD'), 'FIEL/CSD');

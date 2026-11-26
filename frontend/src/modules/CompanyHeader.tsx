@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, ClipboardCheck, FolderOpen, MoreHorizontal } from 'lucide-react';
 import type { Company } from '../types';
-import { dossierUrl } from '../companyNavigation';
+import { dashboardUrl, dossierUrl } from '../companyNavigation';
 import { confirmDiscard } from '../navigationGuard';
 
 export type CompanyView = 'Expediente' | 'Dashboard' | 'Obligaciones';
@@ -10,13 +10,10 @@ export type CompanyView = 'Expediente' | 'Dashboard' | 'Obligaciones';
 /** Where each company view lives; the routes are the existing ones (Bloque 3). */
 export function companyViewUrl(view: CompanyView, companyId: string, period: string, context?: URLSearchParams) {
   if (view === 'Expediente') return dossierUrl(companyId, 'Resumen', period, context);
-  const q = new URLSearchParams({
-    tab: view === 'Dashboard' ? 'Panel' : 'Obligaciones',
-    period,
-    company_id: companyId,
-  });
-  if (view === 'Dashboard') q.set('vista', 'General');
-  return '/empresas?' + q;
+  // Dashboard principal: Resumen o Obligaciones › Matriz del mes, filtrados a la empresa.
+  return view === 'Dashboard'
+    ? dashboardUrl('resumen', '', { period, company_id: companyId })
+    : dashboardUrl('obligaciones', 'matriz', { period, company_id: companyId });
 }
 
 /** Compact company selector with the «include archived» switch inside it. */
