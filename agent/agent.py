@@ -698,8 +698,21 @@ def run_job(job, roots, options=None, notify=None, fetch=None):
                     'key_name': data.get('key_name'),
                 }
 
+            def fetch_red():
+                """La credencial «Carpeta de red» del gestor, una sola vez y sólo en memoria."""
+                if get is None:
+                    return None
+                return json.loads(get('/agent/jobs/' + job['id'] + '/red?agent_id=' + agent_id))
+
             return 'completed', declara_folder.run(
-                payload, roots, user, machine, options=options, report=report, fetch_fiel=fetch_fiel
+                payload,
+                roots,
+                user,
+                machine,
+                options=options,
+                report=report,
+                fetch_fiel=fetch_fiel,
+                fetch_red=fetch_red,
             )
         raise ValueError('Operación no admitida')
     except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
@@ -794,6 +807,10 @@ REASONS = {
     'sin_registro': 'No hay renombrados registrados que deshacer en esta carpeta.',
     'destino_existe': 'Un nombre anterior ya está ocupado: no se deshizo nada.',
     'copia_no_verificada': 'La copia de un PDF descargado no coincide en tamaño o huella: no se guardó.',
+    'conexion_perdida': 'Se perdió la conexión con la carpeta de red y no volvió tras 3 intentos. Revisa el registro: '
+    'dice qué quedó aplicado.',
+    'credencial_rechazada': 'El servidor rechazó la credencial de red del gestor: revisa usuario, contraseña y dominio.',
+    'red_no_disponible': 'No se encontró el servidor o el recurso de red.',
 }
 
 

@@ -81,7 +81,13 @@ export default function FolderSource({
       setProbe(await folderOp<Probe>(companyId, 'probar', path));
     } catch (e) {
       setProbe(null);
-      setError((e as Error).message);
+      const message = (e as Error).message;
+      // Acceso denegado en una carpeta de red: la salida es usar una credencial «Carpeta de red» del gestor.
+      setError(
+        path.startsWith('\\\\') && /permiso|acceso/i.test(message)
+          ? message + ' Elige una credencial del gestor en «Cambiar carpeta › Acceso a la red».'
+          : message,
+      );
     } finally {
       setBusy('');
     }

@@ -143,6 +143,107 @@ def retried(action, *args):
             time.sleep(RETRY_WAIT)
 
 
+# ---------------------------------------------------------------- red local (SMB)
+
+# Errores de Windows de una red perdida o inaccesible: ruta de red no encontrada, red no disponible, nombre de red
+# eliminado, conexión abortada, semáforo agotado.
+NETWORK_WINERRORS = {53, 59, 64, 67, 121, 1231, 1236}
+RECONNECT_TRIES = 3
+RECONNECT_WAIT = 5.0
+
+
+def network_error(error) -> bool:
+    return isinstance(error, OSError) and getattr(error, 'winerror', None) in NETWORK_WINERRORS
+
+
+def network_error_text(text) -> bool:
+    return any(f'WinError {code}]' in str(text) for code in NETWORK_WINERRORS)
+
+
+def share_of(path: str) -> str:
+    r"""`\\servidor\recurso\x\y` → `\\servidor\recurso`; '' si no es UNC."""
+    drive = PureWindowsPath(path).drive
+    return drive if drive.startswith('\\\\') else ''
+
+
+class NetworkSession:
+    """Conexión a un recurso de red con una credencial del gestor, sólo mientras dura el trabajo y sin letra de unidad.
+
+    La contraseña sólo vive en memoria: se entrega a `WNetAddConnection2W` y se olvida. Al terminar se cierra la
+    conexión con `WNetCancelConnection2W`.
+    """
+
+    def __init__(self, share, credential, api=None):
+        self.share = share
+        self.credential = credential
+        self.api = api
+        self.connected = False
+
+    def _api(self):
+        if self.api is None:
+            import ctypes
+
+            self.api = ctypes.WinDLL('mpr')
+        return self.api
+
+    def __enter__(self):
+        if not self.share or not self.credential:
+            return self
+        import ctypes
+        from ctypes import wintypes
+
+        class NETRESOURCE(ctypes.Structure):
+            _fields_ = [
+                ('dwScope', wintypes.DWORD),
+                ('dwType', wintypes.DWORD),
+                ('dwDisplayType', wintypes.DWORD),
+                ('dwUsage', wintypes.DWORD),
+                ('lpLocalName', wintypes.LPWSTR),
+                ('lpRemoteName', wintypes.LPWSTR),
+                ('lpComment', wintypes.LPWSTR),
+                ('lpProvider', wintypes.LPWSTR),
+            ]
+
+        resource = NETRESOURCE(0, 1, 0, 0, None, self.share, None, None)  # RESOURCETYPE_DISK, sin letra
+        cred = self.credential
+        user = (cred['dominio'] + '\\' if cred.get('dominio') else '') + (cred.get('usuario') or '')
+        password = cred.get('password') or ''
+        try:
+            code = self._api().WNetAddConnection2W(ctypes.byref(resource), password, user or None, 0)
+        finally:
+            password = None
+            self.credential = None
+        if code in (0, 1219):  # 1219: ya hay una conexión de esta sesión al servidor; se usa esa
+            self.connected = code == 0
+            return self
+        if code in (86, 1326, 1327, 1330, 1331, 5):
+            raise FolderError('credencial_rechazada')
+        if code in (53, 67, 1203, 1222):
+            raise FolderError('red_no_disponible')
+        raise FolderError('red_no_disponible', f'WNetAddConnection2: {code}')
+
+    def __exit__(self, *_):
+        if self.connected:
+            try:
+                self._api().WNetCancelConnection2W(self.share, 0, True)
+            except OSError:
+                pass
+        return False
+
+
+def with_reconnect(action, *args, sleep=time.sleep):
+    """Conexión perdida: espera y reintenta (3 veces) antes de rendirse con un mensaje claro."""
+    for attempt in range(RECONNECT_TRIES):
+        try:
+            return action(*args)
+        except OSError as error:
+            if not network_error(error):
+                raise
+            if attempt == RECONNECT_TRIES - 1:
+                raise FolderError('conexion_perdida') from None
+            sleep(RECONNECT_WAIT)
+
+
 # ---------------------------------------------------------------- bloqueo
 
 
@@ -377,12 +478,14 @@ def analyze(guard: Guard, raw, short_name, expected_rfc, user, machine):
         }
     lock = take_lock(folder, user, machine)
     read_only = lock['estado'] == 'ajeno'
+    writable = False
     if not read_only:
         try:
             write_json(index_path, {'nombre_corto': short_name, 'actualizado': now().isoformat(), 'archivos': fresh})
             hide(internal(folder))
+            writable = True
         except OSError:
-            pass
+            pass  # sin permiso de escritura: se analiza igual, pero no se podrá aplicar
     return {
         'ruta': folder,
         # Sin campos vacíos: el resultado viaja como JSON y una carpeta grande no debe pasar del límite.
@@ -395,7 +498,8 @@ def analyze(guard: Guard, raw, short_name, expected_rfc, user, machine):
         'firma': signature(guard, folder)['firma'],
         'bloqueo': lock,
         'solo_lectura': read_only,
-        'deshacer': bool(read_json(internal(folder) / REGISTRY, [])),
+        'deshacer': any(b.get('estado', 'aplicado') == 'aplicado' for b in read_json(internal(folder) / REGISTRY, [])),
+        'escritura': writable,
     }
 
 
@@ -460,21 +564,30 @@ def apply_plan(guard: Guard, raw, plan, backup, user, machine):
             retried(shutil.copy2, info.path, target)
             if motor.sha256_file(target) != motor.sha256_file(info.path):
                 raise FolderError('respaldo_fallido', info.path.name)
-    renamed, errors = motor.execute_renames(infos)
-    if errors:
-        raise FolderError('renombrado_fallido', '; '.join(errors)[:500])
     batch = {
         'lote': hashlib.sha256(f'{folder}{now().isoformat()}'.encode()).hexdigest()[:12],
         'fecha': now().isoformat(),
         'usuario': user,
         'equipo': machine,
         'respaldo': copied.name if copied else None,
+        'estado': 'en_curso',
         'cambios': [{'origen': i.path.name, 'destino': i.expected_name, 'sha256': None} for i in infos],
     }
     for change, item in zip(batch['cambios'], [p for p in plan if p['origen'] not in pending], strict=True):
         change['sha256'] = item['sha256']
+    # El lote se registra antes de tocar los archivos: si se corta la red o el equipo, el registro dice qué se intentó.
     registry = read_json(internal(folder) / REGISTRY, [])
     write_json(internal(folder) / REGISTRY, (registry + [batch])[-50:])
+    try:
+        renamed, errors = motor.execute_renames(infos)
+    except OSError as error:
+        renamed, errors = 0, [str(error)]
+    batch['estado'] = 'revertido' if errors else 'aplicado'
+    write_json(internal(folder) / REGISTRY, (registry + [batch])[-50:])
+    if errors:
+        if any(network_error_text(e) for e in errors):
+            raise FolderError('conexion_perdida', '; '.join(errors)[:500])
+        raise FolderError('renombrado_fallido', '; '.join(errors)[:500])
     return {
         'ruta': folder,
         'renombrados': renamed,
@@ -490,9 +603,11 @@ def undo_last(guard: Guard, raw, user, machine):
     if take_lock(folder, user, machine)['estado'] == 'ajeno':
         raise FolderError('carpeta_bloqueada')
     registry = read_json(internal(folder) / REGISTRY, [])
-    if not registry:
+    applied = [n for n, b in enumerate(registry) if b.get('estado', 'aplicado') == 'aplicado']
+    if not applied:
         raise FolderError('sin_registro')
-    batch = registry[-1]
+    position = applied[-1]
+    batch = registry[position]
     base = io_path(folder)
     infos = []
     for change in batch['cambios']:
@@ -507,7 +622,7 @@ def undo_last(guard: Guard, raw, user, machine):
     restored, errors = motor.execute_renames(infos)
     if errors:
         raise FolderError('renombrado_fallido', '; '.join(errors)[:500])
-    write_json(internal(folder) / REGISTRY, registry[:-1])
+    write_json(internal(folder) / REGISTRY, registry[:position] + registry[position + 1 :])
     return {'ruta': folder, 'restaurados': restored, 'lote': batch['lote'], 'cambios': batch['cambios']}
 
 
@@ -584,11 +699,50 @@ OPS = {
 }
 
 
-def run(payload, roots, user, machine, resolver=universal_name, options=None, report=None, fetch_fiel=None):
-    """Un trabajo `declara_carpeta`. Devuelve el resultado; `_pdf` (bytes) lo sube el agente aparte."""
+READ_ONLY_OPS = {'listar', 'probar', 'firma', 'analizar', 'leer_pdf'}
+
+
+def run(
+    payload,
+    roots,
+    user,
+    machine,
+    resolver=universal_name,
+    options=None,
+    report=None,
+    fetch_fiel=None,
+    fetch_red=None,
+    network_api=None,
+):
+    """Un trabajo `declara_carpeta`. Devuelve el resultado; `_pdf` (bytes) lo sube el agente aparte.
+
+    Con `credencial` en el trabajo, la credencial «Carpeta de red» del gestor llega por `fetch_red` (una vez, en
+    memoria) y abre el recurso de red sólo mientras dura el trabajo. Una red perdida se reintenta en las operaciones
+    que sólo leen; aplicar y deshacer nunca se repiten a ciegas: su registro dice qué quedó aplicado.
+    """
     op = payload.get('op')
     if op not in OPS:
         raise FolderError('operacion_desconocida')
+    guard = Guard(roots, resolver)
+    share = share_of(guard.check(payload['ruta'])) if payload.get('ruta') else ''
+    credential = fetch_red() if payload.get('credencial') and fetch_red and share else None
+    try:
+        with NetworkSession(share, credential, network_api):
+            credential = None
+            args = (payload, roots, user, machine, resolver, options, report, fetch_fiel)
+            if op in READ_ONLY_OPS:
+                return with_reconnect(_run_op, *args)
+            return _run_op(*args)
+    except OSError as error:
+        if network_error(error):
+            raise FolderError('conexion_perdida') from None
+        if isinstance(error, PermissionError):
+            raise FolderError('access_denied') from None
+        raise
+
+
+def _run_op(payload, roots, user, machine, resolver, options, report, fetch_fiel):
+    op = payload['op']
     guard = Guard(roots, resolver)
     user = user or 'usuario'
     if op in {'sat', 'sat_estado', 'sat_instalar'}:

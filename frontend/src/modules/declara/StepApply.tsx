@@ -127,7 +127,8 @@ export default function StepApply({
     ['Excluidos', s.excluded_manual || 0],
   ];
   const lock = s.bloqueo;
-  const readOnly = !!s.solo_lectura;
+  // Sin permiso de escritura (detectado al analizar) o con bloqueo ajeno: se revisa, pero no se aplica.
+  const readOnly = !!s.solo_lectura || s.escritura === false;
   return (
     <>
       <section className={stitchCard + ' padded'}>
@@ -147,7 +148,8 @@ export default function StepApply({
             {lock?.estado === 'propio' && (
               <Badge tone="blue">Carpeta bloqueada por ti · {lock.equipo || s.equipo}</Badge>
             )}
-            {readOnly && <Badge tone="red">{lockText(lock)}</Badge>}
+            {s.solo_lectura && <Badge tone="red">{lockText(lock)}</Badge>}
+            {s.escritura === false && <Badge tone="red">Sin permiso de escritura: no se puede aplicar</Badge>}
           </div>
         )}
         <ul className="declara-plan-summary">

@@ -39,6 +39,7 @@ export type Summary = {
   archivos?: number;
   firma?: string;
   solo_lectura?: boolean;
+  escritura?: boolean;
   bloqueo?: { estado: 'libre' | 'propio' | 'ajeno'; usuario?: string; equipo?: string; desde?: string };
   deshacer?: boolean;
   equipo?: string | null;

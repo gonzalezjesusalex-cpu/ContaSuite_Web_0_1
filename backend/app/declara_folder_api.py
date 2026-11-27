@@ -44,7 +44,48 @@ def checked_path(raw):
     return str(win)
 
 
-def queue(db, principal, company_id, payload):
+# ---------------------------------------------------------------- red local (SMB): credencial del gestor
+
+
+def vault_network():
+    """El servicio del gestor para «Carpeta de red» (app/vault_network.py), o None mientras no exista."""
+    try:
+        from . import vault_network as module
+    except ImportError:
+        return None
+    return module
+
+
+def chosen_credential(db, company_id):
+    from .models import Setting
+
+    row = db.get(Setting, 'declara_red_' + company_id)
+    return row.value if row and row.value else None
+
+
+def network_secret(db, principal, company_id, payload, credential_id=None):
+    """Para una ruta UNC con credencial elegida: la credencial en memoria para ese trabajo. Nunca va en el payload."""
+    if not str(payload.get('ruta') or '').startswith('\\\\'):
+        return None
+    credential_id = credential_id or chosen_credential(db, company_id)
+    module = vault_network()
+    if not credential_id or module is None:
+        return None
+    from .credential_crypto import VaultLocked
+
+    try:
+        secret = module.obtener_credencial_red(db, principal, credential_id, purpose='declara_red')
+    except VaultLocked:
+        raise HTTPException(
+            423, 'Desbloquea el gestor de contraseñas para usar la credencial de la carpeta de red.'
+        ) from None
+    except LookupError as error:
+        raise HTTPException(422, str(error) or 'La credencial de red ya no está disponible en el gestor.') from None
+    payload['credencial'] = True
+    return secret
+
+
+def queue(db, principal, company_id, payload, credential_id=None):
     """Un trabajo para el agente vinculado de quien lo pide. Nunca para el agente de otra persona."""
     DECLARA.require_company(principal, company_id)
     company = db.get(Company, company_id)
@@ -63,6 +104,7 @@ def queue(db, principal, company_id, payload):
         raise HTTPException(409, 'El agente de este equipo todavía no admite el modo carpeta de Declara.')
     if not roots(db):
         raise HTTPException(409, 'No hay carpetas autorizadas para el agente: las define la administración.')
+    secret = network_secret(db, principal, company.id, payload, credential_id)
     job = Job(
         company_id=company.id,
         agent_id=link.agent_id,
@@ -74,7 +116,16 @@ def queue(db, principal, company_id, payload):
     )
     db.add(job)
     db.commit()
+    if secret is not None:
+        import time
+
+        NETWORK_SECRETS[job.id] = {**secret, 'expira': time.monotonic() + SECRET_TTL}
+    secret = None
     return job
+
+
+# Credencial de red de un trabajo: sólo en la memoria de este proceso y una sola entrega al agente.
+NETWORK_SECRETS: dict[str, dict] = {}
 
 
 def own_job(db, principal, job_id):
@@ -173,6 +224,59 @@ def company_folder(
     }
 
 
+@router.get('/companies/{company_id}/network')
+def network_credentials(company_id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Credenciales «Carpeta de red» del gestor para esta empresa (sin secretos) y la elegida para Declara."""
+    DECLARA.require_company(principal, company_id)
+    module = vault_network()
+    rows = module.credenciales_red(db, principal, company_id) if module else []
+    return {'disponible': module is not None, 'credenciales': rows, 'elegida': chosen_credential(db, company_id)}
+
+
+class NetworkIn(BaseModel):
+    credential_id: str | None = Field(default=None, max_length=36)
+
+
+@router.put('/companies/{company_id}/network')
+def choose_network(
+    company_id: str, data: NetworkIn, db: Session = Depends(session), principal: Principal = Depends(auth)
+):
+    """Acceso a la red: sesión de Windows (sin credencial) o una credencial del gestor. Sólo se guarda su id."""
+    from .models import Setting
+
+    DECLARA.require_company(principal, company_id)
+    module = vault_network()
+    if data.credential_id:
+        known = {r['id'] for r in (module.credenciales_red(db, principal, company_id) if module else [])}
+        if data.credential_id not in known:
+            raise HTTPException(422, 'Elige una credencial «Carpeta de red» de esta empresa.')
+    db.merge(Setting(key='declara_red_' + company_id, value=data.credential_id or ''))
+    db.commit()
+    return network_credentials(company_id, db, principal)
+
+
+@agent_router.get('/{ident}/red')
+def agent_network(
+    ident: str, agent_id: str = Query(..., max_length=80), db: Session = Depends(session), caller=Depends(agent_caller)
+):
+    """La credencial de red del trabajo, una sola vez, al agente vinculado que lo tiene. No queda copia."""
+    import time
+
+    from fastapi.responses import JSONResponse
+
+    job = db.get(Job, ident)
+    if not job or job.kind != KIND or job.agent_id != agent_id or job.status != 'running':
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    if caller is not None and (agent_id != caller.link.agent_id or job.requested_by != caller.link.user_id):
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    secret = NETWORK_SECRETS.pop(ident, None)
+    if not secret or secret['expira'] < time.monotonic():
+        raise HTTPException(404, 'La credencial de red ya se entregó o caducó.')
+    body = {k: secret.get(k) for k in ('servidor', 'recurso', 'usuario', 'password', 'dominio')}
+    secret.clear()
+    return JSONResponse(body, headers={'Cache-Control': 'no-store'})
+
+
 # ---------------------------------------------------------------- operaciones del selector y de la carpeta
 
 
@@ -181,6 +285,8 @@ class OpIn(BaseModel):
     op: str
     ruta: str = Field(default='', max_length=1000)
     plantilla: str = Field(default='', max_length=1000)
+    # Probar conexión con una credencial concreta antes de elegirla (el selector de carpeta).
+    credential_id: str | None = Field(default=None, max_length=36)
 
 
 @router.post('/folder', status_code=202)
@@ -192,7 +298,9 @@ def folder_op(data: OpIn, db: Session = Depends(session), principal: Principal =
         payload['ruta'] = checked_path(data.ruta)
     if data.plantilla:
         payload['plantilla'] = data.plantilla
-    return {'job_id': queue(db, principal, data.company_id, payload).id}
+    if data.credential_id and data.op != 'probar':
+        raise HTTPException(422, 'Una credencial concreta sólo se usa para probar la conexión.')
+    return {'job_id': queue(db, principal, data.company_id, payload, data.credential_id).id}
 
 
 class AnalyzeIn(BaseModel):
@@ -253,6 +361,7 @@ def safe_name(name):
 def finish(db, job):
     """Idempotente: cada trabajo terminado se procesa una vez (marca `cerrado` en su resultado)."""
     result = dict(job.result or {})
+    NETWORK_SECRETS.pop(job.id, None)
     if result.get('cerrado'):
         return
     op = (job.payload or {}).get('op')
@@ -315,6 +424,8 @@ def create_run(db, job, result):
         'solo_lectura': bool(result.get('solo_lectura')),
         'bloqueo': result.get('bloqueo'),
         'deshacer': bool(result.get('deshacer')),
+        # Sin permiso de escritura (el índice no se pudo escribir): se revisa, pero «Aplicar» queda bloqueado.
+        'escritura': result.get('escritura', True) or bool(result.get('solo_lectura')),
         'equipo': job.machine,
     }
     warnings = []
@@ -455,6 +566,8 @@ def apply(ident: str, data: ApplyIn, db: Session = Depends(session), principal: 
     s = run.summary or {}
     if not s.get('rfc_matches'):
         raise HTTPException(422, 'El RFC detectado no coincide con la empresa seleccionada.')
+    if s.get('escritura') is False:
+        raise HTTPException(409, 'Sin permiso de escritura en la carpeta: no se puede aplicar el renombrado.')
     if s.get('solo_lectura'):
         raise HTTPException(409, 'La carpeta está en uso por otra persona: vuelve a analizarla cuando se libere.')
     infos = web.load_plan(ident)

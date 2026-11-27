@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { ArrowUp, FileText, Folder, Lock as LockIcon, RefreshCw } from 'lucide-react';
+import { api } from '../../api';
 import { Badge, Modal } from '../../components/ui';
 import { stitchButton, stitchPrimary } from '../../components/stitch';
-import { folderOp, lockText, type CompanyFolder, type Listing } from './folderJobs';
+import {
+  folderOp,
+  lockText,
+  type CompanyFolder,
+  type Listing,
+  type NetworkCredentials,
+  type Probe,
+} from './folderJobs';
 
 type Tab = 'equipo' | 'red' | 'recientes';
 
@@ -30,6 +38,46 @@ export default function FolderPicker({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [link, setLink] = useState(true);
+  const [creds, setCreds] = useState<NetworkCredentials | null>(null);
+  const [access, setAccess] = useState('');
+  const [tested, setTested] = useState<Probe | null>(null);
+  const [testError, setTestError] = useState('');
+
+  useEffect(() => {
+    api<NetworkCredentials>(`/declara/companies/${encodeURIComponent(companyId)}/network`)
+      .then((n) => {
+        setCreds(n);
+        setAccess(n.elegida || '');
+      })
+      .catch(() => setCreds(null));
+  }, [companyId]);
+
+  // Acceso a la red: la sesión de Windows o una credencial «Carpeta de red» del gestor. Sólo se guarda su id; la
+  // contraseña la abre el servidor en memoria para cada trabajo y el agente la usa sin letra de unidad.
+  async function chooseAccess(next: string) {
+    setAccess(next);
+    setTested(null);
+    try {
+      await api(`/declara/companies/${encodeURIComponent(companyId)}/network`, 'PUT', { credential_id: next || null });
+      if (typed.startsWith('\\\\')) void open(typed);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
+  async function test() {
+    if (!typed.trim()) return;
+    setBusy(true);
+    setTestError('');
+    try {
+      setTested(await folderOp<Probe>(companyId, 'probar', typed.trim(), '', access || null));
+    } catch (e) {
+      setTested(null);
+      setTestError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function open(path: string) {
     if (!path.trim()) return;
@@ -171,7 +219,53 @@ export default function FolderPicker({
             </ul>
           </>
         )}
-        <p className="muted">Acceso a la red: sesión de Windows de este equipo.</p>
+        {typed.startsWith('\\\\') && (
+          <fieldset className="declara-access">
+            <legend>Acceso a la red</legend>
+            <label>
+              <input type="radio" name="declara-access" checked={!access} onChange={() => void chooseAccess('')} />
+              Sesión de Windows de este equipo
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="declara-access"
+                checked={!!access}
+                disabled={!creds?.credenciales.length}
+                onChange={() => void chooseAccess(creds?.credenciales[0]?.id || '')}
+              />
+              Credencial del gestor de contraseñas (tipo «Carpeta de red»)
+            </label>
+            {!!access && (
+              <select value={access} onChange={(e) => void chooseAccess(e.target.value)}>
+                {creds?.credenciales.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label} · {c.dominio ? c.dominio + '\\' : ''}
+                    {c.usuario} · \\{c.servidor}\{c.recurso}
+                  </option>
+                ))}
+              </select>
+            )}
+            {creds && !creds.disponible && (
+              <small className="muted">Disponible cuando el gestor tenga el tipo «Carpeta de red».</small>
+            )}
+            {creds?.disponible && !creds.credenciales.length && (
+              <small className="muted">Esta empresa no tiene credenciales «Carpeta de red» en el gestor.</small>
+            )}
+            <div className="actions">
+              <button type="button" className={stitchButton} disabled={busy} onClick={test}>
+                Probar conexión
+              </button>
+              {tested && (
+                <span className={tested.escritura ? 'declara-msg ok' : 'declara-msg warn'}>
+                  Lectura {tested.lectura ? 'correcta' : 'sin acceso'} · escritura{' '}
+                  {tested.escritura ? 'correcta' : 'sin permiso'} · {tested.latencia_ms} ms
+                </span>
+              )}
+              {testError && <span className="declara-msg error">{testError}</span>}
+            </div>
+          </fieldset>
+        )}
         <label className="declara-check">
           <input type="checkbox" checked={link} onChange={(e) => setLink(e.target.checked)} />
           Vincular esta carpeta a {companyName} · {year}

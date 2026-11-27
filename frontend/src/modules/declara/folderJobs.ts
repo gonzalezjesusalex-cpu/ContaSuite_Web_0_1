@@ -53,12 +53,25 @@ export async function waitJob<T>(jobId: string, timeoutMs = 120_000): Promise<T>
   throw new Error('El agente no respondió a tiempo. Revisa que esté en ejecución en este equipo.');
 }
 
-export async function folderOp<T>(companyId: string, op: string, ruta = '', plantilla = ''): Promise<T> {
+export type NetworkCredentials = {
+  disponible: boolean;
+  credenciales: { id: string; label: string; servidor: string; recurso: string; usuario: string; dominio?: string }[];
+  elegida: string | null;
+};
+
+export async function folderOp<T>(
+  companyId: string,
+  op: string,
+  ruta = '',
+  plantilla = '',
+  credentialId: string | null = null,
+): Promise<T> {
   const { job_id } = await api<{ job_id: string }>('/declara/folder', 'POST', {
     company_id: companyId,
     op,
     ruta,
     plantilla,
+    ...(credentialId ? { credential_id: credentialId } : {}),
   });
   return waitJob<T>(job_id, 60_000);
 }

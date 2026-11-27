@@ -3978,6 +3978,26 @@ dialog form.declara-path-row {
   color: var(--muted);
   font-size: var(--fs-xs);
 }
+.declara-access {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.declara-access legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+.declara-access label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.declara-access select {
+  max-width: 100%;
+}
 /* Sesión SAT */
 .declara-sat-head {
   display: flex;

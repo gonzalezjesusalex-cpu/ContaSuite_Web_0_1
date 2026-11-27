@@ -327,7 +327,11 @@ def run(payload, roots, user, machine, options, report, fetch_fiel=None, portal_
         send({'etapa': 'consulta', 'encontradas': len(found), 'total': len(rows), 'filas': public(rows)})
 
         def save(path, row):
-            state, name = declara_folder.save_downloaded(guard, folder, path, short_name, rfc, user, machine)
+            # Red perdida al guardar: la cola espera, reintenta la conexión (3 veces) y sigue; si no vuelve, la fila
+            # queda con error y el resto continúa.
+            state, name = declara_folder.with_reconnect(
+                declara_folder.save_downloaded, guard, folder, path, short_name, rfc, user, machine
+            )
             existing.add(row.get('operacion'))
             return state, name
 
