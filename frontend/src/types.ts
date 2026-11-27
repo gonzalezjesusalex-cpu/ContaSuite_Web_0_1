@@ -403,6 +403,8 @@ export interface AgentLinkStatus {
 export interface State {
   archive_available?: boolean;
   current_user: CurrentUser;
+  /** Renovación del gestor (fase 2): administrators and people with a vault key see the password manager. */
+  vault_access?: boolean;
   companies: Company[];
   responsibles?: Responsible[];
   tasks: Task[];

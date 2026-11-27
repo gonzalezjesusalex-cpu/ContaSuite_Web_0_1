@@ -113,10 +113,10 @@ def test_responsible_rules_in_other_screens(office):
     assert assign(c, a, users['luis'], current=users['ana'], previous='keep').status_code == 403
     assert c.get('/api/credentials/companies/' + a).status_code == 423  # locked: no company data
     assert c.post('/api/credentials/vault/unlock', json={'password': code}).status_code == 200
-    # Credentials: the responsible holds them (except reveal); another accountant with write does not.
+    # Gestor, fase 2: an authorized person views and copies but does not edit; one without a vault key sees nothing.
     overview = c.get('/api/credentials/companies/' + a)
     assert overview.status_code == 200, overview.text
-    assert 'reveal' not in overview.json()['permissions'] and 'certificates' in overview.json()['permissions']
+    assert 'reveal' in overview.json()['permissions'] and 'certificates' not in overview.json()['permissions']
     login(c, 'admin')
     account(c, 'otro', 'contador', [(a, 'write')])
     login(c, 'otro')

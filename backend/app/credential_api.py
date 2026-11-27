@@ -1,3 +1,4 @@
+import contextvars
 from zoneinfo import ZoneInfo
 from uuid import uuid4
 from typing import Literal
@@ -10,7 +11,21 @@ from cryptography.hazmat.primitives import hashes
 from .database import session
 from .models import Company, Document, DocumentCompanyLink, now
 from .security import auth, Principal, utc
-from .credential_models import metadata, services, grants, credentials, versions, certificates, audit, settings
+from .credential_models import (
+    AUDIT_KINDS,
+    KIND_SERVICE,
+    metadata,
+    services,
+    grants,
+    credentials,
+    versions,
+    certificates,
+    audit,
+    settings,
+    cert_class,
+    kind_of,
+    vault_keys,
+)
 from .credential_crypto import VaultLocked
 from .schema_cache import tables_ready
 
@@ -55,7 +70,13 @@ def allowed(p, db, cid, permission):
         raise HTTPException(403, 'Sin permiso para esta operación.')
 
 
+# Address and browser of the request, set by the /api/credentials middleware (app/main.py); never a secret.
+CLIENT = contextvars.ContextVar('vault_client', default=None)
+
+
 def event(db, p, cid, action, ident=None, details=None):
+    """Append one row to the vault log (never updated nor deleted). `kind` is the action of the spec."""
+    kind, resource = AUDIT_KINDS.get(action, (None, None))
     db.execute(
         audit.insert().values(
             id=str(uuid4()),
@@ -65,8 +86,55 @@ def event(db, p, cid, action, ident=None, details=None):
             record_id=ident,
             created_at=now(),
             metadata=details or {},
+            kind=kind,
+            resource_type=resource,
+            client=(CLIENT.get() or '')[:100] or None,
         )
     )
+
+
+# ---------------------------------------------------------------- permissions of the password manager (fase 2)
+#
+# | Action                                           | Admin | Authorized person | Others        |
+# | List of companies and saved types; view or copy  | yes   | yes               | do not see it |
+# | Add, edit, delete, import, replace FIEL, export  | yes   | no                | no            |
+# | Access log                                       | yes   | only their own    | no            |
+# An authorized person has a wrapped copy of the data key (app/vault_master.py). Company scope still applies: a
+# non-administrator only sees the companies of their account. `allowed`/`by_role` above stay for other screens.
+
+
+def vault_member(db, p):
+    if p.bootstrap:
+        return False
+    if p.admin:
+        return True
+    try:
+        return bool(
+            db.execute(
+                select(vault_keys.c.id).where(
+                    vault_keys.c.user_id == p.subject, vault_keys.c.kind.in_(('user', 'invite'))
+                )
+            ).first()
+        )
+    except Exception:  # noqa: BLE001 - before cs_0022 nobody but administrators sees the module
+        db.rollback()
+        return False
+
+
+def vault_access(db, p, cid, action):
+    """`view` (list, reveal, copy, own log) or `manage` (create, edit, delete, files, certificates)."""
+    company = None
+    if cid:
+        p.require_company(cid)
+        company = db.get(Company, cid)
+        if not company:
+            raise HTTPException(404, 'Empresa no encontrada.')
+    if action == 'manage':
+        if not p.admin:
+            raise HTTPException(403, 'Sólo un administrador puede modificar el gestor de contraseñas.')
+    elif not vault_member(db, p):
+        raise HTTPException(403, 'No tienes acceso al gestor de contraseñas.')
+    return company
 
 
 PUBLIC = [
@@ -84,6 +152,9 @@ PUBLIC = [
     'extra',
     'holder',
     'strength',
+    'kind',
+    'requires_review',
+    'updated_by',
 ]
 
 
@@ -172,7 +243,7 @@ def parse_public_certificate(payload):
 def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depends(session)):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'metadata')
+    vault_access(db, p, cid, 'view')
     require_unlocked(db, p, cid, None)  # a locked vault shows no company data at all
     repeated = repeated_fingerprints(db)
     items = [
@@ -189,17 +260,7 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
     ]
     event(db, p, cid, 'metadata_read')
     db.commit()
-    perms = [
-        a
-        for a in PERMISSIONS
-        if by_role(p, db.get(Company, cid), a)
-        or a == 'reveal'
-        and db.execute(
-            select(grants.c.permission).where(
-                grants.c.user_id == p.subject, grants.c.company_id == cid, grants.c.permission == a
-            )
-        ).first()
-    ]
+    perms = ['metadata', 'reveal', 'history'] + (['create', 'modify', 'certificates'] if p.admin else [])
     return dict(
         credentials=items,
         certificates=certs,
@@ -211,6 +272,17 @@ def overview(cid: str, response: Response, p: Principal = Depends(auth), db=Depe
     )
 
 
+def default_username(company, kind):
+    """SAT and Infonavit use the company RFC; IMSS (IDSE) and SIPARE the registro patronal; Correo the address."""
+    if kind in ('SAT_CIEC', 'INFONAVIT'):
+        return company.rfc or None
+    if kind in ('IMSS_IDSE', 'SIPARE'):
+        return getattr(company, 'employer_registration', None) or None
+    if kind == 'CORREO':
+        return getattr(company, 'email', None) or None
+    return None
+
+
 def vault_unlocked(p):
     from . import vault_session
 
@@ -219,7 +291,10 @@ def vault_unlocked(p):
 
 class CredentialIn(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    service_id: str = Field(max_length=50)
+    # Fase 2: the type of the spec is enough (`kind`); `service_id` keeps choosing a portal of the catalog.
+    service_id: str | None = Field(None, max_length=50)
+    kind: Literal['SAT_CIEC', 'IMSS_IDSE', 'SIPARE', 'INFONAVIT', 'CORREO', 'OTRO'] | None = None
+    requires_review: bool | None = None
     # Plan v1.1: a free name for «Otro» portals; the screen warns not to write passwords in names or notes.
     label: str = Field('Acceso', min_length=1, max_length=100)
     # Omitted when only the visible data change; the stored password is kept.
@@ -243,11 +318,15 @@ def store(
 ):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'modify' if ident else 'create')
+    company = vault_access(db, p, cid, 'manage')
     if p.bootstrap or not p.session_id:
         raise HTTPException(403, 'Se requiere una sesión personal.')
-    if not db.execute(select(services.c.id).where(services.c.id == payload.service_id)).first():
+    service_id = payload.service_id or KIND_SERVICE.get(payload.kind or '')
+    if not service_id:
+        raise HTTPException(422, 'Elige el tipo de contraseña.')
+    if not db.execute(select(services.c.id).where(services.c.id == service_id)).first():
         raise HTTPException(422, 'Servicio no registrado.')
+    kind = payload.kind or kind_of(service_id)
     old = (
         db.execute(select(credentials).where(credentials.c.id == ident, credentials.c.company_id == cid))
         .mappings()
@@ -263,12 +342,19 @@ def store(
         raise HTTPException(422, 'Captura la contraseña.')
     ident = ident or str(uuid4())
     visible = {
-        'username': (payload.username or '').strip() or None,
+        'username': (payload.username or '').strip() or (None if old else default_username(company, kind)),
         'url': payload.url or None,
         'notes': (payload.notes or '').strip() or None,
         'extra': {k[:40]: v[:200] for k, v in payload.extra.items()},
         'holder': payload.holder,
         'label': payload.label.strip() or 'Acceso',
+        'kind': kind,
+        'updated_by': p.subject,
+        'requires_review': (
+            payload.requires_review
+            if payload.requires_review is not None
+            else (bool(old['requires_review']) if old else False)
+        ),
     }
     envelope = old['envelope'] if old else None
     if payload.secret is not None:
@@ -294,7 +380,7 @@ def store(
                 credentials.insert().values(
                     id=ident,
                     company_id=cid,
-                    service_id=payload.service_id,
+                    service_id=service_id,
                     envelope=envelope,
                     revision=revision,
                     archived=False,
@@ -368,7 +454,7 @@ def reveal(
     """
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'reveal')
+    vault_access(db, p, cid, 'view')
     payload = payload or RevealIn()
     row = credential_row(db, cid, ident)
     cipher = require_unlocked(db, p, cid, ident)
@@ -393,11 +479,11 @@ def archive(
 ):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'modify')
+    vault_access(db, p, cid, 'manage')
     changed = db.execute(
         update(credentials)
         .where(credentials.c.id == ident, credentials.c.company_id == cid, credentials.c.revision == revision)
-        .values(archived=True, revision=revision + 1, updated_at=now())
+        .values(archived=True, revision=revision + 1, updated_at=now(), updated_by=p.subject)
     )
     if not changed.rowcount:
         raise HTTPException(409, 'El registro cambió o no está disponible.')
@@ -413,6 +499,44 @@ class CertificateIn(BaseModel):
     notes: str = Field('', max_length=2000)
     # Plan v1.1: a second FIEL may belong to the company's legal representative (another RFC).
     holder: Literal['company', 'legal_rep'] = 'company'
+    # Fase 2: only one active FIEL of each class per company; replacing one must be asked for explicitly.
+    replace: bool = False
+    branch: str | None = Field(None, max_length=200)
+
+
+FIEL_CLASSES = ('FIEL_EMPRESA', 'FIEL_REPRESENTANTE')
+
+
+def active_of(db, cid, klass, exclude=None):
+    if klass not in FIEL_CLASSES:
+        return None
+    query = select(certificates.c.id).where(
+        certificates.c.company_id == cid, certificates.c.cert_class == klass, certificates.c.active.is_(True)
+    )
+    if exclude:
+        query = query.where(certificates.c.id != exclude)
+    return db.execute(query).scalar()
+
+
+def activate(db, cid, ident, klass):
+    """Make `ident` the active certificate of its class; a previous active FIEL goes to the history."""
+    if klass in FIEL_CLASSES:
+        db.execute(
+            update(certificates)
+            .where(
+                certificates.c.company_id == cid,
+                certificates.c.cert_class == klass,
+                certificates.c.active.is_(True),
+                certificates.c.id != ident,
+            )
+            .values(active=False, replaced_by=ident)
+        )
+    db.execute(update(certificates).where(certificates.c.id == ident).values(active=True))
+
+
+def still_valid(parsed):
+    end = parsed.get('valid_until')
+    return end is None or utc(end) >= now()
 
 
 @router.post('/companies/{cid}/certificates')
@@ -421,8 +545,7 @@ def add_certificate(
 ):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'certificates')
-    company = db.get(Company, cid)
+    company = vault_access(db, p, cid, 'manage')
     parsed = {}
     origin = 'manual'
     if payload.document_id:
@@ -452,6 +575,12 @@ def add_certificate(
         if rfcs and company.rfc not in rfcs and payload.holder == 'company':
             raise HTTPException(422, 'El RFC del certificado no coincide con la empresa.')
     ident = str(uuid4())
+    klass = cert_class(payload.kind, payload.holder)
+    current = active_of(db, cid, klass)
+    if current and not payload.replace:
+        raise HTTPException(409, 'Ya hay una FIEL activa de esa clase. Confirma si la reemplazas.')
+    # An expired certificate is kept only as history and never becomes the active one.
+    active = still_valid(parsed)
     try:
         db.execute(
             certificates.insert().values(
@@ -465,10 +594,23 @@ def add_certificate(
                 notes=payload.notes,
                 revision=1,
                 holder=payload.holder,
+                cert_class=klass,
+                holder_rfc=company.rfc if klass in ('FIEL_EMPRESA', 'CSD') else None,
+                branch=(payload.branch or '').strip() or None,
+                active=False,
                 **parsed,
             )
         )
-        event(db, p, cid, 'certificate_created', ident, {'kind': payload.kind, 'origin': origin})
+        if active:
+            activate(db, cid, ident, klass)
+        event(
+            db,
+            p,
+            cid,
+            'certificate_created',
+            ident,
+            {'kind': payload.kind, 'origin': origin, 'class': klass, 'replaced': current if active else None},
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -480,14 +622,12 @@ def add_certificate(
 def history(cid: str, response: Response, p: Principal = Depends(auth), db=Depends(session)):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'history')
+    vault_access(db, p, cid, 'view')
     require_unlocked(db, p, cid, None)
-    rows = [
-        dict(r)
-        for r in db.execute(
-            select(audit).where(audit.c.company_id == cid).order_by(audit.c.created_at.desc()).limit(100)
-        ).mappings()
-    ]
+    query = select(audit).where(audit.c.company_id == cid)
+    if not p.admin:  # an authorized person sees only their own actions
+        query = query.where(audit.c.actor_id == p.subject)
+    rows = [dict(r) for r in db.execute(query.order_by(audit.c.created_at.desc()).limit(100)).mappings()]
     event(db, p, cid, 'history_read')
     db.commit()
     return rows
@@ -511,7 +651,7 @@ def edit_certificate(
 ):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'certificates')
+    vault_access(db, p, cid, 'manage')
     old = (
         db.execute(select(certificates).where(certificates.c.id == ident, certificates.c.company_id == cid))
         .mappings()
@@ -523,7 +663,13 @@ def edit_certificate(
         result = db.execute(
             update(certificates)
             .where(certificates.c.id == ident, certificates.c.revision == payload.revision)
-            .values(kind=payload.kind, notes=payload.notes, reviewed_at=now(), revision=payload.revision + 1)
+            .values(
+                kind=payload.kind,
+                cert_class=cert_class(payload.kind, old['holder']),
+                notes=payload.notes,
+                reviewed_at=now(),
+                revision=payload.revision + 1,
+            )
         )
         if not result.rowcount:
             raise HTTPException(409, 'El certificado cambió; actualiza.')

@@ -36,6 +36,10 @@ credentials = Table(
     Column('holder', String(12)),
     Column('strength', Integer),
     Column('fingerprint', String(64)),
+    # cs_0024, renovación del gestor (fase 2): type of the spec (KINDS), «Revisar» mark and who changed it last.
+    Column('kind', String(12)),
+    Column('requires_review', Boolean),
+    Column('updated_by', String(100)),
 )
 versions = Table(
     'vault_versions',
@@ -65,6 +69,17 @@ certificates = Table(
     Column('revision', Integer, nullable=False),
     # cs_0021: whose certificate it is: the company or its legal representative (a second FIEL).
     Column('holder', String(12)),
+    # cs_0024: class of the spec (CLASSES), what the .cer says about its holder, the CSD branch, whether it is the
+    # active one (one FIEL of each class per company; CSD may be several), what replaced it and the credential that
+    # keeps the encrypted password of its private key.
+    Column('cert_class', String(20)),
+    Column('holder_name', String(300)),
+    Column('holder_rfc', String(13)),
+    Column('holder_curp', String(18)),
+    Column('branch', String(200)),
+    Column('active', Boolean),
+    Column('replaced_by', String(36)),
+    Column('key_password_id', String(36)),
     UniqueConstraint('company_id', 'fingerprint', 'kind'),
 )
 # cs_0021: encrypted FIEL/CSD/IMSS files (.cer, .key) of a credential, outside the document folders. Never indexed
@@ -106,6 +121,10 @@ audit = Table(
     Column('record_id', String(100)),
     Column('created_at', DateTime(timezone=True), nullable=False),
     Column('metadata', JSON, nullable=False),
+    # cs_0024: action of the spec (AUDIT_KINDS), the kind of resource and the computer it came from. Only appended.
+    Column('kind', String(20)),
+    Column('resource_type', String(20)),
+    Column('client', String(100)),
 )
 # cs_0022, renovación del gestor: one row per installation. Never stores the master password nor the data key.
 vault_config = Table(
@@ -187,3 +206,72 @@ PORTALS = {
     'state_isn': 'Portal estatal (ISN)',
     'bank': 'Banco',
 }
+
+# ---------------------------------------------------------------- renovación del gestor, fase 2 (cs_0024)
+# Types of password of the spec; LLAVE is the password of a FIEL/CSD private key (shown on its certificate card).
+KINDS = ('SAT_CIEC', 'IMSS_IDSE', 'SIPARE', 'INFONAVIT', 'CORREO', 'OTRO')
+KIND_LABELS = {
+    'SAT_CIEC': 'SAT',
+    'IMSS_IDSE': 'IMSS',
+    'SIPARE': 'SIPARE',
+    'INFONAVIT': 'Infonavit',
+    'CORREO': 'Correo',
+    'OTRO': 'Otro',
+    'LLAVE': 'Contraseña de la llave',
+}
+# Portal of the catalog for a credential created by type only.
+KIND_SERVICE = {
+    'SAT_CIEC': 'sat_password',
+    'IMSS_IDSE': 'idse',
+    'SIPARE': 'sipare',
+    'INFONAVIT': 'infonavit',
+    'CORREO': 'email',
+    'OTRO': 'other',
+}
+SERVICE_KIND = {
+    'sat_password': 'SAT_CIEC',
+    'idse': 'IMSS_IDSE',
+    'idse_user': 'IMSS_IDSE',
+    'idse_password': 'IMSS_IDSE',
+    'imss_certificate': 'IMSS_IDSE',
+    'sipare': 'SIPARE',
+    'sipare_user': 'SIPARE',
+    'sipare_password': 'SIPARE',
+    'infonavit': 'INFONAVIT',
+    'infonavit_user': 'INFONAVIT',
+    'infonavit_password': 'INFONAVIT',
+    'email': 'CORREO',
+    'fiel': 'LLAVE',
+    'csd': 'LLAVE',
+    'fiel_password': 'LLAVE',
+    'csd_password': 'LLAVE',
+}
+CLASSES = ('FIEL_EMPRESA', 'FIEL_REPRESENTANTE', 'CSD')
+AUDIT_KINDS = {
+    'vault_unlocked': ('DESBLOQUEAR', 'boveda'),
+    'vault_unlock_failed': ('DESBLOQUEO_FALLIDO', 'boveda'),
+    'secret_revealed': ('VER', 'credencial'),
+    'secret_copied': ('COPIAR', 'credencial'),
+    'credential_created': ('CREAR', 'credencial'),
+    'credential_modified': ('EDITAR', 'credencial'),
+    'credential_archived': ('ELIMINAR', 'credencial'),
+    'certificate_created': ('CREAR', 'certificado'),
+    'certificate_modified': ('EDITAR', 'certificado'),
+    'vault_file_stored': ('EDITAR', 'certificado'),
+    'vault_file_removed': ('EDITAR', 'certificado'),
+    'vault_imported': ('IMPORTAR', 'importacion'),
+    'vault_exported': ('EXPORTAR', 'exportacion'),
+    'autofill_used': ('USO_DECLARA', 'credencial'),
+}
+
+
+def kind_of(service_id):
+    return SERVICE_KIND.get(service_id or '', 'OTRO')
+
+
+def cert_class(kind, holder):
+    if kind == 'csd':
+        return 'CSD'
+    if kind == 'fiel':
+        return 'FIEL_REPRESENTANTE' if holder == 'legal_rep' else 'FIEL_EMPRESA'
+    return None

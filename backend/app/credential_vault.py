@@ -27,9 +27,8 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from .credential_api import (
-    allowed,
+    activate,
     attached_files,
-    by_role,
     credential_row,
     event,
     no_cache,
@@ -37,11 +36,13 @@ from .credential_api import (
     ready,
     repeated_fingerprints,
     require_unlocked,
+    still_valid,
     router,
+    vault_access,
 )
 from . import vault_session
 from .credential_crypto import VaultLocked, strength
-from .credential_models import certificates, credentials, files, services, tickets, versions
+from .credential_models import cert_class, certificates, credentials, files, services, tickets, versions
 from .database import session
 from .models import Company, now
 from .security import Principal, auth, utc
@@ -66,20 +67,11 @@ def vault_list(
     """Every credential the person may see, by company and portal, with search. Never a secret."""
     no_cache(response)
     ready(db)
+    vault_access(db, p, None, 'view')
     require_unlocked(db, p, company_id, None)  # a locked vault shows no company data at all
     companies = db.scalars(select(Company).order_by(Company.name)).all()
     visible = {
-        c.id: c
-        for c in companies
-        if (p.admin or c.id in p.company_ids) and by_role(p, c, 'metadata') and (not company_id or c.id == company_id)
-    }
-    from .credential_models import grants
-
-    reveal_grants = {
-        r[0]
-        for r in db.execute(
-            select(grants.c.company_id).where(grants.c.user_id == p.subject, grants.c.permission == 'reveal')
-        )
+        c.id: c for c in companies if (p.admin or c.id in p.company_ids) and (not company_id or c.id == company_id)
     }
     labels = dict(db.execute(select(services.c.id, services.c.label)).all())
     repeated = repeated_fingerprints(db)
@@ -102,8 +94,8 @@ def vault_list(
             company_rfc=c.rfc,
             portal=portal,
             files=attached.get(r['id'], []),
-            can_reveal=p.admin or c.id in reveal_grants,
-            can_modify=by_role(p, c, 'modify'),
+            can_reveal=True,
+            can_modify=p.admin,
         )
         items.append(item)
     items.sort(key=lambda i: (i['company_name'], i['portal'], i['label'] or ''))
@@ -115,9 +107,7 @@ def vault_list(
     return {
         'items': items,
         'services': [{'id': k, 'label': v} for k, v in sorted(labels.items(), key=lambda kv: kv[1])],
-        'companies': [
-            {'id': c.id, 'name': c.name, 'rfc': c.rfc, 'can_create': by_role(p, c, 'create')} for c in visible.values()
-        ],
+        'companies': [{'id': c.id, 'name': c.name, 'rfc': c.rfc, 'can_create': p.admin} for c in visible.values()],
         'health': {
             'weak': sum(1 for i in items if i['strength'] is not None and i['strength'] <= 1),
             'repeated': sum(1 for i in items if i['repeated']),
@@ -151,7 +141,7 @@ async def add_file(
 
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'modify')
+    vault_access(db, p, cid, 'manage')
     row = credential_row(db, cid, ident)
     if row['service_id'] not in ('fiel', 'csd', 'imss_certificate', 'fiel_password', 'csd_password'):
         raise HTTPException(422, 'Sólo FIEL, CSD o certificado IMSS llevan archivos.')
@@ -175,6 +165,7 @@ async def add_file(
             if rfcs and company.rfc not in rfcs:
                 raise HTTPException(422, 'El RFC del certificado no coincide con la empresa.')
         cert_kind = 'csd' if row['service_id'] in ('csd', 'csd_password') else 'fiel'
+        klass = cert_class(cert_kind, holder)
         existing = db.execute(
             select(certificates.c.id).where(
                 certificates.c.company_id == cid,
@@ -182,8 +173,17 @@ async def add_file(
                 certificates.c.kind == cert_kind,
             )
         ).first()
+        # Fase 2: the incomplete certificate of this credential («Faltan .cer y .key») receives the .cer.
+        incomplete = db.execute(
+            select(certificates.c.id).where(
+                certificates.c.key_password_id == ident, certificates.c.fingerprint.is_(None)
+            )
+        ).first()
         if existing:
             certificate_id = existing[0]
+        elif incomplete:
+            certificate_id = incomplete[0]
+            db.execute(update(certificates).where(certificates.c.id == certificate_id).values(notes='', **parsed))
         else:
             certificate_id = str(uuid4())
             db.execute(
@@ -198,9 +198,19 @@ async def add_file(
                     notes='',
                     revision=1,
                     holder=holder,
+                    cert_class=klass,
+                    holder_rfc=company.rfc if klass in ('FIEL_EMPRESA', 'CSD') else None,
+                    active=False,
+                    key_password_id=ident,
                     **parsed,
                 )
             )
+        if not existing:
+            # Uploading a .cer to the FIEL credential replaces the active one; an expired one stays as history.
+            if still_valid(parsed):
+                activate(db, cid, certificate_id, klass)
+            else:
+                db.execute(update(certificates).where(certificates.c.id == certificate_id).values(active=False))
     elif data.lstrip().startswith(b'-----BEGIN') is False and data[:1] != b'\x30':
         raise HTTPException(422, 'No parece una llave privada .key del SAT.')
     file_id = str(uuid4())
@@ -233,7 +243,7 @@ def remove_file(
 ):
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'modify')
+    vault_access(db, p, cid, 'manage')
     gone = db.execute(
         files.delete().where(files.c.id == file_id, files.c.credential_id == ident, files.c.company_id == cid)
     ).rowcount
@@ -263,7 +273,7 @@ def ticket(
     """
     no_cache(response)
     ready(db)
-    allowed(p, db, cid, 'reveal')
+    vault_access(db, p, cid, 'view')
     row = credential_row(db, cid, ident)
     require_unlocked(db, p, cid, ident)
     if payload.purpose == 'sat_fiel':

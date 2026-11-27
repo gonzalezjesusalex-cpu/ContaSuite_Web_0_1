@@ -440,6 +440,8 @@ export default function App() {
         <nav className="sidebar-modules" aria-label="Módulos">
           {nav
             .filter((i) => !MODULE_ACTIONS[i.path] || canAnywhere(identity, MODULE_ACTIONS[i.path]))
+            // Gestor, fase 2: only administrators and people with a vault key see the password manager.
+            .filter((i) => i.path !== PASSWORD_MANAGER_PATH || state?.vault_access !== false)
             .map((i) => (
               <SidebarLink key={i.path} item={i} tip={tip} />
             ))}

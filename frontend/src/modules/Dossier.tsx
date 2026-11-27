@@ -230,10 +230,12 @@ export default function Dossier({
           actions={
             // Each action by the role's permission in this company (Bloque 2), not by `admin` (Bloque 3).
             <div className="dossier-actions">
-              <Link className="btn" to={PASSWORD_MANAGER_PATH + '?company_id=' + encodeURIComponent(c.id)}>
-                <KeyRound size={16} />
-                Ver credenciales
-              </Link>
+              {state.vault_access !== false && (
+                <Link className="btn" to={PASSWORD_MANAGER_PATH + '?company_id=' + encodeURIComponent(c.id)}>
+                  <KeyRound size={16} />
+                  Ver credenciales
+                </Link>
+              )}
               {can(me, 'recibos.usar', c.id) && (
                 <Link className="btn" to={'/recibos?empresa=' + c.id}>
                   <FileText size={16} />

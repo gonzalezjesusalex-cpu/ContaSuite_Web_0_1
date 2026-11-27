@@ -325,6 +325,13 @@ def health():
     return {'version': '1.0.0-rc.1', 'status': 'ok'}
 
 
+def vault_access_for(db, principal):
+    """Whether the password manager appears in the menu (administrators and people with a vault key)."""
+    from .credential_api import vault_member
+
+    return vault_member(db, principal)
+
+
 @app.get('/api/state', dependencies=APP)
 def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
     if principal.admin:
@@ -378,6 +385,8 @@ def state(db: Session = Depends(session), principal: Principal = Depends(auth)):
         # Responsible users of the visible companies, so the client can show "(inactivo)".
         'responsibles': responsibles(db, companies),
         'current_user': principal.public(),
+        # Renovación del gestor (fase 2): administrators and authorized people see the password manager.
+        'vault_access': vault_access_for(db, principal),
         # Bloque 4: the user's own linked agent, or why there is none.
         'agent_link': agent_status,
         'archive_available': archive_available,
@@ -1362,7 +1371,19 @@ app.include_router(credential_router)
 
 @app.middleware('http')
 async def credential_cache_policy(request, call_next):
-    response = await call_next(request)
+    token = None
+    if request.url.path.startswith('/api/credentials'):
+        from .credential_api import CLIENT
+
+        # Fase 2 of the password manager: the vault log records the computer each action came from.
+        host = request.client.host if request.client else 'desconocido'
+        agent = (request.headers.get('user-agent') or '')[:60]
+        token = CLIENT.set(host + (' · ' + agent if agent else ''))
+    try:
+        response = await call_next(request)
+    finally:
+        if token is not None:
+            CLIENT.reset(token)
 
     if request.url.path.startswith(('/api/credentials', '/api/pilot-imports', '/api/pilot-batches')):
         response.headers['Cache-Control'] = 'no-store, private'
