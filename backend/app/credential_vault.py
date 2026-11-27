@@ -10,7 +10,6 @@
 - Export only for administrators, with re-authentication; every action goes to the vault log.
 """
 
-import base64
 import hashlib
 import io
 import re
@@ -27,7 +26,6 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
 from .credential_api import (
-    activate,
     attached_files,
     credential_row,
     event,
@@ -36,13 +34,12 @@ from .credential_api import (
     ready,
     repeated_fingerprints,
     require_unlocked,
-    still_valid,
     router,
     vault_access,
 )
 from . import vault_session
 from .credential_crypto import VaultLocked, strength
-from .credential_models import cert_class, certificates, credentials, files, services, tickets, versions
+from .credential_models import credentials, files, services, tickets, versions
 from .database import session
 from .models import Company, now
 from .security import Principal, auth, utc
@@ -126,115 +123,11 @@ def fold(text):
 # ---------------------------------------------------------------- FIEL / CSD / IMSS files
 
 
-@router.post('/companies/{cid}/secrets/{ident}/files', status_code=201)
-async def add_file(
-    cid: str,
-    ident: str,
-    response: Response,
-    file: UploadFile = File(...),
-    p: Principal = Depends(auth),
-    db=Depends(session),
-):
-    """Encrypt a .cer or .key of the credential (FIEL, CSD, IMSS certificate). The .cer also feeds the dates of
-    the traffic light (public certificate; never an SAT validation). Nothing is written to document folders."""
-    from .credential_api import parse_public_certificate
-
-    no_cache(response)
-    ready(db)
-    vault_access(db, p, cid, 'manage')
-    row = credential_row(db, cid, ident)
-    if row['service_id'] not in ('fiel', 'csd', 'imss_certificate', 'fiel_password', 'csd_password'):
-        raise HTTPException(422, 'Sólo FIEL, CSD o certificado IMSS llevan archivos.')
-    name = (file.filename or '').strip()
-    kind = name.lower().rsplit('.', 1)[-1] if '.' in name else ''
-    if kind not in ('cer', 'key'):
-        raise HTTPException(422, 'Carga el archivo .cer o .key.')
-    data = await file.read(MAX_FILE + 1)
-    await file.close()
-    if not data or len(data) > MAX_FILE:
-        raise HTTPException(422, 'Archivo vacío o demasiado grande.')
-    holder = row['holder'] or 'company'
-    certificate_id = None
-    if kind == 'cer':
-        parsed = parse_public_certificate(data)
-        company = db.get(Company, cid)
-        if holder == 'company':
-            from .storage.classifier import RFC, valid_rfc
-
-            rfcs = {r for r in RFC.findall(parsed['subject'].upper()) if valid_rfc(r)}
-            if rfcs and company.rfc not in rfcs:
-                raise HTTPException(422, 'El RFC del certificado no coincide con la empresa.')
-        cert_kind = 'csd' if row['service_id'] in ('csd', 'csd_password') else 'fiel'
-        klass = cert_class(cert_kind, holder)
-        existing = db.execute(
-            select(certificates.c.id).where(
-                certificates.c.company_id == cid,
-                certificates.c.fingerprint == parsed['fingerprint'],
-                certificates.c.kind == cert_kind,
-            )
-        ).first()
-        # Fase 2: the incomplete certificate of this credential («Faltan .cer y .key») receives the .cer.
-        incomplete = db.execute(
-            select(certificates.c.id).where(
-                certificates.c.key_password_id == ident, certificates.c.fingerprint.is_(None)
-            )
-        ).first()
-        if existing:
-            certificate_id = existing[0]
-        elif incomplete:
-            certificate_id = incomplete[0]
-            db.execute(update(certificates).where(certificates.c.id == certificate_id).values(notes='', **parsed))
-        else:
-            certificate_id = str(uuid4())
-            db.execute(
-                certificates.insert().values(
-                    id=certificate_id,
-                    company_id=cid,
-                    rfc=company.rfc,
-                    kind=cert_kind,
-                    document_id=None,
-                    origin='vault',
-                    reviewed_at=now(),
-                    notes='',
-                    revision=1,
-                    holder=holder,
-                    cert_class=klass,
-                    holder_rfc=company.rfc if klass in ('FIEL_EMPRESA', 'CSD') else None,
-                    active=False,
-                    key_password_id=ident,
-                    **parsed,
-                )
-            )
-        if not existing:
-            # Uploading a .cer to the FIEL credential replaces the active one; an expired one stays as history.
-            if still_valid(parsed):
-                activate(db, cid, certificate_id, klass)
-            else:
-                db.execute(update(certificates).where(certificates.c.id == certificate_id).values(active=False))
-    elif data.lstrip().startswith(b'-----BEGIN') is False and data[:1] != b'\x30':
-        raise HTTPException(422, 'No parece una llave privada .key del SAT.')
-    file_id = str(uuid4())
-    envelope = require_unlocked(db, p, cid, ident).seal_bytes(data, cid, 'file:' + file_id)
-    db.execute(files.delete().where(files.c.credential_id == ident, files.c.file_kind == kind))
-    db.execute(
-        files.insert().values(
-            id=file_id,
-            company_id=cid,
-            credential_id=ident,
-            file_kind=kind,
-            file_name=name[:255],
-            envelope=envelope,
-            sha256=hashlib.sha256(data).hexdigest(),
-            size=len(data),
-            certificate_id=certificate_id,
-            actor_id=p.subject,
-            created_at=now(),
-        )
-    )
-    event(db, p, cid, 'vault_file_stored', ident, {'kind': kind})
-    db.commit()
-    del data
-    return {'id': file_id, 'kind': kind, 'certificate_id': certificate_id, 'authority_validated': False}
+@router.post('/companies/{cid}/secrets/{ident}/files', status_code=410)
+def add_file(cid: str, ident: str, p: Principal = Depends(auth)):
+    """Retired in fase 3 of the renovación del gestor: a .cer or .key is stored only through «Agregar FIEL o CSD»
+    (app/vault_fiel.py), which opens the key with its password and checks that it matches the certificate."""
+    raise HTTPException(410, 'Carga la FIEL o el CSD con «Agregar FIEL o CSD»: se validan juntos el .cer y el .key.')
 
 
 @router.delete('/companies/{cid}/secrets/{ident}/files/{file_id}')
@@ -277,9 +170,8 @@ def ticket(
     row = credential_row(db, cid, ident)
     require_unlocked(db, p, cid, ident)
     if payload.purpose == 'sat_fiel':
-        kinds = {r[0] for r in db.execute(select(files.c.file_kind).where(files.c.credential_id == ident))}
-        if not {'cer', 'key'} <= kinds:
-            raise HTTPException(422, 'La FIEL necesita su .cer y su .key en el gestor.')
+        # Fase 3: the .cer and the .key never leave the server; Declara uses them through obtener_fiel_para_acceso.
+        raise HTTPException(422, 'La FIEL ya no se entrega a la extensión: el acceso con e.firma lo hará Declara.')
     token = tokens.token_urlsafe(32)
     # The extension has no session: the ticket is exchanged with the data key of the session that issued it.
     vault_session.remember_ticket(hashlib.sha256(token.encode()).hexdigest(), p.session_id, TICKET_SECONDS)
@@ -319,11 +211,8 @@ def redeem(payload: dict, response: Response, db=Depends(session)):
     try:
         cipher = vault_session.cipher(vault_session.ticket_session(digest))
         secret = cipher.open(cred['envelope'], cid, ident, authorize_recent=lambda: True)
+        # Only the password and the user: the .cer and the .key are never sent over HTTP (fase 3).
         out = {'purpose': row['purpose'], 'rfc': company.rfc, 'username': cred['username'], 'password': secret}
-        if row['purpose'] == 'sat_fiel':
-            for f in db.execute(select(files).where(files.c.credential_id == ident)).mappings():
-                raw = cipher.open_bytes(f['envelope'], cid, 'file:' + f['id'], authorize_recent=lambda: True)
-                out[f['file_kind']] = {'name': f['file_name'], 'data': base64.b64encode(raw).decode()}
     except VaultLocked:
         db.commit()
         raise HTTPException(423, 'Bóveda bloqueada.') from None

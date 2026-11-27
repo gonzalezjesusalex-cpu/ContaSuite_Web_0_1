@@ -5,6 +5,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  FileKey2,
   Eye,
   EyeOff,
   HeartPulse,
@@ -30,6 +31,7 @@ import { api, authHeaders } from '../api';
 import { Badge, Field, Modal } from '../components/ui';
 import { stitchButton, stitchDanger, stitchPrimary } from '../components/stitch';
 import { isLockedError, useVault } from './VaultGate';
+import AddSignature, { type SignatureClass } from './AddSignature';
 import './v11.css';
 
 /** Plan v1.1, Cambio 4: password manager per company and portal (Chrome-style) on the existing vault. */
@@ -182,7 +184,8 @@ export default function PasswordManager({
   const [reload, setReload] = useState(0);
   const [shown, setShown] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Item | 'new' | null>(null);
-  const [filesOf, setFilesOf] = useState<Item | null>(null);
+  // Fase 3: «Agregar FIEL o CSD» (company and class preselected from a signature card, if any).
+  const [signing, setSigning] = useState<null | { company?: string; klass: SignatureClass }>(null);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [generator, setGenerator] = useState(false);
@@ -209,7 +212,7 @@ export default function PasswordManager({
       clearTimeout(t);
       abort.abort();
     };
-  }, [query, service, companyId, reload]);
+  }, [query, service, companyId, reload, vault]);
   useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
 
   /** Runs `action`; when the vault locked itself meanwhile, the screen goes back to the lock card. */
@@ -257,7 +260,7 @@ export default function PasswordManager({
       }, 30000);
     });
   }
-  async function autofill(item: Item, purpose: 'sat_password' | 'sat_fiel') {
+  async function autofill(item: Item, purpose: 'sat_password') {
     if (!extensionReady()) {
       notify('Instala la extensión de ContaSuite en Chrome o Edge para entrar al portal del SAT con autocompletado.');
       return;
@@ -327,11 +330,11 @@ export default function PasswordManager({
             <Copy size={16} aria-hidden />
             {!compact && 'Copiar'}
           </button>
-          {(item.service_id === 'sat_password' || item.service_id === 'fiel') && (
+          {item.service_id === 'sat_password' && (
             <button
               className={compact ? stitchButton : stitchPrimary}
               title="Abre el portal del SAT y llena el acceso con la extensión de ContaSuite"
-              onClick={() => autofill(item, item.service_id === 'fiel' ? 'sat_fiel' : 'sat_password')}
+              onClick={() => autofill(item, 'sat_password')}
             >
               <ExternalLink size={16} aria-hidden /> Entrar al SAT
             </button>
@@ -350,8 +353,18 @@ export default function PasswordManager({
           {FILE_PORTALS.includes(item.service_id) && (
             <button
               className={stitchButton + ' icon-only'}
-              aria-label={'Archivos de ' + item.portal}
-              onClick={() => setFilesOf(item)}
+              aria-label={'Reemplazar .cer y .key de ' + item.portal}
+              title="Reemplazar con un .cer y un .key nuevos"
+              onClick={() =>
+                setSigning({
+                  company: item.company_id,
+                  klass: item.service_id.startsWith('csd')
+                    ? 'CSD'
+                    : item.holder === 'legal_rep'
+                      ? 'FIEL_REPRESENTANTE'
+                      : 'FIEL_EMPRESA',
+                })
+              }
             >
               <Paperclip size={16} aria-hidden />
             </button>
@@ -400,6 +413,9 @@ export default function PasswordManager({
               </button>
               <button className={stitchButton} onClick={() => setExporting(true)}>
                 <Download size={16} aria-hidden /> Exportar
+              </button>
+              <button className={stitchButton} onClick={() => setSigning({ klass: 'FIEL_EMPRESA' })}>
+                <FileKey2 size={16} aria-hidden /> Agregar FIEL o CSD
               </button>
             </>
           )}
@@ -625,12 +641,17 @@ export default function PasswordManager({
           }}
         />
       )}
-      {filesOf && (
-        <FilesDialog
-          item={filesOf}
-          onClose={() => setFilesOf(null)}
-          onChanged={() => setReload((n) => n + 1)}
-          notify={notify}
+      {signing && data && (
+        <AddSignature
+          companies={data.companies}
+          companyId={companyId || signing.company}
+          initialClass={signing.klass}
+          onClose={() => setSigning(null)}
+          onSaved={(message) => {
+            setSigning(null);
+            setReload((n) => n + 1);
+            notify(message);
+          }}
         />
       )}
       {generator && <GeneratorDialog onClose={() => setGenerator(false)} notify={notify} />}
@@ -802,86 +823,6 @@ function CredentialForm({
           <button className={stitchPrimary}>Guardar cifrada</button>
         </div>
       </form>
-    </Modal>
-  );
-}
-
-function FilesDialog({
-  item,
-  onClose,
-  onChanged,
-  notify,
-}: {
-  item: Item;
-  onClose: () => void;
-  onChanged: () => void;
-  notify: (s: string) => void;
-}) {
-  const [files, setFiles] = useState(item.files);
-  const input = useRef<HTMLInputElement>(null);
-  async function upload(file: File) {
-    const body = new FormData();
-    body.append('file', file);
-    try {
-      const r = await api<{ id: string; kind: string }>(
-        `/credentials/companies/${item.company_id}/secrets/${item.id}/files`,
-        'POST',
-        body,
-      );
-      setFiles((old) => [...old.filter((f) => f.kind !== r.kind), { id: r.id, kind: r.kind, name: file.name }]);
-      onChanged();
-      notify(
-        r.kind === 'cer'
-          ? 'Certificado guardado; sus fechas alimentan el semáforo (no es validación SAT).'
-          : 'Llave privada guardada cifrada.',
-      );
-    } catch (e) {
-      notify((e as Error).message);
-    } finally {
-      if (input.current) input.current.value = '';
-    }
-  }
-  async function remove(id: string) {
-    try {
-      await api(`/credentials/companies/${item.company_id}/secrets/${item.id}/files/${id}`, 'DELETE');
-      setFiles((old) => old.filter((f) => f.id !== id));
-      onChanged();
-    } catch (e) {
-      notify((e as Error).message);
-    }
-  }
-  return (
-    <Modal title={`Archivos · ${item.portal}`} onClose={onClose}>
-      <p>
-        El .cer y el .key se guardan cifrados fuera de las carpetas de documentos; no se indexan ni se descargan. Se
-        usan sólo con la extensión de ContaSuite al entrar al SAT.
-      </p>
-      <ul>
-        {files.map((f) => (
-          <li key={f.id}>
-            .{f.kind} · {f.name}{' '}
-            <button className={stitchButton} onClick={() => remove(f.id)}>
-              Quitar
-            </button>
-          </li>
-        ))}
-        {!files.length && <li className="muted">Sin archivos.</li>}
-      </ul>
-      <input
-        ref={input}
-        type="file"
-        accept=".cer,.key"
-        hidden
-        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
-      />
-      <div className="actions">
-        <button className={stitchPrimary} onClick={() => input.current?.click()}>
-          <Upload size={16} aria-hidden /> Subir .cer o .key
-        </button>
-        <button className={stitchButton} onClick={onClose}>
-          Cerrar
-        </button>
-      </div>
     </Modal>
   );
 }

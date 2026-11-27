@@ -750,3 +750,143 @@
   opacity: 0;
   cursor: pointer;
 }
+
+/* Renovación del gestor, fase 3: «Agregar FIEL o CSD». */
+.v2-signature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+}
+@media (max-width: 760px) {
+  .v2-signature {
+    grid-template-columns: 1fr;
+  }
+}
+.v2-signature-form {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+.v2-signature-classes {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.v2-signature-classes legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.v2-signature-class {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.v2-signature-class span {
+  display: grid;
+  gap: 2px;
+}
+.v2-signature-class.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.v2-signature-drop {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+.v2-signature-drop p {
+  margin: 0;
+}
+.v2-signature-drop ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.v2-signature-drop li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+.v2-signature-result {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-signature-read,
+.v2-signature-sat dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.v2-signature-read dt,
+.v2-signature-sat dt {
+  color: var(--muted);
+}
+.v2-signature-read dd,
+.v2-signature-sat dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.v2-signature-read .mono {
+  font-family: var(--font-mono);
+}
+.v2-signature-checks {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.v2-signature-checks li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.v2-signature-checks li svg {
+  flex: none;
+  margin-top: 2px;
+}
+.v2-signature-checks .is-ok svg {
+  color: var(--ok-strong);
+}
+.v2-signature-checks .is-error svg {
+  color: var(--danger-strong);
+}
+.v2-signature-checks .is-warning svg {
+  color: var(--warn-strong);
+}
+.v2-signature-sat {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-signature-sat h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: var(--fs-md);
+}

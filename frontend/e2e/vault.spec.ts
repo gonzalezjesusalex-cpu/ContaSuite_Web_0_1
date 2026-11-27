@@ -48,4 +48,13 @@ test('bóveda: crear, código de recuperación, bloquear y desbloquear', async (
   await page.getByLabel('Contraseña maestra').fill(renewed);
   await page.getByRole('button', { name: 'Desbloquear' }).click();
   await expect(page.getByText(/Desbloqueado · se bloquea en/)).toBeVisible();
+
+  // Fase 3: «Agregar FIEL o CSD» asks whose signature it is and saves nothing until every check passes.
+  await page.getByRole('button', { name: 'Agregar FIEL o CSD' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Agregar FIEL o CSD' });
+  for (const option of ['FIEL de la empresa', 'FIEL del representante', 'Sello digital (CSD)'])
+    await expect(dialog.getByRole('radio', { name: option })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(dialog).toHaveCount(0);
 });

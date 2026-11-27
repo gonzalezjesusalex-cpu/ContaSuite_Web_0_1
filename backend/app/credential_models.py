@@ -262,6 +262,7 @@ AUDIT_KINDS = {
     'vault_imported': ('IMPORTAR', 'importacion'),
     'vault_exported': ('EXPORTAR', 'exportacion'),
     'autofill_used': ('USO_DECLARA', 'credencial'),
+    'fiel_used': ('USO_DECLARA', 'certificado'),
 }
 
 

@@ -1365,6 +1365,7 @@ from .credential_api import router as credential_router
 from . import credential_alerts  # noqa: F401 - registers local alert endpoints on the same router
 from . import credential_vault  # noqa: F401 - plan v1.1 password manager endpoints on the same router
 from . import vault_master  # noqa: F401 - master password, unlock and lock (renovación del gestor, fase 1)
+from . import vault_fiel  # noqa: F401 - «Agregar FIEL o CSD» and the FIEL service for Declara (fase 3)
 
 app.include_router(credential_router)
 
