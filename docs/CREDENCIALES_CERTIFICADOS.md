@@ -58,6 +58,21 @@ La migración define `upgrade(connection)` para un operador autorizado después 
 - **Permisos del gestor** (`vault_access`): ver la lista, ver y copiar son para el administrador y las personas con copia de la llave, cada una en las empresas de su cuenta. Agregar, editar, eliminar, archivos, certificados, importar y exportar son sólo para el administrador. En la bitácora, la persona autorizada ve sólo sus acciones. Los demás no ven el módulo (`/api/state` → `vault_access`). Los permisos por empresa de `vault_grants` ya no aplican al gestor. Las demás pantallas (semáforo, tablero, ciclo de vida) conservan `allowed()`.
 - **Bitácora** (`vault_audit`): `kind` con la acción de la spec (DESBLOQUEAR, DESBLOQUEO_FALLIDO, VER, COPIAR, CREAR, EDITAR, ELIMINAR, IMPORTAR, EXPORTAR, USO_DECLARA), `resource_type` y `client` (IP y navegador). Sólo se agregan filas, nunca secretos.
 
+### Importación, plantilla y exportación (fase 4 · cs_0025)
+
+- `app/vault_import.py` aplica la sección 6 de la spec. Se procesa en memoria del servidor; el navegador vuelve a mandar el archivo en cada paso y su SHA-256 debe ser el mismo de la vista previa. Es sólo para administradores con la bóveda desbloqueada.
+- **1 · Archivo** (`POST /import/read`): `.xlsx` o `.csv` (UTF-8 o Latin-1, separado por coma, punto y coma o tabulador), hasta 5 MB. Se elige la hoja que tiene columna RFC y al menos una columna de contraseña; los encabezados son la primera fila que contiene «RFC». Los `.xls` responden 422 con la indicación de guardarlos como `.xlsx`, porque hace falta la dependencia `xlrd`, pendiente de autorizar.
+- **2 · Columnas**: los encabezados se reconocen sin mayúsculas, acentos ni espacios (tabla de la spec). La asignación corregida se guarda en `vault_import_templates` por la firma de los encabezados, sin valores de celdas.
+- **3 · Revisar cambios** (`POST /import/preview`): una línea por celda con valor. Las acciones son Agregar, Actualizar, Sin cambios, No se toca (vacía, NA, N/A, - o SIN), Revisar y Necesita tu decisión.
+  - Un RFC que no existe pide crear la empresa u omitirla, y un valor con «/» pide elegir cuál o guardar todos.
+  - Una contraseña de FIEL/CSD sin archivos crea «Faltan .cer y .key». Si no abre la llave guardada queda en «Revisar» y no se aplica.
+  - Un registro patronal o un nombre distintos sólo generan un aviso. Con un RFC repetido gana la última fila, y las filas sin RFC se cuentan.
+  - Nunca se muestran contraseñas: la comparación usa la huella con llave.
+- **Aplicar** (`POST /import/apply`): todo en una transacción. Responde 409 si quedan decisiones o si el archivo cambió. Registra una fila IMPORTAR con el nombre del archivo y los conteos.
+- En CORREO, «dirección / contraseña» guarda la dirección como usuario. Una celda con sólo la dirección no se toca. En IMSS y SIPARE, el usuario es el registro patronal del archivo o el de la empresa.
+- `GET /import/template` genera la plantilla vacía. `POST /export` produce el mismo formato con los datos, pide otra vez la contraseña maestra y registra EXPORTAR. De cada tipo exporta la credencial más reciente y la contraseña de la llave de cada certificado activo. El archivo exportado se vuelve a importar sin cambios.
+- La importación anterior, que mezclaba las hojas EMPRESAS y CONTRASEÑAS y rellenaba giro, REPSE y trabajadores, se retiró: la spec sólo importa contraseñas.
+
 ### Lectura y validación de FIEL/CSD (fase 3)
 
 - `app/sat_certificates.py` lee el `.cer` (DER o PEM) con la librería X.509 de `cryptography`, porque no hay en Python un equivalente mantenido de phpcfdi/credentials. Saca el titular (`name`/CN), el RFC (x500UniqueIdentifier 2.5.4.45, «RFC empresa / RFC representante» en morales), la CURP (serialNumber 2.5.4.5), el número de certificado (los 20 dígitos ASCII del número de serie), la vigencia, el emisor, la clase (un CSD trae OU, que es la sucursal, y un uso de llave sin acuerdo de llave ni cifrado de datos) y la huella SHA-256. Abre el `.key` PKCS#8 cifrado con su contraseña y comprueba que la llave pública sea la misma, con una prueba de firmar y verificar.

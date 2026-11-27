@@ -137,10 +137,8 @@ def test_permissions_by_role(client):  # noqa: F811
     )
     assert client.delete(f'/api/credentials/companies/{cid}/secrets/{ident}?revision=1').status_code == 403
     assert client.post(f'/api/credentials/companies/{cid}/certificates', json={'kind': 'fiel'}).status_code == 403
-    assert client.post('/api/credentials/export', json={'reason': 'respaldo'}).status_code == 403
-    preview = client.post(
-        '/api/credentials/import/preview', files={'file': ('a.xlsx', b'PK', 'application/octet-stream')}
-    )
+    assert client.post('/api/credentials/export', json={'reason': 'respaldo', 'password': 'x'}).status_code == 403
+    preview = client.post('/api/credentials/import/read', files={'file': ('a.xlsx', b'PK', 'application/octet-stream')})
     assert preview.status_code == 403
     # The log shows only their own actions (the administrator's view of the same secret is not listed).
     log = client.get(f'/api/credentials/companies/{cid}/history').json()

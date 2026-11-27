@@ -27,11 +27,12 @@ import {
   WandSparkles,
   type LucideIcon,
 } from 'lucide-react';
-import { api, authHeaders } from '../api';
+import { api } from '../api';
 import { Badge, Field, Modal } from '../components/ui';
 import { stitchButton, stitchDanger, stitchPrimary } from '../components/stitch';
 import { isLockedError, useVault } from './VaultGate';
 import AddSignature, { type SignatureClass } from './AddSignature';
+import { downloadTemplate, ExportDialog, ImportDialog } from './VaultImport';
 import './v11.css';
 
 /** Plan v1.1, Cambio 4: password manager per company and portal (Chrome-style) on the existing vault. */
@@ -413,6 +414,9 @@ export default function PasswordManager({
               </button>
               <button className={stitchButton} onClick={() => setExporting(true)}>
                 <Download size={16} aria-hidden /> Exportar
+              </button>
+              <button className={stitchButton} onClick={() => downloadTemplate(notify)}>
+                <Download size={16} aria-hidden /> Descargar plantilla de Excel
               </button>
               <button className={stitchButton} onClick={() => setSigning({ klass: 'FIEL_EMPRESA' })}>
                 <FileKey2 size={16} aria-hidden /> Agregar FIEL o CSD
@@ -863,224 +867,6 @@ function GeneratorDialog({ onClose, notify }: { onClose: () => void; notify: (s:
       <p className="muted">
         Algunos portales (SAT, IMSS) limitan longitud o símbolos: revisa sus reglas antes de cambiarla.
       </p>
-    </Modal>
-  );
-}
-
-type PreviewRow = {
-  row: number;
-  sheets: string[];
-  rfc: string | null;
-  company_name: string | null;
-  company_id: string | null;
-  matched_name: string | null;
-  company_fields: string[];
-  entries: {
-    service_id: string;
-    portal: string;
-    label: string;
-    holder: string | null;
-    has_user: boolean;
-    has_password: boolean;
-  }[];
-  issues: string[];
-  importable: boolean;
-};
-
-function ImportDialog({
-  onClose,
-  onDone,
-  notify,
-}: {
-  onClose: () => void;
-  onDone: () => void;
-  notify: (s: string) => void;
-}) {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<{ sha256: string; rows: PreviewRow[] } | null>(null);
-  const [chosen, setChosen] = useState<Set<number>>(new Set());
-  const [busy, setBusy] = useState(false);
-  async function analyze(f: File) {
-    setFile(f);
-    setBusy(true);
-    const body = new FormData();
-    body.append('file', f);
-    try {
-      const p = await api<{ sha256: string; rows: PreviewRow[] }>('/credentials/import/preview', 'POST', body);
-      setPreview(p);
-      setChosen(new Set(p.rows.filter((r) => r.importable).map((r) => r.row)));
-    } catch (e) {
-      notify((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function confirmImport() {
-    if (!file || !preview) return;
-    setBusy(true);
-    const body = new FormData();
-    body.append('file', file);
-    body.append('sha256', preview.sha256);
-    body.append('rows', [...chosen].join(','));
-    try {
-      const r = await api<{ created: number; kept_existing: number; skipped: number; company_fields_filled: number }>(
-        '/credentials/import/confirm',
-        'POST',
-        body,
-      );
-      notify(
-        `Importación: ${r.created} accesos nuevos, ${r.kept_existing} ya existían (sin cambios), ${r.skipped} omitidos, ${r.company_fields_filled} datos de empresa completados.`,
-      );
-      setFile(null);
-      onDone();
-      onClose();
-    } catch (e) {
-      notify((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Modal title="Importar contraseñas desde Excel" onClose={onClose}>
-      <p>
-        Acepta el Excel del despacho (una hoja) y el de corporativo (hojas EMPRESAS y CONTRASEÑAS). Se empareja por RFC
-        exacto; lo que no coincide queda para revisión. La vista previa nunca muestra contraseñas y el archivo no se
-        guarda.
-      </p>
-      <input
-        type="file"
-        accept=".xlsx"
-        disabled={busy}
-        onChange={(e) => e.target.files?.[0] && analyze(e.target.files[0])}
-      />
-      {preview && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Importar</th>
-                <th scope="col">Fila</th>
-                <th scope="col">RFC / empresa</th>
-                <th scope="col">Accesos</th>
-                <th scope="col">Revisión</th>
-              </tr>
-            </thead>
-            <tbody>
-              {preview.rows.map((r) => (
-                <tr key={r.row}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      aria-label={'Importar fila ' + r.row}
-                      disabled={!r.importable}
-                      checked={chosen.has(r.row)}
-                      onChange={(e) =>
-                        setChosen((old) => {
-                          const next = new Set(old);
-                          if (e.target.checked) next.add(r.row);
-                          else next.delete(r.row);
-                          return next;
-                        })
-                      }
-                    />
-                  </td>
-                  <td>{r.row}</td>
-                  <td>
-                    {r.rfc || '—'}
-                    <br />
-                    <small>{r.matched_name || r.company_name || ''}</small>
-                  </td>
-                  <td>
-                    {r.entries.map((e) => (
-                      <div key={e.portal + e.label + (e.holder || '')}>
-                        {e.portal}
-                        {e.holder === 'legal_rep' ? ' (representante)' : ''}: usuario{' '}
-                        {e.has_user ? 'presente' : 'vacío'} · contraseña {e.has_password ? 'presente' : 'vacía'}
-                      </div>
-                    ))}
-                    {r.company_fields.length > 0 && <small>Datos de empresa: {r.company_fields.join(', ')}</small>}
-                  </td>
-                  <td>{r.issues.join(' ') || 'Lista'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <div className="actions">
-        <button className={stitchButton} onClick={onClose}>
-          Cancelar
-        </button>
-        <button className={stitchPrimary} disabled={busy || !preview || !chosen.size} onClick={confirmImport}>
-          Importar {chosen.size} filas
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
-function ExportDialog({
-  companies,
-  companyId,
-  onClose,
-  onLocked,
-  notify,
-}: {
-  companies: Vault['companies'];
-  companyId?: string;
-  onClose: () => void;
-  onLocked: () => void;
-  notify: (s: string) => void;
-}) {
-  const [reason, setReason] = useState('');
-  const [onlyThis, setOnlyThis] = useState(!!companyId);
-  async function run() {
-    const response = await fetch('/api/credentials/export', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason, company_ids: onlyThis && companyId ? [companyId] : companies.map((c) => c.id) }),
-    });
-    if (response.status === 423) {
-      onLocked();
-      return;
-    }
-    if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || 'No se pudo exportar.');
-    const url = URL.createObjectURL(await response.blob());
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'contrasenas_contasuite.xlsx';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    notify('Exportación lista. Protege el archivo y bórralo cuando termines.');
-    onClose();
-  }
-  return (
-    <Modal title="Exportar contraseñas" onClose={onClose}>
-      <p role="alert" className="error-banner">
-        El archivo tendrá las contraseñas en claro. Guárdalo cifrado, no lo envíes por correo y bórralo al terminar. La
-        exportación queda en la bitácora con tu motivo.
-      </p>
-      <Field label="Motivo">
-        <input required minLength={3} maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
-      </Field>
-      {companyId && (
-        <label className="check-option">
-          <input type="checkbox" checked={onlyThis} onChange={(e) => setOnlyThis(e.target.checked)} /> Sólo esta empresa
-        </label>
-      )}
-      <div className="actions">
-        <button className={stitchButton} onClick={onClose}>
-          Cancelar
-        </button>
-        <button
-          className={stitchDanger}
-          disabled={reason.trim().length < 3}
-          onClick={() => run().catch((e) => notify(e.message))}
-        >
-          Exportar
-        </button>
-      </div>
     </Modal>
   );
 }

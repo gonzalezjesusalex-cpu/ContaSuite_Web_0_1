@@ -137,7 +137,7 @@ def upgrade_with_data():
     print('roles', roles, 'legacy', tuple(legacy), 'check', bool(checks), 'version', version)
     assert roles == {'admin': 'admin', 'colab': 'auxiliar'}
     assert legacy[0] == 'Ana Pérez' and legacy[1] is None  # nobody is assigned automatically
-    assert checks and version == 'cs_0024_vault_types_classes'
+    assert checks and version == 'cs_0025_vault_import_templates'
     # The backup restores into a fresh database (what an operator would do to roll back).
     run(BIN / 'createdb.exe', '-h', '127.0.0.1', '-p', PORT, '-U', 'postgres', 'cs_restored')
     run(BIN / 'pg_restore.exe', '-h', '127.0.0.1', '-p', PORT, '-U', 'postgres', '-d', 'cs_restored', backup)

@@ -157,6 +157,17 @@ vault_keys = Table(
     Column('created_by', String(100), nullable=False),
     UniqueConstraint('kind', 'user_id'),
 )
+# cs_0025, renovación del gestor (fase 4): how each column of an Excel format was assigned (never a cell value).
+import_templates = Table(
+    'vault_import_templates',
+    metadata,
+    Column('id', String(36), primary_key=True),
+    Column('name', String(200), nullable=False),
+    Column('header_signature', String(64), nullable=False, unique=True),
+    Column('mapping', JSON, nullable=False),
+    Column('updated_at', DateTime(timezone=True), nullable=False),
+    Column('updated_by', String(100), nullable=False),
+)
 settings = Table(
     'vault_alert_settings',
     metadata,

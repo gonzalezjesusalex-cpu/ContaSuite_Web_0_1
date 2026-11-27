@@ -890,3 +890,124 @@
   margin: 0 0 10px;
   font-size: var(--fs-md);
 }
+
+/* Renovación del gestor, fase 4: «Importar» in three steps. */
+.v2-import-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.v2-import-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+}
+.v2-import-steps li span {
+  font-family: var(--font-mono);
+}
+.v2-import-steps li.is-current {
+  border-color: var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-weight: 600;
+}
+.v2-import-steps li.is-done {
+  color: var(--ok-strong);
+}
+.v2-import-file {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 24px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+.v2-import-file p {
+  max-width: 52ch;
+  margin: 0;
+}
+.v2-import-columns select {
+  width: 100%;
+}
+.v2-import-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.v2-import-counts span {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+}
+.v2-import-counts strong {
+  display: block;
+  font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
+}
+.v2-import-counts .is-pending {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.v2-import-notice {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin: 4px 0;
+  color: var(--warn-strong);
+  font-size: var(--fs-sm);
+}
+.v2-import-notice svg {
+  flex: none;
+  margin-top: 2px;
+}
+.v2-import-companies {
+  display: grid;
+  gap: 12px;
+  max-height: 55vh;
+  overflow: auto;
+}
+.v2-import-company {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.v2-import-company header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.v2-import-company table {
+  width: 100%;
+  font-size: var(--fs-sm);
+}
+.v2-import-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-md);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+  font-size: var(--fs-xs);
+}
+.v2-import-decision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.v2-import-company tr.is-review td,
+.v2-import-company tr.is-decide td {
+  color: var(--warn-strong);
+}

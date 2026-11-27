@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login } from './helpers';
+import { company, login } from './helpers';
 
 // Renovación del gestor, fase 1: the vault starts locked, the first time an administrator creates the master
 // password and sees the recovery code once; «Bloquear ahora» hides every company and the code opens it again.
@@ -57,4 +57,20 @@ test('bóveda: crear, código de recuperación, bloquear y desbloquear', async (
   await expect(dialog.getByRole('button', { name: 'Guardar' })).toBeDisabled();
   await dialog.getByRole('button', { name: 'Cancelar' }).click();
   await expect(dialog).toHaveCount(0);
+
+  // Fase 4: «Importar» in three steps; the preview never shows the password.
+  await page.getByRole('button', { name: 'Importar desde Excel' }).click();
+  const wizard = page.getByRole('dialog', { name: 'Importar contraseñas desde Excel' });
+  await wizard.locator('input[type=file]').setInputFiles({
+    name: 'contrasenas.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(['RFC,CONTRASEÑA,NIVEL', `${company.rfc},Ciec-E2E-sintetica-1,A`].join('\n'), 'utf-8'),
+  });
+  await expect(wizard.getByRole('combobox', { name: 'Destino de RFC' })).toHaveValue('rfc');
+  await expect(wizard.getByRole('combobox', { name: 'Destino de CONTRASEÑA' })).toHaveValue('sat');
+  await wizard.getByRole('button', { name: 'Revisar cambios' }).click();
+  await expect(wizard.getByText('nuevas')).toBeVisible();
+  await expect(wizard).not.toContainText('Ciec-E2E-sintetica-1');
+  await wizard.getByRole('button', { name: 'Aplicar 1 cambios' }).click();
+  await expect(page.getByText(/borrar el Excel de tu equipo/)).toBeVisible();
 });
