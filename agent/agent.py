@@ -9,15 +9,29 @@ from urllib.request import Request, urlopen, build_opener, ProxyHandler
 from urllib.error import URLError
 from urllib.parse import urlparse
 import threading
+import time
 
 MAX_FILES = 3000
 CAPABILITIES = ['scan_folder', 'export_virtual', 'write_cfdi']
 
 
+def declara_ready():
+    """Declara en modo carpeta needs the engine's PDF reader on this computer."""
+    try:
+        import pypdf  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def capabilities(config):
     """The SAT download is advertised only when this computer's setup names the portal address to open."""
     sat = config.get('sat') or {}
-    return CAPABILITIES + (['sat_declaraciones'] if sat.get('base_url') else [])
+    return (
+        CAPABILITIES
+        + (['sat_declaraciones'] if sat.get('base_url') else [])
+        + (['declara_carpeta'] if declara_ready() else [])
+    )
 
 
 def request(url, token, path, data):
@@ -575,6 +589,18 @@ def send_sat_pdfs(put_fn, job_id, agent_id, result, notify=None):
     result['no_entregados'] = failed
 
 
+def send_declara_pdf(put_fn, job_id, agent_id, result):
+    """Vista previa de Declara en modo carpeta: el PDF pedido viaja aparte, verificado por su huella."""
+    data = result.pop('_pdf', None)
+    if data is None:
+        return
+    try:
+        put_fn('/agent/jobs/' + job_id + '/declara/' + result['sha256'] + '?agent_id=' + agent_id, data)
+        result['entregado'] = True
+    except Exception:  # noqa: BLE001 - the job reports the failure instead of raising
+        result['entregado'] = False
+
+
 def progress_reporter(post_fn, job_id, agent_id, kind=None):
     """Best-effort reports of a SAT download's phase: a lost report never fails the job."""
     import time
@@ -603,6 +629,22 @@ def progress_reporter(post_fn, job_id, agent_id, kind=None):
     return report
 
 
+def renew_declara_locks():
+    """Latido de los bloqueos de Declara que este agente tiene tomados (cada 30 s a lo más)."""
+    import sys
+
+    module = sys.modules.get('declara_folder')
+    if module is None:
+        return
+    if time.monotonic() - getattr(renew_declara_locks, 'last', 0.0) < module.LOCK_RENEW_SECONDS:
+        return
+    renew_declara_locks.last = time.monotonic()
+    try:
+        module.renew_held()
+    except Exception:  # noqa: BLE001 - a lost heartbeat only lets the lock expire
+        logging.warning('No se pudo renovar un bloqueo de Declara.')
+
+
 def run_job(job, roots, options=None, notify=None, fetch=None):
     """(status, result) of one claimed job. Never raises: every failure becomes its data-free reason."""
     try:
@@ -617,6 +659,13 @@ def run_job(job, roots, options=None, notify=None, fetch=None):
             return 'completed', write_cfdi(payload, roots, fetch, notify)
         if job['kind'] == 'sat_declaraciones':
             return 'completed', sat_download(payload, options or {}, notify)
+        if job['kind'] == 'declara_carpeta':
+            import declara_folder
+
+            options = options or {}
+            user = options.get('_user') or os.getenv('USERNAME', '')
+            machine = options.get('_machine') or os.getenv('COMPUTERNAME', '')
+            return 'completed', declara_folder.run(payload, roots, user, machine)
         raise ValueError('Operación no admitida')
     except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
         logging.exception('Trabajo %s: no se pudo completar', job.get('id'))
@@ -670,6 +719,7 @@ def run(config, stop_event=None, request_fn=request):
                     result,
                 )
                 send_sat_pdfs(lambda path, data: put_bytes(url, token, path, data), job['id'], agent_id, result, notify)
+                send_declara_pdf(lambda path, data: put_bytes(url, token, path, data), job['id'], agent_id, result)
                 pending = (job['id'], {'agent_id': agent_id, 'status': status, 'result': result})
                 continue
         except (URLError, TimeoutError, OSError, ValueError):
@@ -698,6 +748,16 @@ REASONS = {
     'sat_navegador_cerrado': 'Se cerró la ventana del navegador antes de terminar la descarga.',
     'destino_invalido': 'La empresa no tiene una carpeta de destino válida.',
     'destino_fuera_de_raices': 'El destino está fuera de las carpetas autorizadas o de la carpeta de la empresa.',
+    # Declara en modo carpeta.
+    'demasiados_archivos': 'La carpeta tiene demasiados archivos (más de 5,000).',
+    'operacion_desconocida': 'Operación de Declara no admitida por este agente.',
+    'carpeta_bloqueada': 'La carpeta está en uso por otra persona: queda en sólo lectura.',
+    'cambio_externo': 'Un archivo cambió o desapareció desde el análisis: vuelve a analizar la carpeta.',
+    'destinos_duplicados': 'El plan tiene destinos repetidos: vuelve a analizar la carpeta.',
+    'respaldo_fallido': 'No se pudo respaldar un original: no se renombró nada.',
+    'renombrado_fallido': 'No se pudo renombrar; se revirtieron los cambios.',
+    'sin_registro': 'No hay renombrados registrados que deshacer en esta carpeta.',
+    'destino_existe': 'Un nombre anterior ya está ocupado: no se deshizo nada.',
 }
 
 
@@ -758,6 +818,7 @@ class LinkedAgent:
         self.token = None
         self.user = None
         self.notice = 'Sin vincular: inicia sesión en ContaSuite en este equipo.'
+        self.interactive_until = 0.0
 
     def pair(self, code):
         result = self.post(self.url, '/agent/pair', {'code': code, 'agent_id': self.agent_id, 'machine': self.machine})
@@ -794,7 +855,11 @@ class LinkedAgent:
             fetch = lambda item: get_bytes(  # noqa: E731
                 self.url, token, '/agent/jobs/' + job['id'] + '/cfdi/' + item + '?agent_id=' + self.agent_id
             )
-            status, result = run_job(job, job['payload'].get('roots') or [], self.config, notify, fetch)
+            options = {**self.config, '_user': self.user, '_machine': self.machine}
+            status, result = run_job(job, job['payload'].get('roots') or [], options, notify, fetch)
+            send_declara_pdf(
+                lambda path, data: self.put(self.url, token, path, data), job['id'], self.agent_id, result
+            )
             send_index(lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id, result)
             send_copies(
                 lambda path, data: self.post(self.url, path, data, token),
@@ -847,11 +912,18 @@ class LinkedAgent:
                         if error.code != 409:
                             raise
                     pending = None
+                renew_declara_locks()
                 job = self.post(self.url, '/agent/' + self.agent_id + '/claim', {}, token)
                 if job:
                     logging.info('Procesando trabajo %s', job['id'])
+                    if job['kind'] == 'declara_carpeta':
+                        self.interactive_until = time.monotonic() + 180
                     status, result = self.run_alive(job, token)
                     pending = (job['id'], {'agent_id': self.agent_id, 'status': status, 'result': result})
+                    continue
+                if time.monotonic() < self.interactive_until:
+                    # Declara está abierta en el navegador: el selector de carpeta y la vista previa esperan poco.
+                    stop_event.wait(1)
                     continue
             except HTTPError as error:
                 if error.code in (401, 403):

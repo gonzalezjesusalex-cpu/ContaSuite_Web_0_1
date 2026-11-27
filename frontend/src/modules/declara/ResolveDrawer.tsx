@@ -16,6 +16,7 @@ import {
   type PdfRecord,
   type Preview,
 } from './model';
+import { waitJob } from './folderJobs';
 
 type Option = 'duplicate' | 'type' | 'manual';
 type Kind = 'DECLARACION' | 'ACUSE';
@@ -78,9 +79,11 @@ export default function ResolveDrawer({
   editable,
   record,
   records,
+  folderMode = false,
   onClose,
   onApplied,
 }: {
+  folderMode?: boolean;
   runId: string;
   revision: number;
   editable: boolean;
@@ -125,23 +128,39 @@ export default function ResolveDrawer({
   useEffect(() => {
     const controller = new AbortController();
     let url = '';
-    fetch(`/api/declara/runs/${runId}/file/${record.index}`, {
-      headers: { Authorization: 'Bearer ' + getToken() },
-      signal: controller.signal,
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error('No se pudo abrir el PDF.');
-        url = URL.createObjectURL(await r.blob());
-        if (!controller.signal.aborted) setPdf(url);
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setPdfError(e.message);
+    const get = () =>
+      fetch(`/api/declara/runs/${runId}/file/${record.index}`, {
+        headers: { Authorization: 'Bearer ' + getToken() },
+        signal: controller.signal,
       });
+    (async () => {
+      let r = await get();
+      if (r.status === 409 && folderMode) {
+        // Modo carpeta: el PDF está en el equipo; el agente lo entrega verificado por su huella.
+        setPdfError('Pidiendo el PDF al agente…');
+        const asked = await api<{ job_id: string | null }>(
+          `/declara/runs/${runId}/fetch-pdf/${record.index}`,
+          'POST',
+          undefined,
+          controller.signal,
+        );
+        if (asked.job_id) await waitJob(asked.job_id, 60_000);
+        r = await get();
+      }
+      if (!r.ok) throw new Error('No se pudo abrir el PDF.');
+      url = URL.createObjectURL(await r.blob());
+      if (!controller.signal.aborted) {
+        setPdfError('');
+        setPdf(url);
+      }
+    })().catch((e) => {
+      if (!controller.signal.aborted) setPdfError(e.message);
+    });
     return () => {
       controller.abort();
       URL.revokeObjectURL(url);
     };
-  }, [runId, record.index]);
+  }, [runId, record.index, folderMode]);
 
   const body = () =>
     option === 'duplicate'

@@ -844,7 +844,7 @@ def job_action(kind):
     """The permission a job needs, by kind: exporting and downloading from the SAT are their own permissions."""
     if kind in ('export_virtual', 'write_cfdi'):
         return 'carpeta.exportar'
-    return 'declara.usar' if kind == 'sat_declaraciones' else 'carpeta.analizar'
+    return 'declara.usar' if kind in ('sat_declaraciones', 'declara_carpeta') else 'carpeta.analizar'
 
 
 @app.post('/api/jobs', dependencies=APP, status_code=201)
@@ -1099,6 +1099,8 @@ def audit_text(kind, status):
         return 'Descarga de declaraciones ' + ('completada' if done else 'fallida')
     if kind == 'write_cfdi':
         return 'Escritura de CFDI en la carpeta de la empresa ' + ('completada' if done else 'fallida')
+    if kind == 'declara_carpeta':
+        return 'Declara en carpeta: operación del agente ' + ('completada' if done else 'fallida')
     return 'Análisis local ' + ('completado' if done else 'fallido')
 
 
@@ -1313,6 +1315,11 @@ app.include_router(organizador_router, dependencies=[Depends(CFDI.dependency())]
 from .declara import router as declara_router
 
 app.include_router(declara_router, dependencies=[Depends(DECLARA.dependency())])
+
+from .declara_folder_api import router as declara_folder_router, agent_router as declara_agent_router
+
+app.include_router(declara_folder_router, dependencies=[Depends(DECLARA.dependency())])
+app.include_router(declara_agent_router)
 
 
 from .storage.router import router as storage_router

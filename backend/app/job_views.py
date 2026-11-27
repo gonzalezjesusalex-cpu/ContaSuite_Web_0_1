@@ -6,7 +6,7 @@ job of a company is served by `/api/companies/{id}/jobs/latest`.
 
 from .models import Job
 
-KINDS = ('scan_folder', 'export_virtual', 'sat_declaraciones', 'write_cfdi')
+KINDS = ('scan_folder', 'export_virtual', 'sat_declaraciones', 'write_cfdi', 'declara_carpeta')
 # What the screens need from a job without loading its (possibly huge) result: failures, the SAT download's progress
 # and cancellation, the outcome flags of an analysis and the small counters of a SAT download.
 BRIEF_KEYS = (

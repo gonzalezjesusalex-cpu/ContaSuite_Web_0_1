@@ -12,8 +12,10 @@ import StepApply from './declara/StepApply';
 import StepSource, { type Mode } from './declara/StepSource';
 import Stepper, { type Step } from './declara/Stepper';
 import { RUN_LABELS, longDate, type CompanyView, type Detail, type Run } from './declara/model';
+import { folderOp, waitJob } from './declara/folderJobs';
 
-const WORKING = ['analyzing', 'editing', 'generating'];
+const WORKING = ['analyzing', 'editing', 'generating', 'applying', 'undoing'];
+type Settings = { template: string; due_day: number; poll_seconds: number; backup: boolean };
 
 export default function Declara({
   state,
@@ -40,8 +42,53 @@ export default function Declara({
   const [reload, setReload] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [logVersion, setLogVersion] = useState(0);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [backup, setBackup] = useState(true);
+  const [poll, setPoll] = useState(true);
+  const [changed, setChanged] = useState(false);
   const status = detail?.run.status || '';
   const working = busy || WORKING.includes(status);
+  const agent = state.agents.find((a) => a.id === state.agent_link?.agent_id);
+  const folderReady = !!agent?.capabilities.includes('declara_carpeta');
+
+  useEffect(() => {
+    api<Settings>('/declara/settings')
+      .then((s) => {
+        setSettings(s);
+        setBackup(s.backup);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  // Revisar cambios cada N s (modo carpeta): una firma barata de la carpeta, sin leer los PDF. También mantiene vivo
+  // el bloqueo de la carpeta mientras la pantalla está abierta.
+  const folderRun = detail?.run.mode === 'carpeta' ? detail.run : null;
+  useEffect(() => {
+    setChanged(false);
+    if (!folderRun?.folder_path || !poll) return;
+    const every = (settings?.poll_seconds || 60) * 1000;
+    let active = true;
+    const timer = setInterval(() => {
+      folderOp<{ firma: string }>(folderRun.company_id, 'firma', folderRun.folder_path!)
+        .then((r) => active && setChanged(!!folderRun.summary.firma && r.firma !== folderRun.summary.firma))
+        .catch(() => undefined);
+    }, every);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [folderRun?.id, folderRun?.folder_path, folderRun?.summary.firma, folderRun?.company_id, poll, settings]);
+
+  // Al salir de la pantalla se libera el bloqueo de la carpeta (además caduca solo a los 2 minutos sin latido).
+  useEffect(() => {
+    if (!folderRun?.folder_path) return;
+    const { company_id, folder_path } = folderRun;
+    return () => {
+      api('/declara/folder', 'POST', { company_id, op: 'liberar', ruta: folder_path }).catch(() => undefined);
+    };
+    // Sólo al cambiar de análisis: la carpeta y la empresa son las del análisis que se deja.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folderRun?.id]);
 
   // Datos de Declara de la empresa: nombre corto guardado (o sugerido), modo preferido y fecha de alta.
   useEffect(() => {
@@ -56,11 +103,14 @@ export default function Declara({
         if (!active) return;
         setView(v);
         setShortName(v.short_name);
+        if (v.mode === 'carpeta' && folderReady) setMode('carpeta');
       })
       .catch((e) => active && setError(e.message));
     return () => {
       active = false;
     };
+    // El modo preferido se toma al elegir la empresa, no cada vez que cambia el estado del agente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [company]);
 
   useEffect(() => {
@@ -186,6 +236,55 @@ export default function Declara({
     }
   }
 
+  // Modo carpeta: aplicar, deshacer y reanalizar los hace el agente; la pantalla espera su resultado.
+  async function folderAction(path: string, body: object | undefined, message: string) {
+    setBusy(true);
+    setError('');
+    try {
+      const { job_id } = await api<{ job_id: string }>(path, 'POST', body);
+      setReload((v) => v + 1);
+      await waitJob(job_id, 15 * 60_000);
+      notify(message);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+      setReload((v) => v + 1);
+    }
+  }
+
+  const applyFolder = (withBackup: boolean) =>
+    folderAction(
+      `/declara/runs/${id}/apply`,
+      { revision: detail?.run.revision ?? 0, respaldo: withBackup },
+      'Renombrado aplicado en la carpeta.',
+    );
+
+  const undoFolder = () => folderAction(`/declara/runs/${id}/undo`, undefined, 'Se deshizo el último renombrado.');
+
+  async function reanalyze() {
+    const run = detail?.run;
+    if (!run?.folder_path) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { job_id } = await api<{ job_id: string }>('/declara/folder/analyze', 'POST', {
+        company_id: run.company_id,
+        year: run.year || year,
+        short_name: run.short_name,
+        ruta: run.folder_path,
+      });
+      const result = await waitJob<{ analisis_id: string }>(job_id, 15 * 60_000);
+      setReload((v) => v + 1);
+      openRun(result.analisis_id);
+      notify('Carpeta analizada de nuevo.');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function download(kind: 'zip' | 'csv') {
     setBusy(true);
     setError('');
@@ -210,7 +309,7 @@ export default function Declara({
   }
 
   const reviewable = !!detail && !['analyzing', 'error'].includes(status) && detail.records.length > 0;
-  const generated = status === 'generated';
+  const generated = status === 'generated' || status === 'applied' || status === 'undone';
   const runMode = (detail?.run.mode as Mode) || mode;
   const steps: Step[] = [
     { n: 1, label: 'Empresa y PDF', state: step === 1 ? 'current' : detail ? 'done' : 'available' },
@@ -298,7 +397,20 @@ export default function Declara({
           onOpenRun={openRun}
           notify={notify}
           refresh={refresh}
+          folder={{ backup, poll, onBackup: setBackup, onPoll: setPoll }}
         />
+      )}
+
+      {step !== 1 && folderRun && (changed || status === 'undone') && (
+        <div className="declara-banner" role="status">
+          {status === 'undone'
+            ? 'Se deshizo el último renombrado: vuelve a analizar la carpeta para ver su estado actual.'
+            : 'La carpeta cambió desde el análisis (archivos nuevos o modificados).'}
+          <button type="button" className={stitchButton} disabled={busy} onClick={reanalyze}>
+            <RefreshCw size={15} />
+            Reanalizar carpeta
+          </button>
+        </div>
       )}
 
       {step !== 1 && detail && !reviewable && (
@@ -374,7 +486,16 @@ export default function Declara({
       )}
 
       {step === 3 && detail && reviewable && (
-        <StepApply detail={detail} busy={working} logVersion={logVersion} onGenerate={generate} onDownload={download} />
+        <StepApply
+          detail={detail}
+          busy={working}
+          logVersion={logVersion}
+          backup={backup}
+          onGenerate={generate}
+          onDownload={download}
+          onApply={applyFolder}
+          onUndo={undoFolder}
+        />
       )}
 
       {record && detail && (
@@ -385,6 +506,7 @@ export default function Declara({
           editable={status === 'analyzed'}
           record={record}
           records={detail.records}
+          folderMode={detail.run.mode === 'carpeta'}
           onClose={() => setSelected(null)}
           onApplied={(d, message) => {
             setDetail(d);

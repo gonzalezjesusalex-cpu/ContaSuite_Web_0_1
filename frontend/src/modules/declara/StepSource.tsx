@@ -6,6 +6,7 @@ import { Badge, Field } from '../../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../../components/stitch';
 import type { State } from '../../types';
 import SatAccess from '../SatAccess';
+import FolderSource from './FolderSource';
 import MonthMatrix from './MonthMatrix';
 import { RUN_LABELS, longDate, sanitizeShortName, type CompanyView, type Run } from './model';
 
@@ -70,6 +71,7 @@ export default function StepSource({
   onOpenRun,
   notify,
   refresh,
+  folder,
 }: {
   state: State;
   company: string;
@@ -87,6 +89,7 @@ export default function StepSource({
   onOpenRun: (id: string) => void;
   notify: (m: string) => void;
   refresh: () => Promise<void>;
+  folder: { backup: boolean; poll: boolean; onBackup: (v: boolean) => void; onPoll: (v: boolean) => void };
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [problem, setProblem] = useState('');
@@ -215,6 +218,26 @@ export default function StepSource({
           )}
         </section>
 
+        {mode === 'carpeta' && folderReady && company && (
+          <FolderSource
+            companyId={company}
+            companyName={view?.name || ''}
+            year={year}
+            shortName={clean}
+            ready={ready}
+            lastRun={runs.find((r) => r.mode === 'carpeta' && r.year === year)}
+            backup={folder.backup}
+            poll={folder.poll}
+            onBackup={folder.onBackup}
+            onPoll={folder.onPoll}
+            onAnalyzed={onOpenRun}
+          />
+        )}
+        {mode === 'carpeta' && !company && (
+          <section className={stitchCard + ' padded'}>
+            <p className="muted">Elige la empresa para ver su carpeta vinculada.</p>
+          </section>
+        )}
         {mode === 'subir' && (
           <section
             className={stitchCard + ' padded declara-drop' + (dragging ? ' dragging' : '')}

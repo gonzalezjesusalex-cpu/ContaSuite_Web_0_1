@@ -34,6 +34,17 @@ export type Summary = {
   year?: number;
   due_day?: number;
   alta?: { fecha: string | null; origen: 'Constancia' | 'RFC' | null };
+  // Modo carpeta.
+  leidos?: number;
+  archivos?: number;
+  firma?: string;
+  solo_lectura?: boolean;
+  bloqueo?: { estado: 'libre' | 'propio' | 'ajeno'; usuario?: string; equipo?: string; desde?: string };
+  deshacer?: boolean;
+  equipo?: string | null;
+  pendientes?: string[];
+  respaldo?: boolean;
+  trabajo?: string;
 };
 
 export type Run = {
@@ -121,6 +132,10 @@ export const RUN_LABELS: Record<string, string> = {
   editing: 'Guardando revisión',
   generating: 'Generando copias',
   generated: 'Terminado',
+  applying: 'Aplicando en la carpeta',
+  applied: 'Renombrado aplicado',
+  undoing: 'Deshaciendo',
+  undone: 'Renombrado deshecho',
   error: 'Revisar error',
 };
 

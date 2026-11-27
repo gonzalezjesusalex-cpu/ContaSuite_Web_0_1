@@ -507,6 +507,10 @@ def can_undo(ident):
 @router.get('/runs/{ident}')
 def detail(ident: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
     run = DECLARA.check(principal, get_run(db, ident))
+    if run.mode == 'carpeta':
+        from .declara_folder_api import finish_pending
+
+        finish_pending(db, run)
     records = []
     if (folder(ident) / 'plan.json').exists():
         infos = load_plan(ident)
@@ -859,6 +863,8 @@ def start_generate(
     principal: Principal = Depends(auth),
 ):
     run = DECLARA.check(principal, get_run(db, ident))
+    if run.mode == 'carpeta':
+        raise HTTPException(422, 'En modo carpeta el renombrado se aplica en la carpeta, no con copias.')
     if not run.summary.get('rfc_matches'):
         raise HTTPException(422, 'El RFC detectado no coincide con la empresa seleccionada.')
     if not (run.summary.get('rename', 0) + run.summary.get('correct', 0)):
@@ -877,13 +883,21 @@ def start_generate(
 
 @router.get('/runs/{ident}/file/{index}')
 def preview(ident: str, index: int, db: Session = Depends(session), principal: Principal = Depends(auth)):
-    DECLARA.check(principal, get_run(db, ident))
+    run = DECLARA.check(principal, get_run(db, ident))
     if not (folder(ident) / 'plan.json').exists():
         raise HTTPException(409, 'Primero termina el análisis.')
     infos = load_plan(ident)
     if index < 0 or index >= len(infos):
         raise HTTPException(404, 'PDF no encontrado')
-    return FileResponse(infos[index].path, media_type='application/pdf', content_disposition_type='inline')
+    path = infos[index].path
+    if run.mode == 'carpeta':
+        # En modo carpeta el PDF vive en el equipo: sólo se muestra la copia que el agente entregó para verlo.
+        from .declara_folder_api import cached_pdf
+
+        path = cached_pdf(ident, infos[index])
+        if path is None:
+            raise HTTPException(409, 'Pide la vista previa al agente.')
+    return FileResponse(path, media_type='application/pdf', content_disposition_type='inline')
 
 
 @router.get('/runs/{ident}/download')

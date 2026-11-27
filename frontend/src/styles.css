@@ -3343,9 +3343,10 @@ dialog[data-closing]::backdrop {
 .declara-month.state-vencido {
   border-left-color: var(--danger);
 }
+/* Vista previa en gris sin opacidad: el texto conserva el contraste AA (4.5:1). */
 .declara-matrix.placeholder .declara-month {
   background: var(--hover);
-  opacity: 0.7;
+  border-style: dashed;
 }
 .declara-marks {
   display: flex;
@@ -3432,7 +3433,7 @@ dialog[data-closing]::backdrop {
 }
 .declara-chip-count {
   font-size: var(--fs-xs);
-  opacity: 0.8;
+  font-weight: 600;
 }
 .declara-search {
   flex: 1 1 220px;
@@ -3785,6 +3786,201 @@ dialog[data-closing]::backdrop {
   font-size: var(--fs-xs);
   overflow-wrap: anywhere;
 }
+/* Modo carpeta: carpeta vinculada, semáforo y selector de carpeta */
+.declara-folder-path {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+  margin: 0 0 4px;
+}
+.declara-lights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.declara-light {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--hover);
+}
+.declara-light small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.declara-light-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.declara-light.ok .declara-light-dot {
+  background: var(--ok);
+}
+.declara-light.warn .declara-light-dot {
+  background: var(--warn);
+}
+.declara-light.bad .declara-light-dot {
+  background: var(--danger);
+}
+.declara-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin: 12px 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+}
+.declara-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.declara-picker,
+.declara-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 23px 23px;
+}
+.declara-picker {
+  width: min(680px, calc(100vw - 48px));
+}
+.declara-modal-body p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+dialog form.declara-path-row {
+  padding: 0;
+}
+.declara-crumb {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.declara-crumb:disabled {
+  cursor: default;
+}
+.declara-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.declara-tab {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  font: inherit;
+}
+.declara-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--primary-container);
+  font-weight: 600;
+}
+.declara-picker-roots {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.declara-picker-roots li {
+  max-width: 100%;
+}
+.declara-picker-roots button {
+  max-width: 100%;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-align: left;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.declara-path-row {
+  display: flex;
+  gap: 8px;
+}
+.declara-path-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+}
+.declara-crumbs {
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.declara-folder-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.declara-folder-list li + li {
+  border-top: 1px solid var(--border);
+}
+.declara-folder-list li.muted {
+  padding: 8px 10px;
+}
+.declara-folder-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.declara-folder-list button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.declara-folder-list button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.declara-folder-name {
+  font-weight: 600;
+  flex: 1 1 140px;
+}
+.declara-folder-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+[data-theme='contrast'] .declara-banner {
+  border-width: 2px;
+}
 [data-theme='contrast'] .declara-module .kpi > span,
 [data-theme='contrast'] .declara-module .kpi small,
 [data-theme='contrast'] .declara-module .kpi > strong {
@@ -3823,6 +4019,9 @@ dialog[data-closing]::backdrop {
   .declara-fields,
   .declara-selectors {
     grid-template-columns: 1fr;
+  }
+  .declara-lights {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .declara-month-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
