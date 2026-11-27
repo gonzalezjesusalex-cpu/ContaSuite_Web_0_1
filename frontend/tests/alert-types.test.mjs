@@ -39,7 +39,9 @@ test('every known type is in Spanish and never repeats its internal code', () =>
 test('certificate kinds are translated from their pattern', () => {
   assert.equal(alertText('fiel_expired_0'), 'FIEL vencida');
   assert.equal(alertText('csd_expired_0'), 'Sello digital (CSD) vencido');
-  assert.equal(alertText('fiel_expiring_15'), 'FIEL por vencer (15 días o menos)');
+  assert.equal(alertText('fiel_expiring_30'), 'FIEL por vencer (30 días o menos)');
+  assert.equal(alertText('fiel_expiring_7'), 'FIEL por vencer (7 días o menos)');
+  assert.equal(alertText('fiel_expiring_0'), 'FIEL vence hoy');
   assert.equal(alertType('csd_expiring_30').action, 'Renovar');
   assert.equal(alertText('unknown_unknown_0'), 'Certificado sin fechas de vigencia');
   assert.equal(alertText('fiel_pending_verification_0'), 'FIEL con vigencia aún no iniciada');
@@ -63,7 +65,7 @@ test('direct actions lead to the screen that fixes the condition', () => {
   assert.equal(at('missing_responsible'), '/empresas/c1/editar');
   assert.equal(at('document_pending_classification'), '/empresas/c1?tab=Documentos');
   assert.equal(at('overdue'), '/empresas/c1?tab=Obligaciones');
-  assert.equal(at('fiel_expired_0'), '/empresas/c1?tab=FIEL/CSD');
+  assert.equal(at('fiel_expired_0'), '/gestor-contrasenas?company_id=c1');
 });
 
 test('severity maps low, medium and high to Baja, Media and Alta', () => {

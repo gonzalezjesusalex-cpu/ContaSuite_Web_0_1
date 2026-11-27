@@ -58,6 +58,13 @@ La migración define `upgrade(connection)` para un operador autorizado después 
 - **Permisos del gestor** (`vault_access`): ver la lista, ver y copiar son para el administrador y las personas con copia de la llave, cada una en las empresas de su cuenta. Agregar, editar, eliminar, archivos, certificados, importar y exportar son sólo para el administrador. En la bitácora, la persona autorizada ve sólo sus acciones. Los demás no ven el módulo (`/api/state` → `vault_access`). Los permisos por empresa de `vault_grants` ya no aplican al gestor. Las demás pantallas (semáforo, tablero, ciclo de vida) conservan `allowed()`.
 - **Bitácora** (`vault_audit`): `kind` con la acción de la spec (DESBLOQUEAR, DESBLOQUEO_FALLIDO, VER, COPIAR, CREAR, EDITAR, ELIMINAR, IMPORTAR, EXPORTAR, USO_DECLARA), `resource_type` y `client` (IP y navegador). Sólo se agregan filas, nunca secretos.
 
+### Alertas de vigencia (fase 6)
+
+- `credential_alerts.candidates` usa los umbrales 30, 7 y 0 días: `<fiel|csd>_expiring_30`, `_expiring_7`, `_expiring_0` (el día del vencimiento) y `_expired_0`. `vault_alerts` es única por fuente, referencia y tipo, así que hay una alerta por certificado y umbral.
+- Alertan sólo los certificados del gestor activos y con su .cer leído; los reemplazados, eliminados o incompletos no. Los certificados anteriores al gestor (sin clase) siguen la selección del ciclo de vida del tablero.
+- En la campana, la alerta de un certificado abre `/gestor-contrasenas?company_id=…` y el texto del día 0 es «FIEL vence hoy».
+- Informe y criterios de aceptación: [INFORME_GESTOR_CONTRASENAS.md](INFORME_GESTOR_CONTRASENAS.md).
+
 ### Pantallas (fase 5)
 
 - El lienzo «ContaSuite · Gestor de Contraseñas» sirve de guía de estructura y se dibuja con los tokens de Stitch v2, en claro, oscuro y alto contraste.

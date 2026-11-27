@@ -54,7 +54,9 @@ export function alertType(kind: string): AlertType {
       state === 'expired'
         ? `${name} ${female ? 'vencida' : 'vencido'}`
         : state === 'expiring'
-          ? `${name} por vencer` + (Number(days) ? ` (${days} días o menos)` : '')
+          ? Number(days)
+            ? `${name} por vencer (${days} días o menos)`
+            : `${name} vence hoy`
           : state === 'pending_verification'
             ? `${name} con vigencia aún no iniciada`
             : `${name} sin fechas de vigencia`;
@@ -75,7 +77,8 @@ export function alertHref(alert: AlertRef, target: Target = alertType(alert.kind
   if (target === 'editar') return base + '/editar';
   if (target === 'documentos') return base + '?tab=Documentos';
   if (target === 'obligaciones') return base + '?tab=Obligaciones';
-  if (target === 'certificados') return base + '?tab=FIEL/CSD';
+  // Renovación del gestor: the certificates live in the password manager, opened on the company.
+  if (target === 'certificados') return '/gestor-contrasenas?company_id=' + encodeURIComponent(alert.company_id);
   return base;
 }
 export const dossierHref = (alert: AlertRef) => alertHref(alert, 'expediente');

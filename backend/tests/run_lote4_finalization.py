@@ -59,7 +59,7 @@ class FinalizationTests(previous.ClosureTests):
         )
         self.db.commit()
         select_certificate(self.db, self.p, 'a', SelectionIn(certificate_id='old', revision=0, reason='selected'))
-        for remaining, threshold in [(30, 30), (15, 15), (7, 7)]:
+        for remaining, threshold in [(30, 30), (15, 30), (7, 7), (0, 0)]:
             rows = [
                 r
                 for r in candidates(self.db, self.p, stamp=end - timedelta(days=remaining))

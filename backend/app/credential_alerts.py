@@ -29,12 +29,18 @@ def candidates(db, p, stamp=None):
             visible.append(cid)
         except HTTPException:
             pass
-    thresholds = [30, 15, 7]
+    # Renovación del gestor (fase 6): an alert at 30 days, at 7 days and on the day of expiration (threshold 0),
+    # once per certificate and threshold (vault_alerts is unique by source, reference and kind).
+    thresholds = [30, 7, 0]
     from .lote4_lifecycle import available, current
 
     selection = set(db.scalars(select(current.c.certificate_id))) if available(db) else None
     for row in db.execute(select(certificates).where(certificates.c.company_id.in_(visible))).mappings():
-        if selection is not None and row['id'] not in selection:
+        if row.get('cert_class'):
+            # Certificates of the password manager: the active one of each class, with its .cer read.
+            if not row.get('active') or not row.get('fingerprint'):
+                continue
+        elif selection is not None and row['id'] not in selection:
             continue
         state = temporal(row, thresholds, stamp=stamp)['state']
         if state != 'valid':
