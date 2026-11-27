@@ -1,41 +1,30 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
-  AlertTriangle,
-  Building2,
+  Clock,
   Copy,
-  Download,
   ExternalLink,
-  FileKey2,
   Eye,
   EyeOff,
-  HeartPulse,
+  FileKey2,
   History,
-  Home,
   KeyRound,
-  Landmark,
-  Lock,
-  Mail,
-  Paperclip,
-  Pencil,
-  ReceiptText,
-  Repeat,
+  MoreHorizontal,
+  MoreVertical,
+  Plus,
   Search,
-  ShieldAlert,
-  ShieldCheck,
   Upload,
-  Wallet,
   WandSparkles,
-  type LucideIcon,
 } from 'lucide-react';
 import { api } from '../api';
-import { Badge, Field, Modal } from '../components/ui';
-import { stitchButton, stitchDanger, stitchPrimary } from '../components/stitch';
-import { isLockedError, useVault } from './VaultGate';
+import { Field, Modal } from '../components/ui';
+import { stitchButton, stitchPrimary } from '../components/stitch';
+import { isLockedError, LockNow, useVault, VaultTimer } from './VaultGate';
 import AddSignature, { type SignatureClass } from './AddSignature';
 import { downloadTemplate, ExportDialog, ImportDialog } from './VaultImport';
 import './v11.css';
 
-/** Plan v1.1, Cambio 4: password manager per company and portal (Chrome-style) on the existing vault. */
+/** Plan v1.1, Cambio 4 and renovación del gestor (fase 5): companies on the left, the selected company on the right
+ *  with its signatures and its passwords by type (lienzo «Gestor de contraseñas · Principal»). */
 type Item = {
   id: string;
   company_id: string;
@@ -52,32 +41,209 @@ type Item = {
   strength: number | null;
   repeated: boolean;
   revision: number;
+  kind: string | null;
+  requires_review: boolean | null;
   files: { id: string; kind: string; name: string }[];
   can_reveal: boolean;
   can_modify: boolean;
 };
+type Cert = {
+  id: string;
+  company_id: string;
+  cert_class: SignatureClass;
+  holder_name: string | null;
+  holder_rfc: string | null;
+  holder_curp: string | null;
+  branch: string | null;
+  number: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  days_left: number | null;
+  validity: 'valid' | 'expiring' | 'expired' | 'unknown';
+  active: boolean;
+  replaced_by: string | null;
+  incomplete: boolean;
+  files: { cer?: string; key?: string };
+  key_password_id: string | null;
+};
+type VaultCompany = {
+  id: string;
+  name: string;
+  rfc: string;
+  regime: string;
+  person_type: string;
+  can_create: boolean;
+  fiel: { state: 'valid' | 'expiring' | 'expired' | 'unknown' | 'none'; days: number | null };
+  certificate_count: number;
+  password_count: number;
+};
+type Summary = {
+  passwords: number;
+  certificates: number;
+  expiring: number;
+  expired: number;
+  weak_or_repeated: number;
+  last_access: null | { at: string; kind: string; company: string | null; what: string | null; who: string | null };
+};
 type Vault = {
   items: Item[];
+  certificates: Cert[];
+  summary: Summary;
   services: { id: string; label: string }[];
-  companies: { id: string; name: string; rfc: string; can_create: boolean }[];
+  companies: VaultCompany[];
   health: { weak: number; repeated: number; unknown: number };
   vault_unlocked: boolean;
   can_export: boolean;
 };
-const FILE_PORTALS = ['fiel', 'csd', 'imss_certificate', 'fiel_password', 'csd_password'];
+// Types of the spec, in the order of the design; LLAVE (password of a private key) lives on its certificate card.
+const KINDS: [string, string][] = [
+  ['SAT_CIEC', 'SAT'],
+  ['IMSS_IDSE', 'IMSS'],
+  ['SIPARE', 'SIPARE'],
+  ['INFONAVIT', 'Infonavit'],
+  ['CORREO', 'Correo'],
+  ['OTRO', 'Otro'],
+];
+const CHIPS: [string, string][] = [
+  ['all', 'Todos'],
+  ['FIEL', 'FIEL'],
+  ['CSD', 'CSD'],
+  ['SAT_CIEC', 'SAT'],
+  ['IMSS_IDSE', 'IMSS'],
+  ['SIPARE', 'SIPARE'],
+  ['INFONAVIT', 'Infonavit'],
+  ['CORREO', 'Correo'],
+];
+const CLASS_LABELS: Record<SignatureClass, string> = {
+  FIEL_EMPRESA: 'FIEL de la empresa',
+  FIEL_REPRESENTANTE: 'FIEL del representante',
+  CSD: 'Sello digital (CSD)',
+};
+const SERVICE_KIND: Record<string, string> = {
+  sat_password: 'SAT_CIEC',
+  idse: 'IMSS_IDSE',
+  idse_user: 'IMSS_IDSE',
+  idse_password: 'IMSS_IDSE',
+  imss_certificate: 'IMSS_IDSE',
+  sipare: 'SIPARE',
+  sipare_user: 'SIPARE',
+  sipare_password: 'SIPARE',
+  infonavit: 'INFONAVIT',
+  infonavit_user: 'INFONAVIT',
+  infonavit_password: 'INFONAVIT',
+  email: 'CORREO',
+  fiel: 'LLAVE',
+  csd: 'LLAVE',
+  fiel_password: 'LLAVE',
+  csd_password: 'LLAVE',
+};
 const STRENGTH = ['Muy débil', 'Débil', 'Regular', 'Buena', 'Fuerte'];
-// Rediseño v2: signatures shown as cards; every other portal as a row with its icon.
-const SIGNATURES = ['fiel', 'csd', 'fiel_password', 'csd_password'];
-function portalIcon(service: string): LucideIcon {
-  if (service === 'sat_password') return Landmark;
-  if (/^(idse|sipare|imss)/.test(service)) return HeartPulse;
-  if (service.startsWith('infonavit')) return Home;
-  if (service === 'state_isn' || service === 'payroll_tax') return Building2;
-  if (service === 'email') return Mail;
-  if (service === 'fel' || service === 'external_billing' || service === 'contpaqi_payroll') return ReceiptText;
-  if (service === 'bank') return Wallet;
-  return KeyRound;
+const kindOf = (i: Item) => i.kind || SERVICE_KIND[i.service_id] || 'OTRO';
+/** «Segura», «Débil», «Repetida» or «Revisar» (checked locally, nothing is sent outside). */
+function status(i: Item): { label: string; tone: 'ok' | 'warn' | 'danger' } {
+  if (i.requires_review || i.strength == null) return { label: 'Revisar', tone: 'warn' };
+  if (i.repeated) return { label: 'Repetida', tone: 'warn' };
+  if (i.strength <= 1) return { label: 'Débil', tone: 'danger' };
+  return { label: 'Segura', tone: 'ok' };
 }
+const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('es-MX') : '—');
+function validityText(c: Cert) {
+  if (c.incomplete) return 'Faltan .cer y .key';
+  if (c.validity === 'expired') return `Vencido el ${day(c.valid_until)}`;
+  if (c.validity === 'expiring') return `Vence en ${c.days_left} ${c.days_left === 1 ? 'día' : 'días'}`;
+  if (c.validity === 'valid') return `Vigente hasta ${day(c.valid_until)} · faltan ${c.days_left} días`;
+  return 'Sin vigencia conocida';
+}
+const TONE = { valid: 'ok', expiring: 'warn', expired: 'danger', unknown: 'neutral', none: 'neutral' } as const;
+function fielBadge(f: VaultCompany['fiel']) {
+  if (f.state === 'valid') return 'FIEL vigente';
+  if (f.state === 'expiring') return `FIEL vence en ${f.days} ${f.days === 1 ? 'día' : 'días'}`;
+  if (f.state === 'expired') return 'FIEL vencida';
+  if (f.state === 'unknown') return 'FIEL sin vigencia';
+  return 'Sin FIEL';
+}
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const VERB: Record<string, string> = { VER: 'vio', COPIAR: 'copió', USO_DECLARA: 'usó en Declara' };
+const WHAT: Record<string, string> = {
+  SAT_CIEC: 'la CIEC',
+  IMSS_IDSE: 'IMSS',
+  SIPARE: 'SIPARE',
+  INFONAVIT: 'Infonavit',
+  CORREO: 'el correo',
+  OTRO: 'una contraseña',
+  LLAVE: 'la llave de una firma',
+};
+function lastAccess(a: Summary['last_access']) {
+  if (!a) return 'Sin accesos todavía';
+  const at = new Date(a.at);
+  const today = new Date().toDateString() === at.toDateString();
+  const when = today
+    ? 'Hoy ' + at.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+    : at.toLocaleDateString('es-MX');
+  return `${when} · ${VERB[a.kind] || a.kind.toLowerCase()} ${a.what ? WHAT[a.what] || '' : 'la FIEL'}`.trim();
+}
+
+/** A small menu button (⋯, «Agregar»): real buttons, closes with Escape or a click outside. */
+function Menu({
+  label,
+  children,
+  items,
+  className = stitchButton,
+}: {
+  label: string;
+  children: ReactNode;
+  items: { label: string; onSelect: () => void; danger?: boolean }[];
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+  if (!items.length) return null;
+  return (
+    <div className="v2-menu" ref={box}>
+      <button
+        type="button"
+        className={className}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {children}
+      </button>
+      {open && (
+        <ul role="menu" className="v2-menu-list">
+          {items.map((i) => (
+            <li key={i.label} role="none">
+              <button
+                type="button"
+                role="menuitem"
+                className={i.danger ? 'is-danger' : ''}
+                onClick={() => {
+                  setOpen(false);
+                  i.onSelect();
+                }}
+              >
+                {i.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 type LogRow = { id: string; actor_id: string; action: string; record_id: string | null; created_at: string };
 const LOG_ACTIONS: Record<string, string> = {
   secret_revealed: 'Vio una contraseña',
@@ -171,17 +337,21 @@ export default function PasswordManager({
   companyId,
   notify,
   users = {},
+  standalone = false,
 }: {
   companyId?: string;
   notify: (s: string) => void;
   /** Names of the people the page already knows (id → name), to show in the log instead of internal ids. */
   users?: Record<string, string>;
+  /** The module page (/gestor-contrasenas) draws its own header with the actions of the design. */
+  standalone?: boolean;
 }) {
   const vault = useVault();
   const [data, setData] = useState<Vault | null>(null);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [service, setService] = useState('');
+  const [regime, setRegime] = useState('');
+  const [chip, setChip] = useState('all');
   const [reload, setReload] = useState(0);
   const [shown, setShown] = useState<Record<string, string>>({});
   const [editing, setEditing] = useState<Item | 'new' | null>(null);
@@ -190,30 +360,26 @@ export default function PasswordManager({
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [generator, setGenerator] = useState(false);
+  const [history, setHistory] = useState<string | null>(null);
   const [selected, setSelected] = useState('');
   const [tab, setTab] = useState<'credentials' | 'log'>('credentials');
   const [log, setLog] = useState<LogRow[] | null>(null);
   const timers = useRef<Record<string, number>>({});
   useEffect(() => {
     const abort = new AbortController();
-    const t = setTimeout(() => {
-      const q = new URLSearchParams({ query, service, ...(companyId ? { company_id: companyId } : {}) });
-      api<Vault>('/credentials/vault?' + q, 'GET', undefined, abort.signal)
-        .then((d) => {
-          setData(d);
-          setError('');
-        })
-        .catch((e) => {
-          if (abort.signal.aborted) return;
-          if (isLockedError(e)) vault.locked();
-          else setError(e.message);
-        });
-    }, 250);
-    return () => {
-      clearTimeout(t);
-      abort.abort();
-    };
-  }, [query, service, companyId, reload, vault]);
+    const q = new URLSearchParams(companyId ? { company_id: companyId } : {});
+    api<Vault>('/credentials/vault?' + q, 'GET', undefined, abort.signal)
+      .then((d) => {
+        setData(d);
+        setError('');
+      })
+      .catch((e) => {
+        if (abort.signal.aborted) return;
+        if (isLockedError(e)) vault.locked();
+        else setError(e.message);
+      });
+    return () => abort.abort();
+  }, [companyId, reload, vault]);
   useEffect(() => () => Object.values(timers.current).forEach(clearTimeout), []);
 
   /** Runs `action`; when the vault locked itself meanwhile, the screen goes back to the lock card. */
@@ -232,28 +398,26 @@ export default function PasswordManager({
       return next;
     });
   }
-  async function reveal(item: Item) {
-    if (shown[item.id]) return hide(item.id);
+  // A password shown hides itself again after 20 seconds.
+  async function reveal(cid: string, id: string) {
+    if (shown[id]) return hide(id);
     await withReauth(async () => {
       const r = await api<{ secret: string; expires_in: number }>(
-        `/credentials/companies/${item.company_id}/secrets/${item.id}/reveal`,
+        `/credentials/companies/${cid}/secrets/${id}/reveal`,
         'POST',
         { action: 'view' },
       );
-      setShown((old) => ({ ...old, [item.id]: r.secret }));
-      clearTimeout(timers.current[item.id]);
-      timers.current[item.id] = window.setTimeout(() => hide(item.id), r.expires_in * 1000);
+      setShown((old) => ({ ...old, [id]: r.secret }));
+      clearTimeout(timers.current[id]);
+      timers.current[id] = window.setTimeout(() => hide(id), r.expires_in * 1000);
     });
   }
-  async function copy(item: Item) {
+  // On copy, the clipboard is cleared after 30 seconds (as far as the browser allows).
+  async function copy(cid: string, id: string) {
     await withReauth(async () => {
-      const r = await api<{ secret: string }>(
-        `/credentials/companies/${item.company_id}/secrets/${item.id}/reveal`,
-        'POST',
-        {
-          action: 'copy',
-        },
-      );
+      const r = await api<{ secret: string }>(`/credentials/companies/${cid}/secrets/${id}/reveal`, 'POST', {
+        action: 'copy',
+      });
       await navigator.clipboard.writeText(r.secret);
       notify('Contraseña copiada; el portapapeles se limpia en 30 segundos.');
       window.setTimeout(() => {
@@ -261,7 +425,7 @@ export default function PasswordManager({
       }, 30000);
     });
   }
-  async function autofill(item: Item, purpose: 'sat_password') {
+  async function autofill(item: Item) {
     if (!extensionReady()) {
       notify('Instala la extensión de ContaSuite en Chrome o Edge para entrar al portal del SAT con autocompletado.');
       return;
@@ -270,37 +434,33 @@ export default function PasswordManager({
       const r = await api<{ ticket: string }>(
         `/credentials/companies/${item.company_id}/secrets/${item.id}/ticket`,
         'POST',
-        {
-          purpose,
-        },
+        { purpose: 'sat_password' },
       );
-      notify(await sendToExtension({ type: 'autofill', purpose, ticket: r.ticket, server: window.location.origin }));
+      notify(
+        await sendToExtension({
+          type: 'autofill',
+          purpose: 'sat_password',
+          ticket: r.ticket,
+          server: window.location.origin,
+        }),
+      );
     });
   }
   async function archive(item: Item) {
-    if (!confirm(`¿Archivar el acceso «${item.portal}» de ${item.company_name}? Queda en el historial.`)) return;
-    try {
+    if (!confirm(`¿Archivar «${item.label || item.portal}» de ${item.company_name}? Queda en el historial.`)) return;
+    await withReauth(async () => {
       await api(`/credentials/companies/${item.company_id}/secrets/${item.id}?revision=${item.revision}`, 'DELETE');
       setReload((n) => n + 1);
-    } catch (e) {
-      notify((e as Error).message);
-    }
+    });
   }
-  const items = data?.items || [];
-  // Rediseño v2: list of companies on the left (office view) and the selected company on the right.
-  const q = query.trim().toLowerCase();
-  const companies = (data?.companies || []).filter(
-    (c) => !q || (c.name + ' ' + c.rfc).toLowerCase().includes(q) || items.some((i) => i.company_id === c.id),
-  );
-  const current = companyId || (companies.some((c) => c.id === selected) ? selected : companies[0]?.id) || '';
-  const currentCompany = data?.companies.find((c) => c.id === current);
-  const mine = items.filter((i) => i.company_id === current);
-  // FIEL of the company, FIEL of the legal representative, then the CSD (order of the design).
-  const signatureOrder = (i: Item) => (i.service_id.startsWith('csd') ? 2 : i.holder === 'legal_rep' ? 1 : 0);
-  const signatures = mine
-    .filter((i) => SIGNATURES.includes(i.service_id))
-    .sort((a, b) => signatureOrder(a) - signatureOrder(b));
-  const portals = mine.filter((i) => !SIGNATURES.includes(i.service_id));
+  async function removeCertificate(c: Cert) {
+    if (!confirm(`¿Eliminar «${CLASS_LABELS[c.cert_class]}»? Sale de las tarjetas y queda en el historial.`)) return;
+    await withReauth(async () => {
+      await api(`/credentials/companies/${c.company_id}/certificates/${c.id}`, 'DELETE');
+      setReload((n) => n + 1);
+      notify('Certificado enviado al historial.');
+    });
+  }
   async function openLog() {
     setTab('log');
     setLog(null);
@@ -308,141 +468,133 @@ export default function PasswordManager({
       setLog(await api<LogRow[]>(`/credentials/companies/${current}/history`));
     } catch (e) {
       setLog([]);
-      notify((e as Error).message);
+      if (isLockedError(e)) vault.locked();
+      else notify((e as Error).message);
     }
   }
-  const secretActions = (item: Item, compact: boolean) => (
-    <>
-      {item.can_reveal && (
-        <>
-          <button
-            className={stitchButton + (compact ? ' icon-only' : '')}
-            aria-label={(shown[item.id] ? 'Ocultar' : 'Mostrar') + ' contraseña de ' + item.portal}
-            onClick={() => reveal(item)}
-          >
-            {shown[item.id] ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
-            {!compact && (shown[item.id] ? 'Ocultar' : 'Mostrar')}
-          </button>
-          <button
-            className={stitchButton + (compact ? ' icon-only' : '')}
-            aria-label={'Copiar contraseña de ' + item.portal}
-            onClick={() => copy(item)}
-          >
-            <Copy size={16} aria-hidden />
-            {!compact && 'Copiar'}
-          </button>
-          {item.service_id === 'sat_password' && (
-            <button
-              className={compact ? stitchButton : stitchPrimary}
-              title="Abre el portal del SAT y llena el acceso con la extensión de ContaSuite"
-              onClick={() => autofill(item, 'sat_password')}
-            >
-              <ExternalLink size={16} aria-hidden /> Entrar al SAT
-            </button>
-          )}
-        </>
-      )}
-      {item.can_modify && (
-        <>
-          <button
-            className={stitchButton + ' icon-only'}
-            aria-label={'Editar ' + item.portal}
-            onClick={() => setEditing(item)}
-          >
-            <Pencil size={16} aria-hidden />
-          </button>
-          {FILE_PORTALS.includes(item.service_id) && (
-            <button
-              className={stitchButton + ' icon-only'}
-              aria-label={'Reemplazar .cer y .key de ' + item.portal}
-              title="Reemplazar con un .cer y un .key nuevos"
-              onClick={() =>
-                setSigning({
-                  company: item.company_id,
-                  klass: item.service_id.startsWith('csd')
-                    ? 'CSD'
-                    : item.holder === 'legal_rep'
-                      ? 'FIEL_REPRESENTANTE'
-                      : 'FIEL_EMPRESA',
-                })
-              }
-            >
-              <Paperclip size={16} aria-hidden />
-            </button>
-          )}
-          <button className={stitchDanger} onClick={() => archive(item)}>
-            Archivar
-          </button>
-        </>
-      )}
-    </>
+
+  const admin = vault.isAdmin || !!data?.can_export;
+  const items = data?.items || [];
+  const regimes = [...new Set((data?.companies || []).map((c) => c.regime).filter(Boolean))].sort();
+  const q = query.trim().toLowerCase();
+  const companies = (data?.companies || []).filter(
+    (c) => (!q || (c.name + ' ' + c.rfc).toLowerCase().includes(q)) && (!regime || c.regime === regime),
   );
-  const flags = (item: Item) => (
-    <>
-      {item.strength != null && item.strength <= 1 && (
-        <span className="v2-flag is-weak">
-          <AlertTriangle size={12} aria-hidden /> {STRENGTH[item.strength]}
-        </span>
-      )}
-      {item.repeated && (
-        <span className="v2-flag is-repeated">
-          <Repeat size={12} aria-hidden /> Repetida
-        </span>
-      )}
-    </>
+  const current = companyId || (companies.some((c) => c.id === selected) ? selected : companies[0]?.id) || '';
+  const company = data?.companies.find((c) => c.id === current);
+  const certs = (data?.certificates || []).filter((c) => c.company_id === current);
+  const activeCerts = certs.filter(
+    (c) =>
+      c.active &&
+      (chip === 'all' || (chip === 'FIEL' && c.cert_class !== 'CSD') || (chip === 'CSD' && c.cert_class === 'CSD')),
   );
+  const mine = items.filter((i) => i.company_id === current && kindOf(i) !== 'LLAVE');
+  const groups = KINDS.map(([kind, label]) => ({ kind, label, rows: mine.filter((i) => kindOf(i) === kind) })).filter(
+    (g) => (chip === 'all' ? g.rows.length > 0 : g.kind === chip),
+  );
+  const showSignatures = chip === 'all' || chip === 'FIEL' || chip === 'CSD';
+  const s = data?.summary;
+  const addMenu = admin
+    ? [
+        { label: 'Contraseña', onSelect: () => setEditing('new') },
+        { label: 'FIEL o CSD', onSelect: () => setSigning({ company: current, klass: 'FIEL_EMPRESA' }) },
+      ]
+    : [];
+  const moreMenu = [
+    ...(admin
+      ? [
+          { label: 'Exportar', onSelect: () => setExporting(true) },
+          { label: 'Descargar plantilla de Excel', onSelect: () => downloadTemplate(notify) },
+        ]
+      : []),
+    { label: 'Generar contraseña', onSelect: () => setGenerator(true) },
+  ];
+  const actions = (
+    <div className="v2-vault-actions">
+      <VaultTimer />
+      <LockNow />
+      {admin && (
+        <button className={stitchButton} onClick={() => setImporting(true)}>
+          <Upload size={16} aria-hidden /> Importar
+        </button>
+      )}
+      <Menu label="Agregar" items={addMenu} className={stitchPrimary}>
+        <Plus size={16} aria-hidden /> Agregar
+      </Menu>
+      <Menu
+        label="Más opciones: exportar, descargar plantilla, generar contraseña"
+        items={moreMenu}
+        className={stitchButton + ' icon-only'}
+      >
+        <MoreHorizontal size={18} aria-hidden />
+      </Menu>
+    </div>
+  );
+  const secret = (cid: string, id: string, label: string) => (
+    <div className="v2-vault-secret">
+      <span className="v2-vault-dots" aria-live="polite">
+        {shown[id] ?? '••••••••••'}
+      </span>
+      <button
+        className={stitchButton + ' icon-only'}
+        aria-label={(shown[id] ? 'Ocultar' : 'Mostrar') + ' ' + label}
+        onClick={() => reveal(cid, id)}
+      >
+        {shown[id] ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+      </button>
+      <button className={stitchButton + ' icon-only'} aria-label={'Copiar ' + label} onClick={() => copy(cid, id)}>
+        <Copy size={16} aria-hidden />
+      </button>
+    </div>
+  );
+
   return (
     <section className="v11-vault v2-vault">
-      <div className="v2-vault-top">
-        {data && (data.health.weak > 0 || data.health.repeated > 0) ? (
-          <p className="v2-vault-health" role="status">
-            <ShieldAlert size={16} aria-hidden /> Revisión: {data.health.weak} contraseñas débiles,{' '}
-            {data.health.repeated} repetidas <span>(revisión local, sin servicios externos)</span>
-          </p>
-        ) : (
-          data && (
-            <p className="v2-vault-health is-ok" role="status">
-              <ShieldCheck size={16} aria-hidden /> Sin contraseñas débiles ni repetidas (revisión local)
+      {standalone ? (
+        <header className="v2-vault-header">
+          <div>
+            <span className="v2-eyebrow">MÓDULO</span>
+            <h1>Gestor de contraseñas</h1>
+            <p className="muted">
+              Contraseñas del SAT y archivos FIEL de cada empresa, cifrados y protegidos con tu contraseña maestra.
             </p>
-          )
-        )}
-        <div className="actions">
-          {data?.can_export && (
-            <>
-              <button className={stitchButton} onClick={() => setImporting(true)}>
-                <Upload size={16} aria-hidden /> Importar desde Excel
-              </button>
-              <button className={stitchButton} onClick={() => setExporting(true)}>
-                <Download size={16} aria-hidden /> Exportar
-              </button>
-              <button className={stitchButton} onClick={() => downloadTemplate(notify)}>
-                <Download size={16} aria-hidden /> Descargar plantilla de Excel
-              </button>
-              <button className={stitchButton} onClick={() => setSigning({ klass: 'FIEL_EMPRESA' })}>
-                <FileKey2 size={16} aria-hidden /> Agregar FIEL o CSD
-              </button>
-            </>
-          )}
-          <button
-            className={stitchButton}
-            disabled={!data?.companies.some((c) => c.can_create)}
-            onClick={() => setEditing('new')}
-          >
-            <KeyRound size={16} aria-hidden /> Nueva credencial
-          </button>
-          <button className={stitchPrimary} onClick={() => setGenerator(true)}>
-            <WandSparkles size={16} aria-hidden /> Generar contraseña
-          </button>
-        </div>
-      </div>
-      <p className="muted v2-vault-note">
-        <Lock size={14} aria-hidden /> Cada vista o copia queda en la bitácora. No guardes contraseñas en nombres ni
-        notas.
-      </p>
+          </div>
+          {actions}
+        </header>
+      ) : (
+        actions
+      )}
       {error && (
         <p role="alert" className="error-banner">
           {error}
         </p>
+      )}
+      {s && (
+        <div className="v2-vault-kpis" role="group" aria-label="Revisión de seguridad">
+          <div>
+            <span>Contraseñas guardadas</span>
+            <strong>{s.passwords}</strong>
+          </div>
+          <div>
+            <span>FIEL y CSD guardados</span>
+            <strong>
+              {s.certificates}
+              {s.expiring > 0 && (
+                <small className="is-warn"> · {plural(s.expiring, 'vence pronto', 'vencen pronto')}</small>
+              )}
+              {s.expired > 0 && <small className="is-danger"> · {plural(s.expired, 'vencido', 'vencidos')}</small>}
+            </strong>
+          </div>
+          <div>
+            <span>Débiles o repetidas</span>
+            <strong className={s.weak_or_repeated ? 'is-warn' : 'is-ok'}>{s.weak_or_repeated}</strong>
+            <small className="muted">Revisión local, sin enviar nada fuera</small>
+          </div>
+          <div>
+            <span>Último acceso registrado</span>
+            <strong className="is-text">{lastAccess(s.last_access)}</strong>
+          </div>
+        </div>
       )}
       <div className={'v2-vault-layout' + (companyId ? ' is-single' : '')}>
         {!companyId && (
@@ -450,155 +602,248 @@ export default function PasswordManager({
             <label className="v2-search">
               <Search size={16} aria-hidden />
               <input
-                aria-label="Buscar empresa, portal o usuario"
-                placeholder="Buscar empresa, RFC, portal o usuario"
+                type="search"
+                aria-label="Buscar empresa o RFC"
+                placeholder="Buscar empresa o RFC"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </label>
+            {regimes.length > 1 && (
+              <select aria-label="Filtrar por régimen" value={regime} onChange={(e) => setRegime(e.target.value)}>
+                <option value="">Todos los regímenes</option>
+                {regimes.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+              </select>
+            )}
             <ul>
-              {companies.map((c) => {
-                const count = items.filter((i) => i.company_id === c.id).length;
-                return (
-                  <li key={c.id}>
-                    <button
-                      type="button"
-                      aria-pressed={c.id === current}
-                      onClick={() => {
-                        setSelected(c.id);
-                        setTab('credentials');
-                      }}
-                    >
-                      <strong>{c.name}</strong>
-                      <small>
-                        <span className="rfc">{c.rfc}</span> · {count} {count === 1 ? 'acceso' : 'accesos'}
-                      </small>
-                    </button>
-                  </li>
-                );
-              })}
+              {companies.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    aria-pressed={c.id === current}
+                    onClick={() => {
+                      setSelected(c.id);
+                      setTab('credentials');
+                      setHistory(null);
+                    }}
+                  >
+                    <strong>{c.name}</strong>
+                    <span className="rfc">{c.rfc}</span>
+                    <span className="v2-vault-badges">
+                      <span className={'v2-vpill is-' + TONE[c.fiel.state]}>{fielBadge(c.fiel)}</span>
+                      <span className="v2-vpill is-neutral">
+                        {plural(c.certificate_count, 'certificado', 'certificados')} ·{' '}
+                        {plural(c.password_count, 'contraseña', 'contraseñas')}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
               {data && !companies.length && <li className="muted">Sin empresas con estos filtros.</li>}
             </ul>
           </aside>
         )}
         <div className="v2-vault-detail">
-          {currentCompany && (
+          {company && (
             <header className="v2-vault-company">
               <div>
-                <h2>{currentCompany.name}</h2>
-                <span className="rfc">{currentCompany.rfc}</span>
+                <h2>{company.name}</h2>
+                <span className="rfc">
+                  {company.rfc} · Persona {company.person_type.toLowerCase()}
+                </span>
               </div>
-              <select aria-label="Portal" value={service} onChange={(e) => setService(e.target.value)}>
-                <option value="">Todos los portales</option>
-                {data?.services.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+              <div className="v2-segmented" role="group" aria-label="Sección del gestor">
+                <button type="button" aria-pressed={tab === 'credentials'} onClick={() => setTab('credentials')}>
+                  <KeyRound size={16} aria-hidden /> Credenciales
+                </button>
+                <button type="button" aria-pressed={tab === 'log'} onClick={openLog}>
+                  <History size={16} aria-hidden /> Bitácora de accesos
+                </button>
+              </div>
             </header>
           )}
-          {currentCompany && (
-            <div className="v2-segmented" role="group" aria-label="Sección del gestor">
-              <button type="button" aria-pressed={tab === 'credentials'} onClick={() => setTab('credentials')}>
-                <KeyRound size={16} aria-hidden /> Credenciales
-              </button>
-              <button type="button" aria-pressed={tab === 'log'} onClick={openLog}>
-                <History size={16} aria-hidden /> Bitácora de accesos
-              </button>
-            </div>
-          )}
-          {tab === 'credentials' && currentCompany && (
+          {tab === 'credentials' && company && (
             <>
-              <h3 className="v2-vault-heading">Firmas electrónicas</h3>
-              {signatures.length ? (
-                <div className="v2-signatures">
-                  {signatures.map((item) => (
-                    <article key={item.id} className="v2-signature">
-                      <header>
-                        <h4>
-                          {item.service_id.startsWith('csd')
-                            ? 'Sello digital (CSD)'
-                            : item.holder === 'legal_rep'
-                              ? 'FIEL del representante'
-                              : 'FIEL de la empresa'}
-                        </h4>
-                        {flags(item)}
-                      </header>
-                      <small className="muted">
-                        {item.portal}
-                        {item.label && item.label !== 'Acceso' && ' · ' + item.label}
-                        {item.username && (
-                          <>
-                            {' · '}
-                            <span className="rfc">{item.username}</span>
-                          </>
-                        )}
-                      </small>
-                      {item.files.length > 0 ? (
-                        <ul className="v2-files" aria-label="Archivos cifrados">
-                          {item.files.map((f) => (
-                            <li key={f.id}>
-                              <Lock size={13} aria-hidden /> {f.name}
-                            </li>
-                          ))}
+              <div className="v2-chips" role="group" aria-label="Filtrar por tipo">
+                {CHIPS.map(([id, label]) => (
+                  <button key={id} type="button" aria-pressed={chip === id} onClick={() => setChip(id)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {showSignatures && (
+                <section className="v2-vault-section" aria-labelledby="vault-signatures">
+                  <h3 id="vault-signatures">Firmas y certificados</h3>
+                  {activeCerts.length ? (
+                    <div className="v2-cert-cards">
+                      {activeCerts.map((c) => {
+                        const old = certs.filter((x) => !x.active && x.cert_class === c.cert_class);
+                        const title = CLASS_LABELS[c.cert_class];
+                        return (
+                          <article key={c.id} className="v2-cert-card">
+                            <header>
+                              <div>
+                                <h4>{title}</h4>
+                                <small className="muted">
+                                  {[c.holder_name, c.holder_rfc, c.cert_class === 'CSD' ? c.branch : null]
+                                    .filter(Boolean)
+                                    .join(' · ') || company.name}
+                                </small>
+                              </div>
+                              {c.cert_class === 'FIEL_REPRESENTANTE' && (
+                                <span className="v2-tag-rep">REPRESENTANTE</span>
+                              )}
+                            </header>
+                            <p className={'v2-cert-validity is-' + (c.incomplete ? 'warn' : TONE[c.validity])}>
+                              {validityText(c)}
+                            </p>
+                            {c.files.cer || c.files.key ? (
+                              <small className="v2-cert-files">
+                                {[c.files.cer, c.files.key].filter(Boolean).join(' · ')}
+                              </small>
+                            ) : (
+                              admin && (
+                                <button
+                                  className={stitchButton}
+                                  onClick={() => setSigning({ company: c.company_id, klass: c.cert_class })}
+                                >
+                                  <FileKey2 size={16} aria-hidden /> Subir .cer y .key
+                                </button>
+                              )
+                            )}
+                            {c.key_password_id && (
+                              <div className="v2-cert-secret">
+                                {secret(c.company_id, c.key_password_id, 'contraseña de la llave de ' + title)}
+                                <Menu
+                                  label={'Más acciones de ' + title}
+                                  className={stitchButton + ' icon-only'}
+                                  items={[
+                                    ...(admin
+                                      ? [
+                                          {
+                                            label: 'Reemplazar',
+                                            onSelect: () => setSigning({ company: c.company_id, klass: c.cert_class }),
+                                          },
+                                        ]
+                                      : []),
+                                    {
+                                      label: history === c.id ? 'Ocultar historial' : 'Ver historial',
+                                      onSelect: () => setHistory(history === c.id ? null : c.id),
+                                    },
+                                    ...(admin
+                                      ? [{ label: 'Eliminar', danger: true, onSelect: () => removeCertificate(c) }]
+                                      : []),
+                                  ]}
+                                >
+                                  <MoreVertical size={16} aria-hidden />
+                                </Menu>
+                              </div>
+                            )}
+                            {history === c.id && (
+                              <ul className="v2-cert-history" aria-label={'Historial de ' + title}>
+                                {old.map((o) => (
+                                  <li key={o.id}>
+                                    <span className="rfc">{o.number || 'Sin número'}</span> · {validityText(o)}
+                                  </li>
+                                ))}
+                                {!old.length && <li className="muted">Sin certificados anteriores.</li>}
+                              </ul>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="v2-empty muted">
+                      Sin FIEL ni sello digital guardados.{' '}
+                      {admin && (
+                        <button
+                          className="v2-link-button"
+                          onClick={() => setSigning({ company: current, klass: 'FIEL_EMPRESA' })}
+                        >
+                          Agregar FIEL o CSD
+                        </button>
+                      )}
+                    </p>
+                  )}
+                  <p className="muted small">
+                    Los .cer y .key no se descargan. Declara usará la FIEL de la empresa para «Acceso con e.firma» del
+                    SAT.
+                  </p>
+                </section>
+              )}
+              {(chip === 'all' || groups.length > 0) && chip !== 'FIEL' && chip !== 'CSD' && (
+                <section className="v2-vault-section" aria-labelledby="vault-passwords">
+                  <div className="v2-vault-section-head">
+                    <h3 id="vault-passwords">Contraseñas por tipo</h3>
+                  </div>
+                  {groups.map((g) => (
+                    <div key={g.kind} className="v2-kind-group">
+                      <h4>
+                        {g.label} <span className="muted">{g.rows.length}</span>
+                      </h4>
+                      {g.rows.length ? (
+                        <ul>
+                          {g.rows.map((i) => {
+                            const st = status(i);
+                            const name = i.label && i.label !== 'Acceso' ? i.label : i.portal;
+                            return (
+                              <li key={i.id}>
+                                <strong>{name}</strong>
+                                <span className="rfc">{i.username || <span className="muted">Sin usuario</span>}</span>
+                                {secret(i.company_id, i.id, 'contraseña de ' + name)}
+                                <span className={'v2-vpill is-' + st.tone}>{st.label}</span>
+                                <span className="v2-kind-actions">
+                                  {i.service_id === 'sat_password' && (
+                                    <button
+                                      className={stitchButton + ' icon-only'}
+                                      aria-label="Entrar al SAT con la extensión"
+                                      title="Abre el portal del SAT y llena el acceso con la extensión de ContaSuite"
+                                      onClick={() => autofill(i)}
+                                    >
+                                      <ExternalLink size={16} aria-hidden />
+                                    </button>
+                                  )}
+                                  <Menu
+                                    label={'Más acciones de ' + name}
+                                    className={stitchButton + ' icon-only'}
+                                    items={
+                                      i.can_modify
+                                        ? [
+                                            { label: 'Editar', onSelect: () => setEditing(i) },
+                                            { label: 'Archivar', danger: true, onSelect: () => archive(i) },
+                                          ]
+                                        : []
+                                    }
+                                  >
+                                    <MoreVertical size={16} aria-hidden />
+                                  </Menu>
+                                </span>
+                              </li>
+                            );
+                          })}
                         </ul>
                       ) : (
-                        <small className="muted">Sin archivos .cer / .key cargados.</small>
+                        <p className="muted small">Sin contraseñas de este tipo.</p>
                       )}
-                      <div className="v2-secret">
-                        <span aria-live="polite">{shown[item.id] ?? '••••••••••••'}</span>
-                      </div>
-                      <div className="actions">{secretActions(item, false)}</div>
-                    </article>
+                    </div>
                   ))}
-                </div>
-              ) : (
-                <p className="v2-empty muted">No hay FIEL ni sello digital registrados para esta empresa.</p>
+                  {admin && (
+                    <button className="v2-add-password" onClick={() => setEditing('new')}>
+                      <Plus size={16} aria-hidden /> Agregar contraseña
+                    </button>
+                  )}
+                </section>
               )}
-              <h3 className="v2-vault-heading">Accesos a portales</h3>
-              {portals.length ? (
-                <ul className="v2-portals">
-                  {portals.map((item) => {
-                    const Icon = portalIcon(item.service_id);
-                    return (
-                      <li key={item.id}>
-                        <Icon size={20} aria-hidden className="v2-portal-icon" />
-                        <div className="v2-portal-name">
-                          <strong>
-                            {item.portal}
-                            {item.label && item.label !== 'Acceso' && ' · ' + item.label}
-                          </strong>
-                          {item.username ? (
-                            <button
-                              className="link-button rfc"
-                              title="Copiar usuario"
-                              onClick={() =>
-                                navigator.clipboard.writeText(item.username!).then(() => notify('Usuario copiado'))
-                              }
-                            >
-                              {item.username}
-                            </button>
-                          ) : (
-                            <span className="muted">Sin usuario</span>
-                          )}
-                          {item.holder === 'legal_rep' && <Badge tone="blue">Representante legal</Badge>}
-                          {flags(item)}
-                        </div>
-                        <span className="v2-secret-inline" aria-live="polite">
-                          {shown[item.id] ?? '••••••••••••'}
-                        </span>
-                        <div className="actions">{secretActions(item, true)}</div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="v2-empty muted">No hay accesos a portales con estos filtros.</p>
-              )}
+              <p className="muted small v2-vault-note">
+                <Clock size={14} aria-hidden /> Ver, copiar o usar la FIEL queda registrado en la Bitácora de accesos
+                con usuario, fecha y acción.
+              </p>
             </>
           )}
-          {tab === 'log' && currentCompany && (
+          {tab === 'log' && company && (
             <div className="v2-vault-log">
               {log === null ? (
                 <p role="status">Consultando bitácora…</p>
@@ -609,7 +854,7 @@ export default function PasswordManager({
                       <th scope="col">Fecha</th>
                       <th scope="col">Usuario</th>
                       <th scope="col">Acción</th>
-                      <th scope="col">Acceso</th>
+                      <th scope="col">Recurso</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -618,24 +863,31 @@ export default function PasswordManager({
                         <td>{new Date(r.created_at).toLocaleString('es-MX')}</td>
                         <td>{users[r.actor_id] || r.actor_id}</td>
                         <td>{LOG_ACTIONS[r.action] || r.action}</td>
-                        <td>{items.find((i) => i.id === r.record_id)?.portal || '—'}</td>
+                        <td>
+                          {items.find((i) => i.id === r.record_id)?.label ||
+                            (certs.find((c) => c.id === r.record_id) &&
+                              CLASS_LABELS[certs.find((c) => c.id === r.record_id)!.cert_class]) ||
+                            '—'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <p className="muted">Sin movimientos registrados o sin permiso para consultar la bitácora.</p>
+                <p className="muted">Sin movimientos registrados.</p>
               )}
-              <p className="muted small">Cada consulta de esta bitácora también queda registrada.</p>
+              <p className="muted small">
+                {admin ? 'Cada consulta de esta bitácora también queda registrada.' : 'Sólo ves tus propias acciones.'}
+              </p>
             </div>
           )}
-          {data && !currentCompany && <p className="v2-empty muted">No hay empresas con accesos para mostrar.</p>}
+          {data && !company && <p className="v2-empty muted">No hay empresas para mostrar.</p>}
         </div>
       </div>
       {editing && data && (
         <CredentialForm
           item={editing === 'new' ? null : editing}
-          companyId={companyId}
+          companyId={companyId || current}
           vault={data}
           onClose={() => setEditing(null)}
           onSaved={() => {

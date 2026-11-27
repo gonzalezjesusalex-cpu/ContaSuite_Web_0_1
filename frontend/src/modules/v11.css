@@ -751,34 +751,47 @@
   cursor: pointer;
 }
 
+/* Gestor de contraseñas: status colours for text on the panel. The *-strong tokens are made for their pastel
+   *-bg; on the dark panel the text uses the light tints of the contrast theme instead. */
+:root {
+  --vault-ok: var(--ok-strong);
+  --vault-warn: var(--warn-strong);
+  --vault-danger: var(--danger-strong);
+}
+[data-theme='dark'] {
+  --vault-ok: #68dba9;
+  --vault-warn: #ffb688;
+  --vault-danger: #ffb4ab;
+}
+
 /* Renovación del gestor, fase 3: «Agregar FIEL o CSD». */
-.v2-signature {
+.v2-addsig {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px;
 }
 @media (max-width: 760px) {
-  .v2-signature {
+  .v2-addsig {
     grid-template-columns: 1fr;
   }
 }
-.v2-signature-form {
+.v2-addsig-form {
   display: grid;
   gap: 14px;
   align-content: start;
 }
-.v2-signature-classes {
+.v2-addsig-classes {
   display: grid;
   gap: 8px;
   margin: 0;
   padding: 0;
   border: 0;
 }
-.v2-signature-classes legend {
+.v2-addsig-classes legend {
   margin-bottom: 6px;
   font-weight: 600;
 }
-.v2-signature-class {
+.v2-addsig-class {
   display: flex;
   gap: 10px;
   align-items: flex-start;
@@ -787,16 +800,16 @@
   border-radius: var(--radius-md);
   cursor: pointer;
 }
-.v2-signature-class span {
+.v2-addsig-class span {
   display: grid;
   gap: 2px;
 }
-.v2-signature-class.is-selected {
+.v2-addsig-class.is-selected {
   border-color: var(--primary);
   background: var(--primary-container);
   color: var(--on-primary-container);
 }
-.v2-signature-drop {
+.v2-addsig-drop {
   display: grid;
   justify-items: center;
   gap: 6px;
@@ -805,10 +818,10 @@
   border-radius: var(--radius-lg);
   text-align: center;
 }
-.v2-signature-drop p {
+.v2-addsig-drop p {
   margin: 0;
 }
-.v2-signature-drop ul {
+.v2-addsig-drop ul {
   display: grid;
   gap: 4px;
   margin: 0;
@@ -817,13 +830,13 @@
   text-align: left;
   font-size: var(--fs-sm);
 }
-.v2-signature-drop li {
+.v2-addsig-drop li {
   display: flex;
   align-items: center;
   gap: 6px;
   overflow-wrap: anywhere;
 }
-.v2-signature-result {
+.v2-addsig-result {
   display: grid;
   gap: 12px;
   align-content: start;
@@ -831,27 +844,27 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
-.v2-signature-read,
-.v2-signature-sat dl {
+.v2-addsig-read,
+.v2-addsig-sat dl {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 4px 12px;
   margin: 0;
   font-size: var(--fs-sm);
 }
-.v2-signature-read dt,
-.v2-signature-sat dt {
+.v2-addsig-read dt,
+.v2-addsig-sat dt {
   color: var(--muted);
 }
-.v2-signature-read dd,
-.v2-signature-sat dd {
+.v2-addsig-read dd,
+.v2-addsig-sat dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
-.v2-signature-read .mono {
+.v2-addsig-read .mono {
   font-family: var(--font-mono);
 }
-.v2-signature-checks {
+.v2-addsig-checks {
   display: grid;
   gap: 6px;
   margin: 0;
@@ -859,31 +872,31 @@
   list-style: none;
   font-size: var(--fs-sm);
 }
-.v2-signature-checks li {
+.v2-addsig-checks li {
   display: flex;
   gap: 8px;
   align-items: flex-start;
 }
-.v2-signature-checks li svg {
+.v2-addsig-checks li svg {
   flex: none;
   margin-top: 2px;
 }
-.v2-signature-checks .is-ok svg {
-  color: var(--ok-strong);
+.v2-addsig-checks .is-ok svg {
+  color: var(--vault-ok);
 }
-.v2-signature-checks .is-error svg {
-  color: var(--danger-strong);
+.v2-addsig-checks .is-error svg {
+  color: var(--vault-danger);
 }
-.v2-signature-checks .is-warning svg {
-  color: var(--warn-strong);
+.v2-addsig-checks .is-warning svg {
+  color: var(--vault-warn);
 }
-.v2-signature-sat {
+.v2-addsig-sat {
   margin-top: 16px;
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
 }
-.v2-signature-sat h3 {
+.v2-addsig-sat h3 {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -920,7 +933,7 @@
   font-weight: 600;
 }
 .v2-import-steps li.is-done {
-  color: var(--ok-strong);
+  color: var(--vault-ok);
 }
 .v2-import-file {
   display: grid;
@@ -965,7 +978,7 @@
   gap: 6px;
   align-items: flex-start;
   margin: 4px 0;
-  color: var(--warn-strong);
+  color: var(--vault-warn);
   font-size: var(--fs-sm);
 }
 .v2-import-notice svg {
@@ -1009,5 +1022,459 @@
 }
 .v2-import-company tr.is-review td,
 .v2-import-company tr.is-decide td {
+  color: var(--vault-warn);
+}
+
+/* Renovación del gestor, fase 5: pantalla Principal del lienzo con los tokens de Stitch v2. */
+.v2-vault-page {
+  display: grid;
+  gap: 16px;
+}
+.v2-vault-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.v2-vault-header > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+.v2-vault-header h1 {
+  margin: 0;
+  font-size: var(--fs-xl);
+}
+.v2-vault-header p {
+  margin: 0;
+}
+.v2-eyebrow {
+  color: var(--primary);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.v2-vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v2-vault-timer {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-vault-message {
+  margin: 0;
+}
+.v2-menu {
+  position: relative;
+}
+.v2-menu-list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  right: 0;
+  display: grid;
+  min-width: 220px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  list-style: none;
+}
+.v2-menu-list button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.v2-menu-list button:hover,
+.v2-menu-list button:focus-visible {
+  background: var(--hover);
+}
+.v2-menu-list button.is-danger {
+  color: var(--vault-danger);
+}
+.v2-vault-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .v2-vault-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.v2-vault-kpis > div {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+}
+.v2-vault-kpis span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-vault-kpis strong {
+  font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
+}
+.v2-vault-kpis strong.is-text {
+  font-size: var(--fs-md);
+}
+.v2-vault-kpis small {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.v2-vault-kpis .is-ok {
+  color: var(--vault-ok);
+}
+.v2-vault-kpis .is-warn {
+  color: var(--vault-warn);
+}
+.v2-vault-kpis .is-danger {
+  color: var(--vault-danger);
+}
+.v2-vault-companies select {
+  width: 100%;
+}
+.v2-vault-companies li > button {
+  gap: 6px;
+}
+.v2-vault-companies li > button .rfc {
+  font-size: var(--fs-sm);
+}
+.v2-vault-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v2-vpill {
+  font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.v2-vpill.is-ok {
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+  color: var(--ok-strong);
+}
+.v2-vpill.is-warn {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
   color: var(--warn-strong);
+}
+.v2-vpill.is-danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-strong);
+}
+.v2-vpill.is-neutral {
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--muted);
+}
+.v2-vault-company {
+  flex-wrap: wrap;
+}
+.v2-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.v2-chips button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+.v2-chips button[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.v2-vault-section {
+  display: grid;
+  gap: 10px;
+}
+.v2-vault-section h3,
+.v2-vault-section-head h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.v2-cert-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.v2-cert-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+}
+.v2-cert-card header {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.v2-cert-card header > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.v2-cert-card h4 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.v2-tag-rep {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid var(--warn-border);
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--warn-strong);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.v2-cert-validity {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.v2-cert-validity.is-ok {
+  color: var(--vault-ok);
+}
+.v2-cert-validity.is-warn {
+  color: var(--vault-warn);
+}
+.v2-cert-validity.is-danger {
+  color: var(--vault-danger);
+}
+.v2-cert-validity.is-neutral {
+  color: var(--muted);
+}
+.v2-cert-files {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.v2-cert-secret {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.v2-vault-secret {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.v2-vault-dots {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+@media (max-width: 900px) {
+  .v2-vault-companies {
+    position: static;
+  }
+  .v2-vault-companies ul {
+    max-height: 45vh;
+  }
+}
+.v2-cert-history {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--border);
+  list-style: none;
+  font-size: var(--fs-sm);
+}
+.v2-kind-group {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--panel);
+}
+.v2-kind-group h4 {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.v2-kind-group > p {
+  margin: 0;
+  padding: 12px 16px;
+}
+.v2-kind-group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v2-kind-group li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(180px, 1.2fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+}
+.v2-kind-group li + li {
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 900px) {
+  .v2-kind-group li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+.v2-kind-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.v2-add-password {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+[data-theme='contrast'] :is(.v2-vault-kpis > div, .v2-cert-card, .v2-kind-group, .v2-menu-list, .v2-vault-secret) {
+  border-width: 2px;
+}
+[data-theme='contrast'] :is(.v2-vpill, .v2-tag-rep) {
+  border-width: 2px;
+  background: transparent;
+}
+@media (prefers-reduced-motion: reduce) {
+  .v2-menu-list {
+    transition: none;
+  }
+}
+
+/* Configuración › Bóveda de contraseñas. */
+.v2-vault-settings {
+  display: grid;
+  gap: 20px;
+}
+.v2-vault-settings h2,
+.v2-vault-settings h3 {
+  margin: 0;
+}
+.v2-vault-settings h3 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: var(--fs-md);
+}
+.v2-vault-settings-block {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.v2-vault-settings-block > button {
+  justify-self: start;
+}
+.v2-vault-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.v2-vault-members {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.v2-vault-members li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.v2-vault-members li > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.v2-vault-code {
+  display: grid;
+  gap: 8px;
+  max-width: 640px;
+  padding: 16px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-lg);
+  background: var(--warn-bg);
+}
+.v2-vault-code > button {
+  justify-self: start;
+}
+
+[data-theme='contrast'] .v2-vault-companies li > button[aria-pressed='true'] .v2-vpill {
+  border-color: currentColor;
+  color: inherit;
 }

@@ -58,6 +58,24 @@ La migración define `upgrade(connection)` para un operador autorizado después 
 - **Permisos del gestor** (`vault_access`): ver la lista, ver y copiar son para el administrador y las personas con copia de la llave, cada una en las empresas de su cuenta. Agregar, editar, eliminar, archivos, certificados, importar y exportar son sólo para el administrador. En la bitácora, la persona autorizada ve sólo sus acciones. Los demás no ven el módulo (`/api/state` → `vault_access`). Los permisos por empresa de `vault_grants` ya no aplican al gestor. Las demás pantallas (semáforo, tablero, ciclo de vida) conservan `allowed()`.
 - **Bitácora** (`vault_audit`): `kind` con la acción de la spec (DESBLOQUEAR, DESBLOQUEO_FALLIDO, VER, COPIAR, CREAR, EDITAR, ELIMINAR, IMPORTAR, EXPORTAR, USO_DECLARA), `resource_type` y `client` (IP y navegador). Sólo se agregan filas, nunca secretos.
 
+### Pantallas (fase 5)
+
+- El lienzo «ContaSuite · Gestor de Contraseñas» sirve de guía de estructura y se dibuja con los tokens de Stitch v2, en claro, oscuro y alto contraste.
+- **Principal** (`PasswordVault` → `PasswordManager standalone`):
+  - Encabezado «MÓDULO» con la cuenta regresiva (`VaultTimer`), «Bloquear ahora», «Importar», «Agregar» (Contraseña o FIEL o CSD) y el menú ⋯ (Exportar, Descargar plantilla de Excel, Generar contraseña).
+  - Revisión de seguridad con cuatro indicadores.
+  - Lista de empresas con buscador por nombre o RFC, filtro por régimen, etiqueta de la FIEL (vigente, vence en N días, vencida o sin FIEL) y conteos.
+  - Detalle con pestañas Credenciales y Bitácora de accesos, y fichas por tipo.
+  - Tarjetas de firmas y certificados: titular, etiqueta REPRESENTANTE, sucursal del CSD, vigencia con color, archivos, contraseña de la llave oculta y ⋯ con Reemplazar, Ver historial y Eliminar.
+  - Contraseñas agrupadas por tipo con su estado (Segura, Débil, Repetida o Revisar) y «+ Agregar contraseña».
+- **Bloqueado** (`VaultGate`): conserva el encabezado del módulo y nunca muestra empresas.
+- **Agregar FIEL o CSD**: diálogo `AddSignature`, con clases `v2-addsig-*`.
+- **Importar**: asistente `VaultImport`.
+- `GET /api/credentials/vault` también devuelve `certificates` (activos e historial, sin archivos ni contraseñas), `summary` y, por empresa, `fiel`, `certificate_count`, `password_count`, `regime` y `person_type`.
+- `DELETE /companies/{cid}/certificates/{id}` manda un certificado al historial, archiva la contraseña de su llave y registra ELIMINAR.
+- Configuración › «Bóveda de contraseñas» (administradores): autobloqueo, personas con acceso (código temporal, quitar acceso) y nuevo código de recuperación.
+- El gestor deja de usar el contenedor `Credentials` (régimen y empresa sueltos y el aviso largo). El expediente de la empresa sí lo sigue usando, ahora detrás de `VaultGate`.
+
 ### Importación, plantilla y exportación (fase 4 · cs_0025)
 
 - `app/vault_import.py` aplica la sección 6 de la spec. Se procesa en memoria del servidor; el navegador vuelve a mandar el archivo en cada paso y su SHA-256 debe ser el mismo de la vista previa. Es sólo para administradores con la bóveda desbloqueada.

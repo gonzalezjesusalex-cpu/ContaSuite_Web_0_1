@@ -274,6 +274,7 @@ AUDIT_KINDS = {
     'vault_exported': ('EXPORTAR', 'exportacion'),
     'autofill_used': ('USO_DECLARA', 'credencial'),
     'fiel_used': ('USO_DECLARA', 'certificado'),
+    'certificate_archived': ('ELIMINAR', 'certificado'),
 }
 
 

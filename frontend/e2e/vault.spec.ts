@@ -50,7 +50,10 @@ test('bóveda: crear, código de recuperación, bloquear y desbloquear', async (
   await expect(page.getByText(/Desbloqueado · se bloquea en/)).toBeVisible();
 
   // Fase 3: «Agregar FIEL o CSD» asks whose signature it is and saves nothing until every check passes.
-  await page.getByRole('button', { name: 'Agregar FIEL o CSD' }).click();
+  // Fase 5: the four indicators of «Revisión de seguridad» and «Agregar» › «FIEL o CSD».
+  await expect(page.getByRole('group', { name: 'Revisión de seguridad' })).toContainText('Contraseñas guardadas');
+  await page.getByRole('button', { name: 'Agregar', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'FIEL o CSD' }).click();
   const dialog = page.getByRole('dialog', { name: 'Agregar FIEL o CSD' });
   for (const option of ['FIEL de la empresa', 'FIEL del representante', 'Sello digital (CSD)'])
     await expect(dialog.getByRole('radio', { name: option })).toBeVisible();
@@ -59,7 +62,7 @@ test('bóveda: crear, código de recuperación, bloquear y desbloquear', async (
   await expect(dialog).toHaveCount(0);
 
   // Fase 4: «Importar» in three steps; the preview never shows the password.
-  await page.getByRole('button', { name: 'Importar desde Excel' }).click();
+  await page.getByRole('button', { name: 'Importar', exact: true }).click();
   const wizard = page.getByRole('dialog', { name: 'Importar contraseñas desde Excel' });
   await wizard.locator('input[type=file]').setInputFiles({
     name: 'contrasenas.csv',
@@ -73,4 +76,11 @@ test('bóveda: crear, código de recuperación, bloquear y desbloquear', async (
   await expect(wizard).not.toContainText('Ciec-E2E-sintetica-1');
   await wizard.getByRole('button', { name: 'Aplicar 1 cambios' }).click();
   await expect(page.getByText(/borrar el Excel de tu equipo/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Contraseñas por tipo' })).toBeVisible();
+  await expect(page.getByText('Segura').or(page.getByText('Débil')).first()).toBeVisible();
+
+  // Configuración › Bóveda de contraseñas: auto-lock, people with access and a new recovery code.
+  await page.goto('/configuracion/boveda');
+  await expect(page.getByRole('heading', { name: 'Bóveda de contraseñas' })).toBeVisible();
+  await expect(page.getByLabel('Minutos sin uso antes de bloquear')).toHaveValue('5');
 });

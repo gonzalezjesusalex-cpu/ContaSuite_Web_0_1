@@ -21,6 +21,7 @@ import Documents from './Documents';
 import CompanyDashboard from './CompanyDashboard';
 import VirtualExplorer from './VirtualExplorer';
 import Credentials from './Credentials';
+import VaultGate from './VaultGate';
 import ArchiveActivity from './ArchiveActivity';
 import { CfdiRuns } from './CfdiReview';
 import CompanyHistory from './CompanyHistory';
@@ -444,7 +445,10 @@ export default function Dossier({
       ) : tab === 'Calendario de CFDI' ? (
         <CfdiCalendar companyId={c.id} canRebuild={can(me, 'documentos.subir', c.id)} notify={notify} />
       ) : tab === 'Credenciales y Certificados' ? (
-        <Credentials state={state} companyId={c.id} scanJob={scanDone} />
+        // Renovación del gestor: the vault opens with the master password here too.
+        <VaultGate>
+          <Credentials state={state} companyId={c.id} scanJob={scanDone} />
+        </VaultGate>
       ) : tab === 'Declaraciones' && can(me, 'declara.usar', c.id) ? (
         <section className="card padded">
           <h2>Declaraciones y acuses</h2>

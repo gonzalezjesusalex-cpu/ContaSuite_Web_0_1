@@ -33,9 +33,9 @@ from .credential_api import (
 )
 from . import vault_session
 from .credential_crypto import VaultLocked
-from .credential_models import credentials, files, services, tickets
+from .credential_models import certificates, credentials, files, services, tickets
 from .database import session
-from .models import Company, now
+from .models import Company, UserAccount, now
 from .security import Principal, auth, utc
 
 MAX_FILE = 64 * 1024
@@ -68,11 +68,12 @@ def vault_list(
     repeated = repeated_fingerprints(db)
     attached = attached_files(db, list(visible))
     q = fold(query)
-    items = []
+    items, everything = [], []
     for r in db.execute(
         select(credentials).where(credentials.c.company_id.in_(list(visible)), credentials.c.archived.is_(False))
     ).mappings():
         c = visible[r['company_id']]
+        everything.append(public_credential(r, repeated))
         if service and r['service_id'] != service:
             continue
         portal = labels.get(r['service_id'], r['service_id'])
@@ -95,10 +96,27 @@ def vault_list(
     from .credential_api import vault_unlocked
 
     vault_session.touch(p.session_id)
+    certs = vault_certificates(db, list(visible))
+    passwords = [i for i in everything if i['kind'] != 'LLAVE']
     return {
         'items': items,
+        'certificates': certs,
+        'summary': summary(db, p, visible, passwords, certs),
         'services': [{'id': k, 'label': v} for k, v in sorted(labels.items(), key=lambda kv: kv[1])],
-        'companies': [{'id': c.id, 'name': c.name, 'rfc': c.rfc, 'can_create': p.admin} for c in visible.values()],
+        'companies': [
+            {
+                'id': c.id,
+                'name': c.name,
+                'rfc': c.rfc,
+                'regime': c.regime,
+                'person_type': c.person_type,
+                'can_create': p.admin,
+                'fiel': fiel_badge(certs, c.id),
+                'certificate_count': sum(1 for x in certs if x['company_id'] == c.id and x['active']),
+                'password_count': sum(1 for x in passwords if x['company_id'] == c.id),
+            }
+            for c in visible.values()
+        ],
         'health': {
             'weak': sum(1 for i in items if i['strength'] is not None and i['strength'] <= 1),
             'repeated': sum(1 for i in items if i['repeated']),
@@ -106,6 +124,118 @@ def vault_list(
         },
         'vault_unlocked': vault_unlocked(p),
         'can_export': p.admin,
+    }
+
+
+# ---------------------------------------------------------------- fase 5: certificates and summary of the screen
+
+
+def days_left(end):
+    from zoneinfo import ZoneInfo
+
+    if not end:
+        return None
+    zone = ZoneInfo('America/Mexico_City')
+    return (utc(end).astimezone(zone).date() - now().astimezone(zone).date()).days
+
+
+def validity(days):
+    """Recomputed on every read from `valid_until`: more than 30 days green, 30 or fewer amber, expired red."""
+    if days is None:
+        return 'unknown'
+    return 'expired' if days < 0 else 'expiring' if days <= 30 else 'valid'
+
+
+def vault_certificates(db, company_ids):
+    """Every certificate of the companies (active and history), never a file or a password."""
+    names = {}
+    for r in db.execute(
+        select(files.c.certificate_id, files.c.file_kind, files.c.file_name).where(files.c.company_id.in_(company_ids))
+    ):
+        if r[0]:
+            names.setdefault(r[0], {})[r[1]] = r[2]
+    out = []
+    for r in db.execute(select(certificates).where(certificates.c.company_id.in_(company_ids))).mappings():
+        if not r['cert_class']:
+            continue
+        days = days_left(r['valid_until'])
+        out.append(
+            {
+                'id': r['id'],
+                'company_id': r['company_id'],
+                'cert_class': r['cert_class'],
+                'holder_name': r['holder_name'],
+                'holder_rfc': r['holder_rfc'],
+                'holder_curp': r['holder_curp'],
+                'branch': r['branch'],
+                'number': r['serial'],
+                'valid_from': r['valid_from'],
+                'valid_until': r['valid_until'],
+                'days_left': days,
+                'validity': validity(days),
+                'active': bool(r['active']),
+                'replaced_by': r['replaced_by'],
+                'incomplete': not r['fingerprint'],
+                'files': names.get(r['id'], {}),
+                'key_password_id': r['key_password_id'],
+            }
+        )
+    out.sort(key=lambda x: ({'FIEL_EMPRESA': 0, 'FIEL_REPRESENTANTE': 1, 'CSD': 2}[x['cert_class']], x['branch'] or ''))
+    return out
+
+
+def fiel_badge(certs, company_id):
+    """«FIEL vigente», «FIEL vence en N días», «FIEL vencida» or «Sin FIEL» for the list of companies."""
+    fiel = next(
+        (
+            c
+            for c in certs
+            if c['company_id'] == company_id
+            and c['cert_class'] == 'FIEL_EMPRESA'
+            and c['active']
+            and not c['incomplete']
+        ),
+        None,
+    )
+    if not fiel:
+        return {'state': 'none', 'days': None}
+    return {'state': fiel['validity'], 'days': fiel['days_left']}
+
+
+ACCESS_KINDS = ('VER', 'COPIAR', 'USO_DECLARA')
+
+
+def summary(db, p, visible, passwords, certs):
+    """The four indicators of «Revisión de seguridad», checked locally (nothing is sent outside)."""
+    from .credential_models import audit
+
+    complete = [c for c in certs if c['active'] and not c['incomplete']]
+    query = select(audit).where(audit.c.kind.in_(ACCESS_KINDS), audit.c.company_id.in_(list(visible)))
+    if not p.admin:
+        query = query.where(audit.c.actor_id == p.subject)
+    last = db.execute(query.order_by(audit.c.created_at.desc()).limit(1)).mappings().first()
+    last_access = None
+    if last:
+        label = db.execute(
+            select(credentials.c.label, credentials.c.kind).where(credentials.c.id == last['record_id'])
+        ).first()
+        actor = db.get(UserAccount, last['actor_id'])
+        last_access = {
+            'at': last['created_at'],
+            'kind': last['kind'],
+            'company': visible[last['company_id']].name if last['company_id'] in visible else None,
+            'what': (label[1] if label else None),
+            'who': actor.display_name if actor else None,
+        }
+    return {
+        'passwords': len(passwords),
+        'certificates': len(complete),
+        'expiring': sum(1 for c in complete if c['validity'] == 'expiring'),
+        'expired': sum(1 for c in complete if c['validity'] == 'expired'),
+        'weak_or_repeated': sum(
+            1 for i in passwords if i['repeated'] or (i['strength'] is not None and i['strength'] <= 1)
+        ),
+        'last_access': last_access,
     }
 
 

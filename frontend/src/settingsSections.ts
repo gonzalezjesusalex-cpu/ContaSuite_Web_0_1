@@ -1,6 +1,7 @@
 import {
   Bell,
   HardDrive,
+  KeyRound,
   Palette,
   ScrollText,
   Server,
@@ -18,6 +19,7 @@ export type SettingsSlug =
   | 'tema'
   | 'servicios'
   | 'alertas'
+  | 'boveda'
   | 'almacenamiento'
   | 'seguridad'
   | 'equipo'
@@ -33,6 +35,8 @@ export const SETTINGS_SECTIONS: {
   { slug: 'servicios', label: 'Servicios y agentes', icon: Server, shown: () => true },
   // Dashboard principal: las alertas de expedientes y documentos viven aquí (antes en el dashboard).
   { slug: 'alertas', label: 'Alertas', icon: Bell, shown: (i) => !!i && !i.bootstrap },
+  // Renovación del gestor de contraseñas: autobloqueo, personas con acceso y código de recuperación.
+  { slug: 'boveda', label: 'Bóveda de contraseñas', icon: KeyRound, shown: (i) => !!i?.admin && !i.bootstrap },
   { slug: 'almacenamiento', label: 'Almacenamiento', icon: HardDrive, shown: (i) => !!i?.admin && !i.bootstrap },
   { slug: 'seguridad', label: 'Cuenta y seguridad', icon: ShieldCheck, shown: (i) => !!i && !i.bootstrap },
   {

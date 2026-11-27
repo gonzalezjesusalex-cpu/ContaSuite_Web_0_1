@@ -143,8 +143,8 @@ export default function AddSignature({
 
   return (
     <Modal title="Agregar FIEL o CSD" onClose={onClose}>
-      <div className="v2-signature">
-        <div className="v2-signature-form">
+      <div className="v2-addsig">
+        <div className="v2-addsig-form">
           {!companyId && (
             <Field label="Empresa">
               <select value={company} onChange={(e) => setCompany(e.target.value)}>
@@ -156,10 +156,10 @@ export default function AddSignature({
               </select>
             </Field>
           )}
-          <fieldset className="v2-signature-classes">
+          <fieldset className="v2-addsig-classes">
             <legend>¿De quién es la firma?</legend>
             {CLASSES.map((c) => (
-              <label key={c.id} className={'v2-signature-class' + (klass === c.id ? ' is-selected' : '')}>
+              <label key={c.id} className={'v2-addsig-class' + (klass === c.id ? ' is-selected' : '')}>
                 <input
                   type="radio"
                   name="signature-class"
@@ -175,7 +175,7 @@ export default function AddSignature({
             ))}
           </fieldset>
           <div
-            className="v2-signature-drop"
+            className="v2-addsig-drop"
             onDragOver={(e) => e.preventDefault()}
             onDrop={drop}
             role="group"
@@ -215,13 +215,13 @@ export default function AddSignature({
             <input type="password" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
         </div>
-        <aside className="v2-signature-result" aria-live="polite" aria-label="Lo leído del certificado">
+        <aside className="v2-addsig-result" aria-live="polite" aria-label="Lo leído del certificado">
           {!result && !checking && (
             <p className="muted">Sube el .cer, el .key y escribe la contraseña para comprobarlos.</p>
           )}
           {checking && <p role="status">Comprobando…</p>}
           {result?.read && (
-            <dl className="v2-signature-read">
+            <dl className="v2-addsig-read">
               <dt>Titular</dt>
               <dd>{result.read.holder_name || '—'}</dd>
               <dt>RFC</dt>
@@ -252,7 +252,7 @@ export default function AddSignature({
             </dl>
           )}
           {result && (
-            <ul className="v2-signature-checks">
+            <ul className="v2-addsig-checks">
               {result.checks.map((c) => (
                 <li key={c.id} className={c.ok ? 'is-ok' : c.blocking ? 'is-error' : 'is-warning'}>
                   {c.ok ? <CheckCircle2 size={16} aria-hidden /> : <XCircle size={16} aria-hidden />}
@@ -285,7 +285,7 @@ export default function AddSignature({
         </aside>
       </div>
       {result?.sat_access && klass !== 'CSD' && (
-        <section className="v2-signature-sat" aria-label="Lista para «Acceso con e.firma» del SAT">
+        <section className="v2-addsig-sat" aria-label="Lista para «Acceso con e.firma» del SAT">
           <h3>
             <ShieldCheck size={16} aria-hidden /> Lista para «Acceso con e.firma» del SAT
           </h3>

@@ -269,6 +269,41 @@ async def upload_certificate(
     return {'id': certificate_id, 'active': valid, 'replaced': current if valid else None, 'authority_validated': False}
 
 
+@router.delete('/companies/{cid}/certificates/{ident}')
+def archive_certificate(cid: str, ident: str, response: Response, p: Principal = Depends(auth), db=Depends(session)):
+    """«Eliminar» a certificate: it leaves the cards and stays in the history (an import never deletes; this does
+    only on request). Its encrypted files stay, unused; its key password is archived."""
+    no_cache(response)
+    ready(db)
+    vault_access(db, p, cid, 'manage')
+    require_unlocked(db, p, cid, ident)
+    row = (
+        db.execute(select(certificates).where(certificates.c.id == ident, certificates.c.company_id == cid))
+        .mappings()
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, 'Certificado no encontrado.')
+    db.execute(update(certificates).where(certificates.c.id == ident).values(active=False, notes='Eliminado'))
+    if row['key_password_id']:
+        others = db.execute(
+            select(certificates.c.id).where(
+                certificates.c.key_password_id == row['key_password_id'],
+                certificates.c.id != ident,
+                certificates.c.active.is_(True),
+            )
+        ).first()
+        if not others:
+            db.execute(
+                update(credentials)
+                .where(credentials.c.id == row['key_password_id'])
+                .values(archived=True, updated_at=now(), updated_by=p.subject)
+            )
+    event(db, p, cid, 'certificate_archived', ident, {'class': row['cert_class']})
+    db.commit()
+    return {'archived': True}
+
+
 # ---------------------------------------------------------------- internal service for Declara (no HTTP route)
 
 

@@ -29,8 +29,15 @@ type VaultState = {
 };
 
 const MIN = 12;
-/** Inside the gate: a request answered «bóveda bloqueada» (423) sends the screen back to the lock. */
-export const VaultContext = createContext<{ locked: () => void }>({ locked: () => undefined });
+/** Inside the gate: a request answered «bóveda bloqueada» (423) sends the screen back to the lock. Fase 5: the
+ *  countdown and «Bloquear ahora» live in the module header (VaultTimer), so the context also carries them. */
+type Gate = { locked: () => void; lockNow: () => void; seconds: number; isAdmin: boolean };
+export const VaultContext = createContext<Gate>({
+  locked: () => undefined,
+  lockNow: () => undefined,
+  seconds: 0,
+  isAdmin: false,
+});
 export const useVault = () => useContext(VaultContext);
 export const isLockedError = (e: unknown) => /bóveda está bloqueada/i.test((e as Error)?.message || '');
 
@@ -39,7 +46,7 @@ export function clock(seconds: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-export default function VaultGate({ children }: { children: ReactNode }) {
+export default function VaultGate({ children, header }: { children: ReactNode; header?: ReactNode }) {
   const [state, setState] = useState<VaultState | null>(null);
   const [error, setError] = useState('');
   const [recovery, setRecovery] = useState('');
@@ -55,51 +62,67 @@ export default function VaultGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     load();
   }, [load]);
-  const context = useMemo(() => ({ locked: () => void load() }), [load]);
-  async function lockNow() {
+  const lockNow = useCallback(async () => {
     await api('/credentials/vault/lock', 'POST').catch(() => undefined);
     setRecovery('');
     await load();
-  }
+  }, [load]);
+  const seconds = state?.unlocked ? state.seconds_left : 0;
+  const isAdmin = !!state?.is_admin;
+  const context = useMemo(
+    () => ({ locked: () => void load(), lockNow: () => void lockNow(), seconds, isAdmin }),
+    [load, lockNow, seconds, isAdmin],
+  );
+  // «Bloqueado» of the design: the module header stays, the companies never appear.
+  const locked = (card: ReactNode) => (
+    <>
+      {header}
+      {card}
+    </>
+  );
 
   if (!state)
-    return error ? (
-      <p role="alert" className="error-banner">
-        {error}
-      </p>
-    ) : (
-      <p role="status">Consultando la bóveda…</p>
+    return locked(
+      error ? (
+        <p role="alert" className="error-banner">
+          {error}
+        </p>
+      ) : (
+        <p role="status">Consultando la bóveda…</p>
+      ),
     );
   if (recovery)
-    return (
+    return locked(
       <RecoveryCode
         code={recovery}
         onDone={() => {
           setRecovery('');
           load();
         }}
-      />
+      />,
     );
   if (!state.configured)
-    return state.can_setup ? (
-      <SetupWizard onCreated={(code) => setRecovery(code)} />
-    ) : (
-      <LockCard title="El gestor todavía no está listo">
-        <p className="muted">Un administrador debe crear la contraseña maestra de la bóveda.</p>
-      </LockCard>
+    return locked(
+      state.can_setup ? (
+        <SetupWizard onCreated={(code) => setRecovery(code)} />
+      ) : (
+        <LockCard title="El gestor todavía no está listo">
+          <p className="muted">Un administrador debe crear la contraseña maestra de la bóveda.</p>
+        </LockCard>
+      ),
     );
-  if (!state.unlocked) return <LockedCard state={state} onOpened={load} />;
-  if (state.must_change) return <NewPassword onDone={load} />;
-  return (
-    <VaultContext.Provider value={context}>
-      <GateBar key={state.seconds_left} seconds={state.seconds_left} onExpired={load} onLock={lockNow} />
-      {children}
-    </VaultContext.Provider>
-  );
+  if (!state.unlocked) return locked(<LockedCard state={state} onOpened={load} />);
+  if (state.must_change) return locked(<NewPassword onDone={load} />);
+  return <VaultContext.Provider value={context}>{children}</VaultContext.Provider>;
 }
 
-/** Countdown and «Bloquear ahora», apart so the module below does not re-render every second. */
-function GateBar({ seconds, onExpired, onLock }: { seconds: number; onExpired: () => void; onLock: () => void }) {
+/** «Desbloqueado · se bloquea en m:ss»: its own state so the module does not re-render every second. */
+export function VaultTimer() {
+  const { seconds, locked: onExpired } = useVault();
+  return <Countdown key={seconds} seconds={seconds} onExpired={onExpired} />;
+}
+
+function Countdown({ seconds, onExpired }: { seconds: number; onExpired: () => void }) {
   const [left, setLeft] = useState(seconds);
   const lastTouch = useRef(0);
   // Local countdown; at zero the server has already dropped the key, so the screen locks too.
@@ -127,14 +150,19 @@ function GateBar({ seconds, onExpired, onLock }: { seconds: number; onExpired: (
     };
   }, [onExpired]);
   return (
-    <div className="v2-vault-gatebar" role="region" aria-label="Estado de la bóveda">
-      <span className="v2-vault-timer">
-        <LockOpen size={16} aria-hidden /> Desbloqueado · se bloquea en {clock(left)}
-      </span>
-      <button className={stitchButton} onClick={onLock}>
-        <Lock size={16} aria-hidden /> Bloquear ahora
-      </button>
-    </div>
+    <span className="v2-vault-timer" role="timer" aria-label={'Desbloqueado, se bloquea en ' + clock(left)}>
+      <LockOpen size={16} aria-hidden /> Desbloqueado · se bloquea en {clock(left)}
+    </span>
+  );
+}
+
+/** «Bloquear ahora». */
+export function LockNow() {
+  const { lockNow } = useVault();
+  return (
+    <button className={stitchButton} onClick={lockNow}>
+      <Lock size={16} aria-hidden /> Bloquear ahora
+    </button>
   );
 }
 

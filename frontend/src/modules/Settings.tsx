@@ -12,6 +12,7 @@ const AgentAdmin = lazy(() => import('./AgentAdmin'));
 const AccountSecurity = lazy(() => import('./AccountSecurity'));
 const StorageConnector = lazy(() => import('./StorageConnector'));
 const AlertsSettings = lazy(() => import('./AlertsSettings'));
+const VaultSettings = lazy(() => import('./VaultSettings'));
 
 type Props = {
   state: State;
@@ -173,6 +174,7 @@ function Section({ slug, state, identity, notify, onEnded, ...props }: Props & {
     );
   if (slug === 'almacenamiento') return <StorageConnector notify={notify} />;
   if (slug === 'alertas') return <AlertsSettings state={state} notify={notify} />;
+  if (slug === 'boveda') return <VaultSettings notify={notify} />;
   if (!identity) return null;
   return (
     <AccountSecurity
