@@ -662,10 +662,45 @@ def run_job(job, roots, options=None, notify=None, fetch=None):
         if job['kind'] == 'declara_carpeta':
             import declara_folder
 
-            options = options or {}
+            options = dict(options or {})
             user = options.get('_user') or os.getenv('USERNAME', '')
             machine = options.get('_machine') or os.getenv('COMPUTERNAME', '')
-            return 'completed', declara_folder.run(payload, roots, user, machine)
+            sat = dict(options.get('sat') or {})
+            base = Path(os.getenv('LOCALAPPDATA') or Path.home()) / 'ContaSuite' / 'agent'
+            sat.setdefault('profile_dir', base / 'sat-profile')
+            sat.setdefault('browsers_dir', base / 'playwright-browsers')
+            options['sat'] = sat
+            post, get = options.get('_post'), options.get('_get')
+            agent_id = options.get('_agent_id', '')
+
+            def report(event):
+                """Avance de la sesión SAT; la respuesta trae las órdenes de la web (pausar, detener, reintentar)."""
+                if post is None:
+                    return {}
+                try:
+                    return post('/agent/jobs/' + job['id'] + '/declara-progress', {'agent_id': agent_id, **event}) or {}
+                except Exception:  # noqa: BLE001 - progress is informative; the queue continues
+                    logging.warning('No se pudo informar el avance de la sesión SAT.')
+                    return {}
+
+            def fetch_fiel():
+                """La FIEL del gestor, una sola vez y sólo en memoria."""
+                import base64
+
+                if get is None:
+                    return None
+                data = json.loads(get('/agent/jobs/' + job['id'] + '/fiel?agent_id=' + agent_id))
+                return {
+                    'cer': base64.b64decode(data['cer']),
+                    'key': base64.b64decode(data['key']),
+                    'password': data['password'],
+                    'cer_name': data.get('cer_name'),
+                    'key_name': data.get('key_name'),
+                }
+
+            return 'completed', declara_folder.run(
+                payload, roots, user, machine, options=options, report=report, fetch_fiel=fetch_fiel
+            )
         raise ValueError('Operación no admitida')
     except Exception as exc:  # noqa: BLE001 - any failure ends the job with its data-free reason
         logging.exception('Trabajo %s: no se pudo completar', job.get('id'))
@@ -758,6 +793,7 @@ REASONS = {
     'renombrado_fallido': 'No se pudo renombrar; se revirtieron los cambios.',
     'sin_registro': 'No hay renombrados registrados que deshacer en esta carpeta.',
     'destino_existe': 'Un nombre anterior ya está ocupado: no se deshizo nada.',
+    'copia_no_verificada': 'La copia de un PDF descargado no coincide en tamaño o huella: no se guardó.',
 }
 
 
@@ -855,11 +891,16 @@ class LinkedAgent:
             fetch = lambda item: get_bytes(  # noqa: E731
                 self.url, token, '/agent/jobs/' + job['id'] + '/cfdi/' + item + '?agent_id=' + self.agent_id
             )
-            options = {**self.config, '_user': self.user, '_machine': self.machine}
+            options = {
+                **self.config,
+                '_user': self.user,
+                '_machine': self.machine,
+                '_agent_id': self.agent_id,
+                '_post': lambda path, data: self.post(self.url, path, data, token),
+                '_get': lambda path: get_bytes(self.url, token, path),
+            }
             status, result = run_job(job, job['payload'].get('roots') or [], options, notify, fetch)
-            send_declara_pdf(
-                lambda path, data: self.put(self.url, token, path, data), job['id'], self.agent_id, result
-            )
+            send_declara_pdf(lambda path, data: self.put(self.url, token, path, data), job['id'], self.agent_id, result)
             send_index(lambda path, data: self.post(self.url, path, data, token), job['id'], self.agent_id, result)
             send_copies(
                 lambda path, data: self.post(self.url, path, data, token),

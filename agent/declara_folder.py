@@ -511,6 +511,61 @@ def undo_last(guard: Guard, raw, user, machine):
     return {'ruta': folder, 'restaurados': restored, 'lote': batch['lote'], 'cambios': batch['cambios']}
 
 
+def save_downloaded(guard: Guard, raw, downloaded, short_name, rfc, user, machine):
+    """Guardar y renombrar en un paso un PDF que llegó del SAT (sesión SAT, 4.4).
+
+    Se copia a la carpeta con un nombre temporal, se verifican tamaño y SHA-256 y el motor (con el índice) decide su
+    nombre estándar contra la carpeta actual, con consecutivo si hace falta. Nunca se sobrescribe un archivo.
+    Devuelve (estado, nombre): 'guardado' con su nombre final, 'ya_existia' si es copia idéntica de uno que ya está, o
+    'guardado' con el nombre descargado cuando el PDF no se pudo clasificar.
+    """
+    folder = guard.check(raw)
+    if take_lock(folder, user, machine)['estado'] == 'ajeno':
+        raise FolderError('carpeta_bloqueada')
+    source = Path(downloaded)
+    expected_sha = motor.sha256_file(source)
+    size = source.stat().st_size
+    base = io_path(folder)
+    temp = base / f'~SAT_{expected_sha[:16]}.pdf'
+    if temp.exists():
+        temp.unlink()
+    with source.open('rb') as src, temp.open('xb') as out:
+        shutil.copyfileobj(src, out, 1024 * 1024)
+    if temp.stat().st_size != size or motor.sha256_file(temp) != expected_sha:
+        temp.unlink(missing_ok=True)
+        raise FolderError('copia_no_verificada')
+    try:
+        result = analyze(guard, folder, short_name, rfc, user, machine)
+        record = next(r for r in result['registros'] if r['path'] == temp.name)
+        status, name = record.get('status'), record.get('expected_name')
+        if status == 'COPIA IDÉNTICA':
+            temp.unlink()
+            return 'ya_existia', record.get('identical_to')
+        if status != 'RENOMBRAR' or not name:
+            name = Path(sb_unique(base, source.name)).name
+        final = base / name
+        if final.exists():
+            raise FolderError('destino_existe', name)
+        retried(os.rename, temp, final)
+        return 'guardado', name
+    except Exception:
+        temp.unlink(missing_ok=True)
+        raise
+
+
+def sb_unique(folder: Path, filename: str) -> Path:
+    name = PureWindowsPath(filename).name or 'declaracion.pdf'
+    if not name.lower().endswith('.pdf'):
+        name += '.pdf'
+    name = motor.INVALID_FILENAME_CHARS.sub(' ', name)
+    target = folder / name
+    n = 2
+    while target.exists():
+        target = folder / f'{Path(name).stem} ({n}).pdf'
+        n += 1
+    return target
+
+
 # ---------------------------------------------------------------- entrada del agente
 
 OPS = {
@@ -523,16 +578,27 @@ OPS = {
     'aplicar',
     'deshacer',
     'liberar',
+    'sat',
+    'sat_estado',
+    'sat_instalar',
 }
 
 
-def run(payload, roots, user, machine, resolver=universal_name):
+def run(payload, roots, user, machine, resolver=universal_name, options=None, report=None, fetch_fiel=None):
     """Un trabajo `declara_carpeta`. Devuelve el resultado; `_pdf` (bytes) lo sube el agente aparte."""
     op = payload.get('op')
     if op not in OPS:
         raise FolderError('operacion_desconocida')
     guard = Guard(roots, resolver)
     user = user or 'usuario'
+    if op in {'sat', 'sat_estado', 'sat_instalar'}:
+        import sat_session
+
+        if op == 'sat_estado':
+            return sat_session.browser_state(options or {})
+        if op == 'sat_instalar':
+            return sat_session.install_firefox(options or {})
+        return sat_session.run(payload, roots, user, machine, options or {}, report or (lambda e: {}), fetch_fiel)
     if op == 'raices':
         return {'raices': list_roots(guard)}
     path = payload.get('ruta', '')

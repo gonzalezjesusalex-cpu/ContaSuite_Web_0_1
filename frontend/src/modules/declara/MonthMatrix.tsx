@@ -1,5 +1,6 @@
-import { Check, X } from 'lucide-react';
+import { Check, Download, X } from 'lucide-react';
 import { Badge } from '../../components/ui';
+import { stitchButton } from '../../components/stitch';
 import { MONTHS, MONTH_STATES, monthLabel, shortDate, type Month, type MonthState } from './model';
 
 function Mark({ ok, label }: { ok: boolean; label: string }) {
@@ -23,7 +24,16 @@ function extras(m: Month) {
 }
 
 /** Control mensual: 12 tarjetas. Sin datos (`months` vacío) se muestra en gris, «Se llena al analizar». */
-export default function MonthMatrix({ months, placeholder }: { months?: Record<string, Month>; placeholder?: string }) {
+export default function MonthMatrix({
+  months,
+  placeholder,
+  onDownload,
+}: {
+  months?: Record<string, Month>;
+  placeholder?: string;
+  /** Modo carpeta con el SAT habilitado: «Descargar en SAT» en los meses exigibles incompletos. */
+  onDownload?: (month: string) => void;
+}) {
   const empty = !months || !Object.keys(months).length;
   return (
     <div className={'declara-matrix' + (empty ? ' placeholder' : '')}>
@@ -51,6 +61,16 @@ export default function MonthMatrix({ months, placeholder }: { months?: Record<s
                         <li key={e}>{e}</li>
                       ))}
                     </ul>
+                  )}
+                  {onDownload && m.exigible && m.estado !== 'COMPLETO' && (
+                    <button
+                      type="button"
+                      className={stitchButton + ' declara-month-sat'}
+                      onClick={() => onDownload(name)}
+                    >
+                      <Download size={14} />
+                      Descargar en SAT
+                    </button>
                   )}
                 </>
               ) : (

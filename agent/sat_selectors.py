@@ -56,3 +56,20 @@ GUIDE_TAB_TEXT = 'Declara'
 GUIDE_TAB_CONTROLS = "button, a, [role='button'], [role='tab'], div"
 GUIDE_LINK_PATTERN = r'Pagos\s+provisionales\s+del\s+ISR'
 GUIDE_WAIT_MS = 15_000
+# Personas físicas: su propia dirección de portal (`sat.base_url_fisicas` en la configuración del agente) y la misma
+# entrada guiada. Sin probar contra el portal real.
+
+# Acceso con e.firma (rediseño de Declara, 4.4). Sin probar contra el portal real: si algún control no aparece, el
+# agente no adivina y la persona termina de iniciar sesión a mano. El captcha de la CIEC siempre lo resuelve la persona.
+FIEL_BUTTON_TEXTS = ('e.firma', 'e.Firma', 'FIEL')
+FIEL_CER_INPUT = (
+    "input[type='file'][accept*='cer' i], input[type='file']#fileCertificate, input[type='file'][name*='cer' i]"
+)
+FIEL_KEY_INPUT = (
+    "input[type='file'][accept*='key' i], input[type='file']#filePrivateKey, input[type='file'][name*='key' i]"
+)
+FIEL_PASSWORD_INPUT = (
+    "input[type='password']#privateKeyPassword, input[type='password'][name*='pass' i], input[type='password']"
+)
+FIEL_SUBMIT = "button#submit, input#submit, button:has-text('Enviar'), input[type='submit']"
+FIEL_WAIT_MS = 20_000

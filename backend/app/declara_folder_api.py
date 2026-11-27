@@ -25,7 +25,8 @@ from .run_access import DECLARA
 from .security import Principal, auth
 
 KIND = 'declara_carpeta'
-WEB_OPS = {'raices', 'listar', 'probar', 'firma', 'liberar'}
+WEB_OPS = {'raices', 'listar', 'probar', 'firma', 'liberar', 'sat_estado', 'sat_instalar'}
+NO_PATH = {'raices', 'sat_estado', 'sat_instalar'}
 MAX_PDF = 25 * 1024 * 1024
 SHA = re.compile(r'[0-9a-f]{64}')
 ORIGINS = {'plantilla', 'red', 'equipo'}
@@ -187,7 +188,7 @@ def folder_op(data: OpIn, db: Session = Depends(session), principal: Principal =
     if data.op not in WEB_OPS:
         raise HTTPException(422, 'Operación no válida.')
     payload = {'op': data.op}
-    if data.op != 'raices':
+    if data.op not in NO_PATH:
         payload['ruta'] = checked_path(data.ruta)
     if data.plantilla:
         payload['plantilla'] = data.plantilla
@@ -259,6 +260,9 @@ def finish(db, job):
         result['analisis_id'] = create_run(db, job, result)
     elif op in {'aplicar', 'deshacer'}:
         close_apply(db, job, result)
+    elif op == 'sat':
+        SECRETS.pop(job.id, None)
+        close_sat(db, job, result)
     result['cerrado'] = True
     result.pop('registros', None)
     result.pop('nombres', None)
@@ -401,6 +405,29 @@ def close_apply(db, job, result):
             run.message = f'Se deshizo el último renombrado: {result.get("restaurados", 0)} archivos.'
 
 
+def close_sat(db, job, result):
+    """Al terminar la sesión SAT: el reanálisis de la carpeta se vuelve un análisis nuevo y todo queda en la bitácora."""
+    payload = job.payload
+    session_data = (result.get('sesion') or (result.get('progreso') or {})) if isinstance(result, dict) else {}
+    counts = {k: session_data.get(k) for k in ('encontradas', 'total', 'guardadas', 'ya_existian', 'errores')}
+    detail = {**counts, 'periodo': payload.get('periodo') or 'todo el ejercicio', 'acceso': session_data.get('acceso')}
+    if job.status == 'completed' and result.get('registros') is not None:
+        result['analisis_id'] = create_run(db, job, result)
+    else:
+        detail['error'] = result.get('error')
+    web.log(
+        db,
+        'sesion_sat',
+        user_id=job.requested_by,
+        company_id=job.company_id,
+        year=payload.get('year'),
+        run_id=result.get('analisis_id') or payload.get('run_id'),
+        machine=job.machine,
+        path=payload.get('ruta'),
+        detail=detail,
+    )
+
+
 def finish_pending(db, run):
     """Al consultar un análisis en curso de aplicar/deshacer, cierra su trabajo si el agente ya respondió."""
     job_id = (run.summary or {}).get('trabajo')
@@ -530,6 +557,220 @@ async def receive_pdf(
     pending = folder / (sha + '.pdf.part')
     pending.write_bytes(bytes(body))
     pending.replace(folder / (sha + '.pdf'))
+    return {'ok': True}
+
+
+# ---------------------------------------------------------------- sesión SAT (4.4)
+
+# FIEL de una sesión SAT en curso: sólo en la memoria de este proceso, una vez y por poco tiempo. Nunca en la base,
+# en el trabajo ni en registros. Si el servidor se reinicia, se pierde y la persona inicia sesión a mano.
+SECRETS: dict[str, dict] = {}
+SECRET_TTL = 15 * 60
+
+
+class SatIn(BaseModel):
+    metodo: str = 'fiel'
+    solo_faltantes: bool = True
+    periodo: str = Field(default='', max_length=20)
+
+
+def sat_ready(db, principal):
+    link = active_link_for(db, principal.subject)
+    agent = db.get(Agent, link.agent_id) if link else None
+    return bool(agent and 'sat_declaraciones' in (agent.capabilities or []))
+
+
+@router.get('/companies/{company_id}/sat')
+def sat_status(company_id: str, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Lo que la tarjeta «Sesión SAT» muestra: FIEL vigente en el gestor (sin abrirla), bóveda y agente."""
+    from . import vault_session
+    from .credential_models import certificates
+
+    DECLARA.require_company(principal, company_id)
+    company = db.get(Company, company_id)
+    if not company:
+        raise HTTPException(404, 'Empresa no encontrada')
+    cert = (
+        db.execute(
+            select(certificates.c.holder_rfc, certificates.c.valid_until, certificates.c.key_password_id).where(
+                certificates.c.company_id == company_id,
+                certificates.c.cert_class == 'FIEL_EMPRESA',
+                certificates.c.active.is_(True),
+            )
+        )
+        .mappings()
+        .first()
+    )
+    link = active_link_for(db, principal.subject)
+    return {
+        'fiel': {
+            'disponible': bool(cert and cert['key_password_id']),
+            'rfc': (cert['holder_rfc'] if cert else None) or company.rfc,
+            'vence': cert['valid_until'].isoformat() if cert and cert['valid_until'] else None,
+        },
+        'boveda_abierta': vault_session.unlocked(principal.session_id),
+        'agente': {
+            'vinculado': bool(link),
+            'en_linea': bool(link and link_online(link)),
+            'equipo': link.machine if link else None,
+        },
+        'portal': sat_ready(db, principal),
+        'persona': 'fisica' if (company.person_type or '').lower().startswith('f') else 'moral',
+    }
+
+
+@router.post('/runs/{ident}/sat', status_code=202)
+def start_sat(ident: str, data: SatIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Sesión SAT sobre la carpeta del análisis: descarga lo que falta y lo guarda renombrado en la misma carpeta."""
+    import time
+
+    run = DECLARA.check(principal, web.get_run(db, ident))
+    if run.mode != 'carpeta' or not run.folder_path:
+        raise HTTPException(422, 'La sesión SAT descarga a la carpeta vinculada: analiza primero la carpeta.')
+    if data.metodo not in {'fiel', 'ciec'}:
+        raise HTTPException(422, 'Elige e.firma o CIEC.')
+    periodo = motor.MONTHS.get(motor.norm(data.periodo)) if data.periodo else ''
+    if data.periodo and not periodo:
+        raise HTTPException(422, 'Periodo no válido.')
+    if not sat_ready(db, principal):
+        raise HTTPException(409, 'La descarga desde el SAT no está habilitada en el agente de este equipo.')
+    company = db.get(Company, run.company_id)
+    fiel = None
+    if data.metodo == 'fiel':
+        from .credential_crypto import VaultLocked
+        from .vault_fiel import FielUnavailable, obtener_fiel_para_acceso
+
+        try:
+            fiel = obtener_fiel_para_acceso(db, principal, run.company_id, purpose='declara')
+        except VaultLocked:
+            raise HTTPException(423, 'Desbloquea el gestor de contraseñas para usar la e.firma.') from None
+        except FielUnavailable as error:
+            raise HTTPException(422, str(error)) from None
+    job = queue(
+        db,
+        principal,
+        run.company_id,
+        {
+            'op': 'sat',
+            'ruta': run.folder_path,
+            'nombre_corto': run.short_name,
+            'rfc': company.rfc,
+            'year': run.year,
+            'ejercicio': run.year,
+            'periodo': periodo,
+            'solo_faltantes': data.solo_faltantes,
+            'metodo': data.metodo,
+            'persona': 'fisica' if (company.person_type or '').lower().startswith('f') else 'moral',
+            'run_id': ident,
+        },
+    )
+    if fiel is not None:
+        SECRETS[job.id] = {**fiel, 'expira': time.monotonic() + SECRET_TTL}
+    fiel = None
+    return {'job_id': job.id}
+
+
+def running_job(db, ident, agent_id, caller, op):
+    job = db.get(Job, ident)
+    if not job or job.kind != KIND or job.agent_id != agent_id or job.status != 'running':
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    if caller is not None and (agent_id != caller.link.agent_id or job.requested_by != caller.link.user_id):
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    if (job.payload or {}).get('op') != op:
+        raise HTTPException(409, 'Trabajo no asignado o ya finalizado')
+    return job
+
+
+@agent_router.get('/{ident}/fiel')
+def agent_fiel(
+    ident: str, agent_id: str = Query(..., max_length=80), db: Session = Depends(session), caller=Depends(agent_caller)
+):
+    """La FIEL de la sesión, una sola vez, al agente vinculado que tiene el trabajo. No queda copia en el servidor."""
+    import base64
+    import time
+
+    from fastapi.responses import JSONResponse
+
+    running_job(db, ident, agent_id, caller, 'sat')
+    secret = SECRETS.pop(ident, None)
+    if not secret or secret['expira'] < time.monotonic():
+        raise HTTPException(404, 'La e.firma ya se entregó o caducó: inicia sesión a mano en la ventana del SAT.')
+    body = {
+        'cer': base64.b64encode(secret['cer']).decode(),
+        'key': base64.b64encode(secret['key']).decode(),
+        'password': secret['password'],
+        'cer_name': secret.get('cer_name'),
+        'key_name': secret.get('key_name'),
+    }
+    secret.clear()
+    return JSONResponse(body, headers={'Cache-Control': 'no-store'})
+
+
+class SatProgress(BaseModel):
+    agent_id: str = Field(max_length=80)
+    etapa: str = Field(max_length=30)
+    etapas: dict = Field(default_factory=dict)
+    encontradas: int | None = Field(default=None, ge=0)
+    total: int | None = Field(default=None, ge=0)
+    procesadas: int | None = Field(default=None, ge=0)
+    guardadas: int | None = Field(default=None, ge=0)
+    ya_existian: int | None = Field(default=None, ge=0)
+    errores: int | None = Field(default=None, ge=0)
+    acceso: str | None = Field(default=None, max_length=20)
+    filas: list[dict] = Field(default_factory=list, max_length=1000)
+
+
+ROW_KEYS = ('fila', 'operacion', 'tipo', 'periodo', 'ejercicio', 'estado', 'motivo', 'nombre')
+
+
+@agent_router.post('/{ident}/declara-progress')
+def sat_progress(ident: str, data: SatProgress, db: Session = Depends(session), caller=Depends(agent_caller)):
+    """Avance de la sesión SAT (renueva el trabajo). La respuesta lleva las órdenes de la web."""
+    from .agent_jobs import claim_marker
+
+    job = running_job(db, ident, data.agent_id, caller, 'sat')
+    current = job.result or {}
+    previous = current.get('progreso') or {}
+    progress = data.model_dump(exclude={'agent_id'}, exclude_none=True)
+    progress['filas'] = [{k: str(r.get(k, ''))[:200] for k in ROW_KEYS} for r in data.filas] or previous.get(
+        'filas', []
+    )
+    orders = {k: current.get(k) for k in ('pausar', 'cancelar') if current.get(k)}
+    retry = current.get('reintentar') or []
+    job.result = {**claim_marker(), 'progreso': progress, **orders}
+    db.commit()
+    return {**orders, 'reintentar': retry}
+
+
+class ControlIn(BaseModel):
+    accion: str
+    operacion: str = Field(default='', max_length=40)
+
+
+@router.post('/folder/jobs/{job_id}/control')
+def sat_control(job_id: str, data: ControlIn, db: Session = Depends(session), principal: Principal = Depends(auth)):
+    """Pausar, reanudar, detener o reintentar una fila de la sesión SAT en curso."""
+    job = own_job(db, principal, job_id)
+    if (job.payload or {}).get('op') != 'sat' or job.status not in {'queued', 'running'}:
+        raise HTTPException(409, 'La sesión SAT ya terminó.')
+    result = dict(job.result or {})
+    if data.accion == 'pausar':
+        result['pausar'] = True
+    elif data.accion == 'reanudar':
+        result.pop('pausar', None)
+    elif data.accion == 'detener':
+        if job.status == 'queued':
+            job.status = 'failed'
+            result = {'error': 'La sesión SAT se detuvo antes de empezar.', 'error_code': 'sat_cancelado'}
+            SECRETS.pop(job.id, None)
+        else:
+            result['cancelar'] = True
+    elif data.accion == 'reintentar' and data.operacion:
+        result['reintentar'] = list(dict.fromkeys((result.get('reintentar') or []) + [data.operacion]))[-50:]
+    else:
+        raise HTTPException(422, 'Acción no válida.')
+    job.result = result
+    db.commit()
     return {'ok': True}
 
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Archive, FolderOpen, HardDrive, RefreshCw, Upload } from 'lucide-react';
+import { Archive, Download, ExternalLink, FolderOpen, HardDrive, RefreshCw, Upload } from 'lucide-react';
 import { dateLabel } from '../../api';
 import { Badge, Field } from '../../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../../components/stitch';
@@ -53,6 +53,48 @@ function PreviousRuns({ runs, onOpen, busy }: { runs: Run[]; onOpen: (id: string
   );
 }
 
+/** Tarjeta «Sesión SAT» del modo carpeta: el agente descarga directo a la carpeta vinculada. */
+function FolderSat({
+  agentOnline,
+  machine,
+  portal,
+  lastRun,
+  onSat,
+}: {
+  agentOnline: boolean;
+  machine: string;
+  portal: boolean;
+  lastRun: Run | undefined;
+  onSat: (runId: string) => void;
+}) {
+  return (
+    <div className="declara-folder-sat">
+      <ul className="declara-sat-checks">
+        <li>Agente: {agentOnline ? `conectado${machine ? ' · ' + machine : ''}` : 'sin conexión'}</li>
+        <li>Portal SAT en el agente: {portal ? 'habilitado' : 'no habilitado en este equipo'}</li>
+        <li>e.firma: la toma del gestor de contraseñas al iniciar (con la bóveda desbloqueada)</li>
+        <li>Ruta: Portal → Personas morales → «Pagos provisionales del ISR»</li>
+      </ul>
+      {!lastRun && <p className="muted">Analiza primero la carpeta: la sesión descarga sólo lo que falta en ella.</p>}
+      <div className="actions">
+        <button
+          type="button"
+          className={stitchButton}
+          disabled={!portal || !agentOnline || !lastRun}
+          onClick={() => lastRun && onSat(lastRun.id)}
+        >
+          <Download size={16} />
+          Descargar faltantes
+        </button>
+        <a className={stitchButton} href="https://www.sat.gob.mx/" target="_blank" rel="noreferrer noopener">
+          <ExternalLink size={16} />
+          Abrir portal SAT
+        </a>
+      </div>
+    </div>
+  );
+}
+
 /** Paso 1 · Empresa y PDF. */
 export default function StepSource({
   state,
@@ -89,7 +131,13 @@ export default function StepSource({
   onOpenRun: (id: string) => void;
   notify: (m: string) => void;
   refresh: () => Promise<void>;
-  folder: { backup: boolean; poll: boolean; onBackup: (v: boolean) => void; onPoll: (v: boolean) => void };
+  folder: {
+    backup: boolean;
+    poll: boolean;
+    onBackup: (v: boolean) => void;
+    onPoll: (v: boolean) => void;
+    onSat: (runId: string) => void;
+  };
 }) {
   const [files, setFiles] = useState<File[]>([]);
   const [problem, setProblem] = useState('');
@@ -317,14 +365,24 @@ export default function StepSource({
       <aside className="declara-step-side">
         <section className={stitchCard + ' padded declara-side-card'}>
           <h2>Sesión SAT</h2>
-          <SatAccess
-            state={state}
-            company={company}
-            shortName={clean}
-            onRun={onOpenRun}
-            notify={notify}
-            refresh={refresh}
-          />
+          {mode === 'carpeta' && folderReady ? (
+            <FolderSat
+              agentOnline={state.agent_link?.state === 'online'}
+              machine={state.agent_link?.machine || ''}
+              portal={!!agent?.capabilities.includes('sat_declaraciones')}
+              lastRun={runs.find((r) => r.mode === 'carpeta' && r.year === year && r.status === 'analyzed')}
+              onSat={folder.onSat}
+            />
+          ) : (
+            <SatAccess
+              state={state}
+              company={company}
+              shortName={clean}
+              onRun={onOpenRun}
+              notify={notify}
+              refresh={refresh}
+            />
+          )}
         </section>
         <PreviousRuns runs={runs} onOpen={onOpenRun} busy={busy} />
       </aside>

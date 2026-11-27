@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowRight, Download, RefreshCw } from 'lucide-react';
 import { api, getToken } from '../api';
 import { Badge, Heading, Kpi } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
@@ -11,6 +11,7 @@ import ResolveDrawer from './declara/ResolveDrawer';
 import StepApply from './declara/StepApply';
 import StepSource, { type Mode } from './declara/StepSource';
 import Stepper, { type Step } from './declara/Stepper';
+import SatSession from './declara/SatSession';
 import { RUN_LABELS, longDate, type CompanyView, type Detail, type Run } from './declara/model';
 import { folderOp, waitJob } from './declara/folderJobs';
 
@@ -46,6 +47,7 @@ export default function Declara({
   const [backup, setBackup] = useState(true);
   const [poll, setPoll] = useState(true);
   const [changed, setChanged] = useState(false);
+  const [sat, setSat] = useState<{ periodo: string } | null>(null);
   const status = detail?.run.status || '';
   const working = busy || WORKING.includes(status);
   const agent = state.agents.find((a) => a.id === state.agent_link?.agent_id);
@@ -63,6 +65,12 @@ export default function Declara({
   // Revisar cambios cada N s (modo carpeta): una firma barata de la carpeta, sin leer los PDF. También mantiene vivo
   // el bloqueo de la carpeta mientras la pantalla está abierta.
   const folderRun = detail?.run.mode === 'carpeta' ? detail.run : null;
+  // «Descargar en SAT»: sólo en modo carpeta, con un agente que tenga el portal habilitado.
+  const satReady =
+    !!folderRun &&
+    folderReady &&
+    !!agent?.capabilities.includes('sat_declaraciones') &&
+    detail?.run.status === 'analyzed';
   useEffect(() => {
     setChanged(false);
     if (!folderRun?.folder_path || !poll) return;
@@ -159,6 +167,7 @@ export default function Declara({
       setSelected(null);
       setError('');
       setStep(next ? 2 : 1);
+      setSat(null);
       if (next) {
         const run = runs.find((r) => r.id === next);
         if (run?.year) setYear(run.year);
@@ -397,7 +406,16 @@ export default function Declara({
           onOpenRun={openRun}
           notify={notify}
           refresh={refresh}
-          folder={{ backup, poll, onBackup: setBackup, onPoll: setPoll }}
+          folder={{
+            backup,
+            poll,
+            onBackup: setBackup,
+            onPoll: setPoll,
+            onSat: (runId) => {
+              openRun(runId);
+              setSat({ periodo: '' });
+            },
+          }}
         />
       )}
 
@@ -422,7 +440,21 @@ export default function Declara({
         </section>
       )}
 
-      {step === 2 && detail && reviewable && (
+      {sat && detail && folderRun && (
+        <SatSession
+          run={detail.run}
+          initialPeriod={sat.periodo}
+          notify={notify}
+          onBack={() => setSat(null)}
+          onFinished={(runId) => {
+            setSat(null);
+            setReload((v) => v + 1);
+            openRun(runId);
+          }}
+        />
+      )}
+
+      {!sat && step === 2 && detail && reviewable && (
         <>
           {detail.run.warnings.map((w, i) => (
             <p className="recopila-warning" key={i}>
@@ -460,9 +492,17 @@ export default function Declara({
               </small>
             </div>
             {months ? (
-              <MonthMatrix months={months} />
+              <MonthMatrix months={months} onDownload={satReady ? (month) => setSat({ periodo: month }) : undefined} />
             ) : (
               <MonthMatrix placeholder="Sin control: el RFC no coincide con la empresa" />
+            )}
+            {satReady && (
+              <div className="actions">
+                <button type="button" className={stitchButton} onClick={() => setSat({ periodo: '' })}>
+                  <Download size={16} />
+                  Descargar faltantes del SAT
+                </button>
+              </div>
             )}
           </section>
           <section className={stitchCard + ' padded'}>
@@ -485,7 +525,7 @@ export default function Declara({
         </>
       )}
 
-      {step === 3 && detail && reviewable && (
+      {!sat && step === 3 && detail && reviewable && (
         <StepApply
           detail={detail}
           busy={working}

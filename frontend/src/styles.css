@@ -3978,6 +3978,112 @@ dialog form.declara-path-row {
   color: var(--muted);
   font-size: var(--fs-xs);
 }
+/* Sesión SAT */
+.declara-sat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.declara-sat-head h2 {
+  margin: 0;
+  font-size: var(--fs-xl);
+}
+.declara-sat-head p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.declara-stages {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.declara-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--hover);
+  color: var(--muted);
+}
+.declara-stage.hecho {
+  color: var(--ok);
+}
+.declara-stage.en_curso {
+  color: var(--text);
+  font-weight: 600;
+}
+.declara-sat-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.declara-sat-options > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.declara-sat-method {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.declara-sat-method legend {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.declara-sat-method label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.declara-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--hover);
+  overflow: hidden;
+  margin: 4px 0 14px;
+}
+.declara-progress span {
+  display: block;
+  height: 100%;
+  background: var(--primary-container);
+  transition: width var(--motion-enter) var(--ease-enter);
+}
+.declara-sat-table {
+  min-width: 640px;
+}
+.declara-sat-checks {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-xs);
+}
+.declara-sat-checks li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.declara-month-sat {
+  align-self: flex-start;
+  font-size: var(--fs-xs);
+}
+.declara-side-card p {
+  overflow-wrap: anywhere;
+}
 [data-theme='contrast'] .declara-banner {
   border-width: 2px;
 }
@@ -4020,7 +4126,8 @@ dialog form.declara-path-row {
   .declara-selectors {
     grid-template-columns: 1fr;
   }
-  .declara-lights {
+  .declara-lights,
+  .declara-stages {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .declara-month-grid {
