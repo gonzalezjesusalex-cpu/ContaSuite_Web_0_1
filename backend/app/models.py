@@ -406,6 +406,52 @@ class DeclaraRun(Base):
     evaluated_on: Mapped[str] = mapped_column(String(10), default='')
     created_by: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)  # cs_0009
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # cs_0023, rediseño de Declara: ejercicio elegido, modo ('subir' o 'carpeta') y carpeta del modo carpeta.
+    year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    folder_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+
+
+class DeclaraCompanySettings(Base):
+    """cs_0023: nombre corto y modo preferido de Declara por empresa."""
+
+    __tablename__ = 'declara_company_settings'
+    company_id: Mapped[str] = mapped_column(ForeignKey('companies.id'), primary_key=True)
+    short_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DeclaraFolder(Base):
+    """cs_0023: carpeta vinculada por empresa y ejercicio (modo carpeta)."""
+
+    __tablename__ = 'declara_folders'
+    __table_args__ = (UniqueConstraint('company_id', 'year', name='uq_declara_folders_company_year'),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    company_id: Mapped[str] = mapped_column(ForeignKey('companies.id'))
+    year: Mapped[int] = mapped_column(Integer)
+    path: Mapped[str] = mapped_column(String(1000))
+    origin: Mapped[str] = mapped_column(String(20))
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DeclaraLog(Base):
+    """cs_0023: bitácora de Declara (análisis, sesiones SAT, respaldos, renombrados, deshacer, cambios manuales)."""
+
+    __tablename__ = 'declara_log'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+    user_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    user_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    machine: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    company_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    run_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(60))
+    detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
 
 class StorageSource(Base):

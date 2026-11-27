@@ -335,6 +335,14 @@ def test_manual_type_with_month(tmp_path):
     assert rules.manual_name_for_month(scanned, 'ACUSE NORMAL', 'Juni', [scanned], 'Narij') is None
 
 
+def test_suggest_short_name():
+    assert rules.suggest_short_name('CONSTRUCCIONES NARIJ SA DE CV') == 'NARIJ'
+    assert rules.suggest_short_name('Arkos Suministros S.A. de C.V.') == 'ARKOS'
+    assert rules.suggest_short_name('GRUPO EL SOL, S. DE R.L. DE C.V.') == 'SOL'
+    assert rules.suggest_short_name('Grupo SA de CV') == 'GRUPO'
+    assert rules.suggest_short_name('') == ''
+
+
 # ---------------------------------------------------------------- excluir (punto 6, parte del motor)
 
 

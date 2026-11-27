@@ -17,7 +17,7 @@ from app.storage.migrate import STORAGE_HEAD, schema_revision, upgrade_schema, u
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parent
-HEAD = 'cs_0022_vault_master_password'
+HEAD = 'cs_0023_declara_v2'
 OLD_CHAIN = [
     ('fiscal_migrations', '001_control_obligaciones'),
     ('credential_migrations', '001_vault'),

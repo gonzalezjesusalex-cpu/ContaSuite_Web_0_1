@@ -48,6 +48,33 @@ FORBIDDEN = re.compile(r'[<>:"/\\|?*]')
 RESERVED = re.compile(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$', re.IGNORECASE)
 
 
+# ---------------------------------------------------------------- nombre corto sugerido
+
+SOCIETY_WORDS = {
+    'SA', 'DE', 'CV', 'RL', 'S', 'A', 'C', 'V', 'SC', 'SAPI', 'SAB', 'SAS', 'AC', 'SPR', 'RI', 'EN', 'NC', 'SOFOM',
+    'ENR', 'ER', 'SOCIEDAD', 'ANONIMA', 'CAPITAL', 'VARIABLE', 'RESPONSABILIDAD', 'LIMITADA', 'CIVIL', 'SIMPLIFICADA',
+    'POR', 'ACCIONES', 'ASOCIACION', 'PRODUCCION', 'RURAL', 'ILIMITADA',
+}  # fmt: skip
+GENERIC_WORDS = {
+    'CONSTRUCCIONES', 'CONSTRUCTORA', 'GRUPO', 'COMERCIALIZADORA', 'SERVICIOS', 'DISTRIBUIDORA', 'INMOBILIARIA',
+    'CORPORATIVO', 'CORPORACION', 'INDUSTRIAS', 'INDUSTRIAL', 'SUMINISTROS', 'TRANSPORTES', 'CONSULTORES',
+    'CONSULTORIA', 'ASESORES', 'DESARROLLOS', 'DESARROLLADORA', 'ADMINISTRADORA', 'PROYECTOS', 'SOLUCIONES',
+    'IMPORTADORA', 'EXPORTADORA', 'COMERCIAL', 'TALLER', 'TALLERES', 'EMPRESA', 'COMPANIA', 'CIA', 'NEGOCIOS',
+    'DEL', 'LA', 'LAS', 'LOS', 'EL', 'Y', 'E', 'MEXICO', 'MEXICANA', 'MEXICANO', 'INTERNACIONAL', 'NACIONAL',
+}  # fmt: skip
+
+
+def suggest_short_name(legal_name: str) -> str:
+    """Palabra distintiva de la razón social, sin el tipo de sociedad: «CONSTRUCCIONES NARIJ SA DE CV» → «NARIJ»."""
+    words = re.sub(r'[^A-Z0-9Ñ& ]+', ' ', motor.norm(legal_name or '')).split()
+    while words and words[-1] in SOCIETY_WORDS:
+        words.pop()
+    if not words:
+        return ''
+    distinctive = next((w for w in words if w not in GENERIC_WORDS and w not in SOCIETY_WORDS and len(w) >= 3), None)
+    return motor.sanitize_company_name(distinctive or words[0])
+
+
 # ---------------------------------------------------------------- fecha de alta y exigibilidad
 
 

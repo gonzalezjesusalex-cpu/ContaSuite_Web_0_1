@@ -33,7 +33,14 @@ El extractor aplica sobre el original sólo la lista `PATCHES` de `scripts/extra
 - PDF escaneado: «El PDF es una imagen, sin texto: clasifícalo manualmente.»
 - `PdfInfo` añade `identical_to`, `count_in_control` y `origin`.
 
-Lógica nueva fuera del motor, en `backend/app/declara_rules.py`: estado por mes (`COMPLETO`, `POR_VENCER`, `VENCIDO`, `EN_CURSO`, `FUTURO`, `NO_APLICA_ALTA`) con día límite configurable (17), faltantes, complementarias, RESICO y SALARIOS y fecha de vencimiento; fecha de alta de la Constancia con respaldo del RFC; nombre manual con validación, detección del estándar y casilla de conteo; estado `EXCLUIDO`. El adaptador web todavía no los usa (fase 2).
+Lógica nueva fuera del motor, en `backend/app/declara_rules.py`: estado por mes (`COMPLETO`, `POR_VENCER`, `VENCIDO`, `EN_CURSO`, `FUTURO`, `NO_APLICA_ALTA`) con día límite configurable (17), faltantes, complementarias, RESICO y SALARIOS y fecha de vencimiento; fecha de alta de la Constancia con respaldo del RFC; nombre manual con validación, detección del estándar y casilla de conteo; estado `EXCLUIDO`. El adaptador web los usa desde la fase 2.
+
+### API del rediseño (fase 2, migración `cs_0023_declara_v2`)
+
+- `declara_runs` guarda ejercicio (`year`), modo (`subir`/`carpeta`) y carpeta. `run.months` trae sólo el ejercicio elegido, con los 12 meses aunque no haya PDF de ese año; `run.summary` añade `identical`, `omitted`, `rfc_other`, `excluded_manual`, `manual`, `other_year`, `year`, `due_day` y `alta` (fecha y origen: Constancia o RFC). Cada registro trae `other_year` y `can_undo`.
+- `POST /runs/{id}/preview` (sin guardar) y `POST /runs/{id}/resolve` aceptan `duplicate`, `type` (con `month` opcional), `manual` (`name`, `count`, `choice`, `month`), `exclude`, `include` y `undo` («Deshacer cambio manual», contra `plan_original.json`). La vista previa devuelve el nombre final, errores, avisos, el estándar detectado y el efecto en el mes.
+- `GET/PUT /companies/{id}`: nombre corto (sugerido de la razón social y guardado por empresa al analizar) y modo preferido. `GET /settings` y `PUT /settings` (administración): plantilla de ruta, día límite, intervalo de sondeo y respaldo por defecto, en la tabla `settings`.
+- Bitácora `declara_log` (`GET /log`, `GET /log.csv`): análisis, resoluciones manuales, exclusiones, reinclusiones, deshacer y copias generadas, con usuario. Equipo, sesiones SAT, respaldos y renombrados en carpeta llegan con el agente (fases 4 y 5).
 
 ## Adaptación web
 
