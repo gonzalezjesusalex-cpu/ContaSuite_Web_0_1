@@ -1,4 +1,4 @@
-"""Motor extraído de Declara v0.2.6. Regenerar con scripts/extract_declara_engine.py."""
+"""Motor extraído de Declara v0.2.6 con los parches aprobados. Regenerar con scripts/extract_declara_engine.py."""
 
 
 from __future__ import annotations
@@ -54,6 +54,9 @@ class PdfInfo:
     preserve_special_name: bool = False
     complement_sequence: Optional[str] = None
     manual_override: bool = False
+    identical_to: Optional[str] = None
+    count_in_control: bool = True
+    origin: str = ""
 
     @property
     def expected_path(self) -> Optional[Path]:
@@ -209,7 +212,7 @@ def parse_pdf(path: Path, company: str) -> PdfInfo:
 
     if not text.strip() and not is_special_name:
         info.status = "OMITIDO"
-        info.detail = "La primera página no contiene texto extraíble."
+        info.detail = "El PDF es una imagen, sin texto: clasifícalo manualmente."
         return info
 
     if "ACUSE DE RECIBO" in ntext and "DECLARACION PROVISIONAL O DEFINITIVA DE IMPUESTOS FEDERALES" in ntext:
@@ -256,9 +259,13 @@ def parse_pdf(path: Path, company: str) -> PdfInfo:
         # ya trae un consecutivo (por ejemplo, "COMPL 2" o
         # "COMPLEMENTARIA (3)"), se conserva para evitar conflictos sin
         # alterar la posición base de la complementaria (N.1 o N.3).
-        seq = re.search(r"(?:COMPLEMENTARIA|COMPL|COMP)[ _.-]*(?:\(|\[)?(\d+)(?:\)|\])?\s*$", name_text)
+        # Sólo 1 o 2 dígitos tras COMPL/COMPLEMENTARIA o entre paréntesis o corchetes: nunca un año.
+        # El consecutivo final de un nombre que ya sigue el estándar (N.k.-) se conserva.
+        seq = re.search(r"(?:COMPLEMENTARIA|COMPL|COMP)[ _.-]*(?:\(|\[)?(\d{1,2})(?:\)|\])?\s*$", name_text)
         if not seq:
-            seq = re.search(r"(?:\(|\[)?(\d+)(?:\)|\])?\s*$", name_text)
+            seq = re.search(r"(?:\(|\[)(\d{1,2})(?:\)|\])\s*$", name_text)
+        if not seq and re.match(r"^\d{1,2}\.\d+(?:\.\d+)?\.-\s", name_text):
+            seq = re.search(r"\s(\d{1,2})\s*$", name_text)
         if seq:
             info.complement_sequence = seq.group(1)
     elif is_special_name and not info.declaration_type:
@@ -371,9 +378,32 @@ def parse_pdf(path: Path, company: str) -> PdfInfo:
     return info
 
 
-def analyze_folder(folder: Path, company: str) -> list[PdfInfo]:
+def analyze_folder(folder: Path, company: str, expected_rfc: Optional[str] = None) -> list[PdfInfo]:
     pdfs = sorted((p for p in folder.iterdir() if p.is_file() and p.suffix.lower() == ".pdf"), key=lambda p: p.name.casefold())
     infos = [parse_pdf(p, company) for p in pdfs]
+
+    # Copias idénticas por huella SHA-256: el primero según el orden del resolvedor de colisiones se
+    # procesa; los demás no se renombran, no reciben consecutivo y no cuentan en el control mensual.
+    by_hash: dict[str, list[PdfInfo]] = defaultdict(list)
+    for i in infos:
+        try:
+            i.sha256 = sha256_file(i.path)
+        except Exception:
+            continue
+        by_hash[i.sha256].append(i)
+    for same in by_hash.values():
+        if len(same) <= 1:
+            continue
+        same.sort(key=lambda i: (
+            _existing_copy_index(i.path.name, i.expected_name) if i.expected_name else 999999,
+            0 if i.status == "CORRECTO" else 1,
+            i.operation or "",
+            i.path.name.casefold(),
+        ))
+        for i in same[1:]:
+            i.status = "COPIA IDÉNTICA"
+            i.identical_to = same[0].path.name
+            i.detail = f"Igual a {same[0].path.name}"
 
     # Rescate especial para RESICO/SALARIOS sin periodo legible.
     # Si el nombre identifica claramente documento + complementaria/normal pero
@@ -495,12 +525,15 @@ def analyze_folder(folder: Path, company: str) -> list[PdfInfo]:
                     i.detail = f"{special_desc}: siguiente número disponible del mes = {month_number}.{suffix}."
 
     rfcs = [i.rfc for i in infos if i.rfc and i.status not in {"ERROR", "OMITIDO"}]
-    primary_rfc = Counter(rfcs).most_common(1)[0][0] if rfcs else None
+    primary_rfc = (expected_rfc or "").strip().upper() or (Counter(rfcs).most_common(1)[0][0] if rfcs else None)
     if primary_rfc:
         for i in infos:
             if i.rfc and i.rfc != primary_rfc and i.status in {"RENOMBRAR", "CORRECTO"}:
                 i.status = "RFC DIFERENTE"
-                i.detail = f"RFC {i.rfc}; el RFC principal detectado es {primary_rfc}."
+                i.detail = (
+                    f"RFC {i.rfc}; el RFC de la empresa es {primary_rfc}." if expected_rfc
+                    else f"RFC {i.rfc}; el RFC principal detectado es {primary_rfc}."
+                )
 
     # Resolver colisiones de nombre automáticamente.
     # Si dos o más PDFs requieren exactamente el mismo nombre final, el

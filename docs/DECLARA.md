@@ -23,6 +23,18 @@ El motor se extrae de `reference/desktop/Declara/organizador_sat_v26.py` mediant
 - Se conserva la detección del RFC principal y la exclusión de RFC diferentes.
 - Un mes se completa con declaración normal y acuse normal. Las complementarias no completan el mes. Los meses anteriores al alta de persona moral y los aún no exigibles conservan las reglas originales. Esto es control documental de los PDF cargados, no certificación fiscal ni consulta al SAT.
 
+### Parches aprobados del rediseño (26/11/2026)
+
+El extractor aplica sobre el original sólo la lista `PATCHES` de `scripts/extract_declara_engine.py`; la prueba de paridad (`backend/tests/test_declara_rules.py`) exige «original + esos parches» y compara los nombres finales contra el motor de escritorio sin parches.
+
+- Copias idénticas por SHA-256: el primero (orden del resolvedor de colisiones) se procesa; los demás quedan en `COPIA IDÉNTICA` («Igual a …»), sin renombrar ni consecutivo y sin contar en el control. Las copias con huella distinta siguen con sub-consecutivos.
+- Consecutivo de complementaria: sólo 1 o 2 dígitos tras COMPL/COMPLEMENTARIA o entre paréntesis o corchetes; nunca un año. El consecutivo final de un nombre que ya sigue el estándar (`N.k.- … 2`) se conserva para que reanalizar no cambie nombres correctos.
+- RFC contra la empresa: `analyze_folder(..., expected_rfc)` marca `RFC DIFERENTE` lo que no coincide con la empresa seleccionada.
+- PDF escaneado: «El PDF es una imagen, sin texto: clasifícalo manualmente.»
+- `PdfInfo` añade `identical_to`, `count_in_control` y `origin`.
+
+Lógica nueva fuera del motor, en `backend/app/declara_rules.py`: estado por mes (`COMPLETO`, `POR_VENCER`, `VENCIDO`, `EN_CURSO`, `FUTURO`, `NO_APLICA_ALTA`) con día límite configurable (17), faltantes, complementarias, RESICO y SALARIOS y fecha de vencimiento; fecha de alta de la Constancia con respaldo del RFC; nombre manual con validación, detección del estándar y casilla de conteo; estado `EXCLUIDO`. El adaptador web todavía no los usa (fase 2).
+
 ## Adaptación web
 
 Los datos se vinculan a una empresa existente mediante `declara_runs`, con instantánea del RFC esperado, nombre corto, resumen, control de meses, fecha de evaluación y revisión del plan. Los planes e inputs se conservan en `data/declara/<id>`. La evaluación mensual se recalcula al consultar un análisis terminado si ha cambiado el día. Cada carga es un análisis independiente: sus meses describen sólo esa entrada; no deben sumarse o tratarse como un expediente consolidado sin una regla explícita de agregación para el dashboard.

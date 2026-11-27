@@ -1,4 +1,3 @@
-import ast
 import csv
 import io
 import json
@@ -55,16 +54,9 @@ def upload(client, cid, entries, **kw):
     )
 
 
-def test_extracted_engine_preserves_original_logic():
+def test_extracted_engine_has_no_desktop_dependencies():
+    # La paridad con el original (más los parches aprobados) se prueba en test_declara_rules.py.
     root = Path(__file__).resolve().parents[2]
-    original = ast.parse((root / 'reference/desktop/Declara/organizador_sat_v26.py').read_text(encoding='utf-8-sig'))
-    extracted = ast.parse((root / 'backend/app/declara_engine.py').read_text(encoding='utf-8'))
-    old = {n.name: n for n in original.body if isinstance(n, (ast.ClassDef, ast.FunctionDef))}
-    for node in extracted.body:
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef)) and node.name in old:
-            assert ast.dump(node, include_attributes=False) == ast.dump(old[node.name], include_attributes=False), (
-                node.name
-            )
     assert 'tkinter' not in (root / 'backend/app/declara_engine.py').read_text(encoding='utf-8')
 
 
@@ -149,8 +141,9 @@ def test_month_rules_normal_complementary_and_start_date():
 def test_special_numbering_and_original_copy_rules(tmp_path):
     (tmp_path / 'decl.pdf').write_bytes(pdf(month='Mayo'))
     (tmp_path / 'acuse.pdf').write_bytes(pdf('ACUSE', month='Mayo'))
+    # Contenidos distintos: con la misma huella el segundo sería una copia idéntica.
     (tmp_path / 'DECLARACION MAYO RESICO.pdf').write_bytes(b'no text; name fallback')
-    (tmp_path / 'ACUSE MAYO SALARIOS.pdf').write_bytes(b'no text; name fallback')
+    (tmp_path / 'ACUSE MAYO SALARIOS.pdf').write_bytes(b'no text; name fallback (acuse)')
     infos = motor.analyze_folder(tmp_path, 'ARKOS')
     resico = next(i for i in infos if i.is_resico)
     salarios = next(i for i in infos if i.is_salarios)
