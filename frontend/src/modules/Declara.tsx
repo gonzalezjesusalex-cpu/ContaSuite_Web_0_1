@@ -1,74 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Archive, Download, Eye, FileText, FolderOpen, RefreshCw, Upload } from 'lucide-react';
-import { api, dateLabel, getToken } from '../api';
-import { Badge, Empty, Field, Heading, Kpi } from '../components/ui';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ArrowRight, RefreshCw } from 'lucide-react';
+import { api, getToken } from '../api';
+import { Badge, Heading, Kpi } from '../components/ui';
 import { stitchButton, stitchCard, stitchPrimary } from '../components/stitch';
 import type { State } from '../types';
-import SatAccess from './SatAccess';
+import MonthMatrix from './declara/MonthMatrix';
+import PdfTable from './declara/PdfTable';
+import ResolveDrawer from './declara/ResolveDrawer';
+import StepApply from './declara/StepApply';
+import StepSource, { type Mode } from './declara/StepSource';
+import Stepper, { type Step } from './declara/Stepper';
+import { RUN_LABELS, longDate, type CompanyView, type Detail, type Run } from './declara/model';
 
-type Month = { declaracion: boolean; acuse: boolean; aplicable: boolean; razon_no_aplica: string | null };
-type Run = {
-  id: string;
-  company_id: string;
-  short_name: string;
-  expected_rfc: string;
-  name: string;
-  status: string;
-  revision: number;
-  message: string;
-  created_at: string;
-  evaluated_on: string;
-  months: Record<string, Record<string, Month>>;
-  summary: {
-    total?: number;
-    rename?: number;
-    correct?: number;
-    excluded?: number;
-    special?: number;
-    renamed?: number;
-    primary_rfc?: string;
-    rfc_matches?: boolean;
-    output?: number;
-  };
-  warnings: string[];
-};
-type Document = {
-  index: number;
-  path: string;
-  expected_name: string | null;
-  status: string;
-  detail: string;
-  rfc: string | null;
-  razon_social: string | null;
-  year: string | null;
-  month: string | null;
-  operation: string | null;
-  document_kind: string | null;
-  declaration_type: string | null;
-  complement_type: string | null;
-  is_resico: boolean;
-  is_salarios: boolean;
-  manual_override: boolean;
-  sha256: string;
-};
-type Detail = { run: Run; records: Document[] };
-const labels: Record<string, string> = {
-  analyzing: 'Analizando',
-  analyzed: 'Listo para revisar',
-  editing: 'Guardando revisión',
-  generating: 'Generando copias',
-  generated: 'Terminado',
-  error: 'Revisar error',
-};
-const choices = ['DECLARACION NORMAL', 'DECLARACION COMPLEMENTARIA', 'ACUSE NORMAL', 'ACUSE COMPLEMENTARIA'];
-const readable: Record<string, string> = {
-  RENOMBRAR: 'Para renombrar',
-  CORRECTO: 'Correcto',
-  OMITIDO: 'Omitido',
-  ERROR: 'Error',
-  'RFC DIFERENTE': 'RFC diferente',
-};
+const WORKING = ['analyzing', 'editing', 'generating'];
 
 export default function Declara({
   state,
@@ -80,45 +25,58 @@ export default function Declara({
   refresh: () => Promise<void>;
 }) {
   const [params] = useSearchParams();
-  const initialCompany = state.companies.find((c) => c.id === params.get('empresa'));
-  const [company, setCompany] = useState(initialCompany?.id || '');
-  const [shortName, setShortName] = useState((initialCompany?.trade_name || initialCompany?.name || '').slice(0, 80));
-  const [files, setFiles] = useState<File[]>([]);
-  const [ignored, setIgnored] = useState(0);
+  const thisYear = new Date().getFullYear();
+  const [company, setCompany] = useState(state.companies.find((c) => c.id === params.get('empresa'))?.id || '');
+  const [year, setYear] = useState(thisYear);
+  const [shortName, setShortName] = useState('');
+  const [view, setView] = useState<CompanyView | null>(null);
+  const [mode, setMode] = useState<Mode>('subir');
   const [runs, setRuns] = useState<Run[]>([]);
   const [id, setId] = useState('');
   const [detail, setDetail] = useState<Detail | null>(null);
+  const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('');
-  const [year, setYear] = useState('');
-  const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
-  const [choice, setChoice] = useState(choices[0]);
-  const [pdf, setPdf] = useState('');
-  const [pdfError, setPdfError] = useState('');
-  const zipRef = useRef<HTMLInputElement>(null);
-  const docsRef = useRef<HTMLInputElement>(null);
-  const folderRef = useRef<HTMLInputElement>(null);
-  const working = busy || ['analyzing', 'editing', 'generating'].includes(detail?.run.status || '');
+  const [logVersion, setLogVersion] = useState(0);
+  const status = detail?.run.status || '';
+  const working = busy || WORKING.includes(status);
+
+  // Datos de Declara de la empresa: nombre corto guardado (o sugerido), modo preferido y fecha de alta.
   useEffect(() => {
-    folderRef.current?.setAttribute('webkitdirectory', '');
-  }, []);
-  useEffect(() => {
+    setView(null);
+    if (!company) {
+      setShortName('');
+      return;
+    }
     let active = true;
-    api<Run[]>('/declara/runs' + (company ? '?company_id=' + encodeURIComponent(company) : ''))
-      .then((r) => {
-        if (active) setRuns(r);
+    api<CompanyView>('/declara/companies/' + encodeURIComponent(company))
+      .then((v) => {
+        if (!active) return;
+        setView(v);
+        setShortName(v.short_name);
       })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
+      .catch((e) => active && setError(e.message));
+    return () => {
+      active = false;
+    };
+  }, [company]);
+
+  useEffect(() => {
+    if (!company) {
+      setRuns([]);
+      return;
+    }
+    let active = true;
+    api<Run[]>('/declara/runs?company_id=' + encodeURIComponent(company))
+      .then((r) => active && setRuns(r))
+      .catch((e) => active && setError(e.message));
     return () => {
       active = false;
     };
   }, [company, reload]);
+
   useEffect(() => {
     if (!id) return;
     let active = true;
@@ -128,14 +86,10 @@ export default function Declara({
         const d = await api<Detail>('/declara/runs/' + id);
         if (!active) return;
         setDetail(d);
-        if (['analyzing', 'editing', 'generating'].includes(d.run.status)) timer = setTimeout(load, 1200);
+        if (WORKING.includes(d.run.status)) timer = setTimeout(load, 1200);
         else {
-          api<Run[]>('/declara/runs?company_id=' + encodeURIComponent(d.run.company_id))
-            .then((r) => {
-              if (active) setRuns(r);
-            })
-            .catch(() => {});
-          refresh().catch(() => {});
+          setLogVersion((v) => v + 1);
+          refresh().catch(() => undefined);
         }
       } catch (e) {
         if (active) setError((e as Error).message);
@@ -147,71 +101,40 @@ export default function Declara({
       clearTimeout(timer);
     };
   }, [id, reload, refresh]);
-  useEffect(() => {
-    setPage(0);
-  }, [id, query, filter, year]);
-  useEffect(() => {
-    setPdf('');
-    setPdfError('');
-    if (selected === null || !id) return;
-    const controller = new AbortController();
-    let url = '';
-    fetch('/api/declara/runs/' + id + '/file/' + selected, {
-      headers: { Authorization: 'Bearer ' + getToken() },
-      signal: controller.signal,
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error('No se pudo abrir el PDF.');
-        const blob = await r.blob();
-        if (!controller.signal.aborted) {
-          url = URL.createObjectURL(blob);
-          setPdf(url);
-        }
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setPdfError(e.message);
-      });
-    return () => {
-      controller.abort();
-      URL.revokeObjectURL(url);
-    };
-  }, [id, selected]);
-  function choose(list: FileList | null) {
-    if (!list?.length) return;
-    const all = Array.from(list);
-    const selected = all.filter((f) => /\.(pdf|zip)$/i.test(f.name));
-    setFiles(selected);
-    setIgnored(all.length - selected.length);
-    setError('');
+
+  const openRun = useCallback(
+    (next: string) => {
+      setId(next);
+      setDetail(null);
+      setSelected(null);
+      setError('');
+      setStep(next ? 2 : 1);
+      if (next) {
+        const run = runs.find((r) => r.id === next);
+        if (run?.year) setYear(run.year);
+      }
+    },
+    [runs],
+  );
+
+  function changeCompany(next: string) {
+    setCompany(next);
+    openRun('');
   }
-  function openRun(next: string) {
-    setId(next);
-    setDetail(null);
-    setSelected(null);
+
+  async function analyze(files: File[]) {
     setError('');
-    setQuery('');
-    setFilter('');
-    setYear('');
-  }
-  async function analyze() {
-    setError('');
-    if (files.length > 1000 || files.reduce((n, f) => n + f.size, 0) > 100 * 1024 * 1024) {
-      setError('Máximo 1,000 PDF y 100 MB por carga, o un ZIP con hasta 5,000 PDF.');
-      return;
-    }
-    if (files.some((f) => /\.zip$/i.test(f.name)) && files.length !== 1) {
-      setError('Carga un único ZIP o selecciona PDF.');
-      return;
-    }
     setBusy(true);
     try {
       const form = new FormData();
       form.append('company_id', company);
       form.append('short_name', shortName);
+      form.append('year', String(year));
       for (const f of files) form.append('files', f, f.webkitRelativePath || f.name);
       const run = await api<Run>('/declara/runs', 'POST', form);
       openRun(run.id);
       setDetail({ run, records: [] });
+      setReload((v) => v + 1);
       notify('PDF cargados. Comenzó el análisis de Declara.');
     } catch (e) {
       setError((e as Error).message);
@@ -219,6 +142,12 @@ export default function Declara({
       setBusy(false);
     }
   }
+
+  async function changeMode(next: Mode) {
+    setMode(next);
+    if (company) api('/declara/companies/' + encodeURIComponent(company), 'PUT', { mode: next }).catch(() => undefined);
+  }
+
   async function generate() {
     if (!detail) return;
     setError('');
@@ -236,20 +165,19 @@ export default function Declara({
       setBusy(false);
     }
   }
-  async function resolve(action: 'type' | 'duplicate') {
-    if (selected === null || !detail) return;
+
+  async function undo(index: number) {
+    if (!detail) return;
     setBusy(true);
-    setError('');
     try {
-      const d = await api<Detail>('/declara/runs/' + id + '/resolve', 'POST', {
+      const d = await api<Detail>(`/declara/runs/${id}/resolve`, 'POST', {
         revision: detail.run.revision,
-        index: selected,
-        action,
-        choice,
+        index,
+        action: 'undo',
       });
       setDetail(d);
-      setReload((v) => v + 1);
-      notify('Resolución guardada en el plan. Los originales se conservan.');
+      setLogVersion((v) => v + 1);
+      notify('Cambio manual deshecho.');
     } catch (e) {
       setError((e as Error).message);
       setReload((v) => v + 1);
@@ -257,6 +185,7 @@ export default function Declara({
       setBusy(false);
     }
   }
+
   async function download(kind: 'zip' | 'csv') {
     setBusy(true);
     setError('');
@@ -266,8 +195,7 @@ export default function Declara({
       });
       if (!response.ok) throw new Error('No se pudo descargar el resultado.');
       const blob = await response.blob();
-      if (response.status !== 200 || !blob.size)
-        throw new Error('La descarga llegó vacía. No se guardó ningún archivo. Vuelve a intentarlo.');
+      if (!blob.size) throw new Error('La descarga llegó vacía. No se guardó ningún archivo. Vuelve a intentarlo.');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -280,441 +208,191 @@ export default function Declara({
       setBusy(false);
     }
   }
-  const summary = detail?.run.summary || {};
-  const records = detail?.records || [];
-  const doc = records.find((d) => d.index === selected);
-  const years = Object.keys(detail?.run.months || {})
-    .sort()
-    .reverse();
-  const activeYear = year || years[0] || '';
-  const filtered = records.filter(
-    (d) =>
-      (!filter || d.status === filter) &&
-      (!year || d.year === year) &&
-      `${d.path} ${d.expected_name || ''} ${d.rfc || ''} ${d.month || ''} ${d.operation || ''}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-  );
-  const canGenerate =
-    detail?.run.status === 'analyzed' && summary.rfc_matches && (summary.rename || 0) + (summary.correct || 0) > 0;
+
+  const reviewable = !!detail && !['analyzing', 'error'].includes(status) && detail.records.length > 0;
+  const generated = status === 'generated';
+  const runMode = (detail?.run.mode as Mode) || mode;
+  const steps: Step[] = [
+    { n: 1, label: 'Empresa y PDF', state: step === 1 ? 'current' : detail ? 'done' : 'available' },
+    {
+      n: 2,
+      label: 'Revisión y meses',
+      state: !reviewable ? 'locked' : step === 2 ? 'current' : step === 3 ? 'done' : 'available',
+    },
+    {
+      n: 3,
+      label: runMode === 'carpeta' ? 'Aplicar y auditoría' : 'Copias y auditoría',
+      state: !reviewable
+        ? 'locked'
+        : generated
+          ? step === 3
+            ? 'current'
+            : 'done'
+          : step === 3
+            ? 'current'
+            : 'available',
+    },
+  ];
+  const s = detail?.run.summary || {};
+  const activeYear = String(s.year || detail?.run.year || year);
+  const months = detail?.run.months?.[activeYear];
+  const record = detail?.records.find((r) => r.index === selected) || null;
+  const companyName = state.companies.find((c) => c.id === (detail?.run.company_id || company));
+
   return (
     <div className="declara-module stitch-live-module">
       <Heading
         eyebrow="CONTROL DOCUMENTAL"
         title="Declara"
-        description="Analiza declaraciones y acuses, revisa sus nombres y lleva el control mensual por empresa."
-        actions={
-          <button className={stitchPrimary} disabled={working || !canGenerate} onClick={generate}>
-            <FileText size={17} />
-            {detail?.run.status === 'generating' ? 'Generando…' : 'Generar copias renombradas'}
-          </button>
-        }
+        description="Analiza declaraciones y acuses del SAT, revisa sus nombres y lleva el control mensual por empresa."
       />
+      <Stepper steps={steps} onSelect={setStep} />
       {error && (
         <div className="error-banner" role="alert">
           {error}
           <button onClick={() => setError('')}>Cerrar</button>
-          <button disabled={!id || busy} onClick={() => setReload((v) => v + 1)}>
-            Actualizar análisis
-          </button>
+          {id && (
+            <button disabled={busy} onClick={() => setReload((v) => v + 1)}>
+              Actualizar análisis
+            </button>
+          )}
         </div>
       )}
-      <div className="recopila-steps">
-        <Badge tone="blue">1 · Empresa y PDF</Badge>
-        <Badge tone={detail ? 'blue' : 'neutral'}>2 · Revisión y meses</Badge>
-        <Badge tone={detail?.run.status === 'generated' ? 'green' : 'neutral'}>3 · Copias y auditoría</Badge>
-      </div>
-      <section className={stitchCard + ' padded'}>
-        <div className="declara-source-grid">
+      {detail && step !== 1 && (
+        <div className="declara-run-head">
           <div>
-            <fieldset disabled={working}>
-              <div className="declara-filters">
-                <Field label="Empresa">
-                  <select
-                    value={company}
-                    onChange={(e) => {
-                      setCompany(e.target.value);
-                      const c = state.companies.find((c) => c.id === e.target.value);
-                      setShortName((c?.trade_name || c?.name || '').slice(0, 80));
-                      openRun('');
-                    }}
-                  >
-                    <option value="">Selecciona una empresa</option>
-                    {state.companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} · {c.rfc}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Nombre corto para los archivos">
-                  <input
-                    maxLength={80}
-                    value={shortName}
-                    onChange={(e) => setShortName(e.target.value)}
-                    placeholder="Ejemplo: PRISMA"
-                  />
-                </Field>
-              </div>
-              <div className="actions">
-                <button className={stitchButton} onClick={() => zipRef.current?.click()}>
-                  <Archive size={16} />
-                  Cargar ZIP
-                </button>
-                <button className={stitchButton} onClick={() => folderRef.current?.click()}>
-                  <FolderOpen size={16} />
-                  Elegir carpeta
-                </button>
-                <button className={stitchButton} onClick={() => docsRef.current?.click()}>
-                  <Upload size={16} />
-                  Seleccionar PDF
-                </button>
-              </div>
-              <input
-                ref={zipRef}
-                hidden
-                type="file"
-                accept=".zip"
-                onChange={(e) => {
-                  choose(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-              <input
-                ref={docsRef}
-                hidden
-                type="file"
-                multiple
-                accept=".pdf"
-                onChange={(e) => {
-                  choose(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-              <input
-                ref={folderRef}
-                hidden
-                type="file"
-                multiple
-                onChange={(e) => {
-                  choose(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-              <p className="muted">
-                {files.length
-                  ? `${files.length} archivo(s) · ${(files.reduce((n, f) => n + f.size, 0) / 1024 / 1024).toFixed(1)} MB`
-                  : 'Elige los PDF de una empresa y ejercicio, directamente en la carpeta base.'}
-                {ignored > 0 && ` ${ignored} archivos de otros formatos omitidos.`}
-              </p>
-              <small className="muted">
-                Hasta 100 MB; 1,000 PDF seleccionados o ZIP de hasta 5,000 PDF y 500 MB descomprimidos. Se trabaja con
-                copias.
-              </small>
-              <div className="actions">
-                <button
-                  className={stitchPrimary}
-                  disabled={!company || !shortName.trim() || !files.length}
-                  onClick={analyze}
-                >
-                  <RefreshCw size={16} />
-                  {busy ? 'Cargando…' : 'Analizar PDF'}
-                </button>
-              </div>
-            </fieldset>
-            {!state.companies.length && (
-              <Link className="text-button" to="/empresas/nueva">
-                Registrar una empresa para comenzar →
-              </Link>
-            )}
+            <strong>
+              {detail.run.short_name} · {detail.run.expected_rfc}
+            </strong>
+            <span>
+              {companyName?.name} · Ejercicio {activeYear}
+              {s.alta?.fecha &&
+                ` · Fecha de alta: ${longDate(s.alta.fecha)} (${s.alta.origen === 'Constancia' ? 'Constancia' : 'estimada del RFC'})`}
+            </span>
           </div>
-          <div>
-            <Field label="Análisis anteriores">
-              <select value={id} disabled={working} onChange={(e) => openRun(e.target.value)}>
-                <option value="">Selecciona un análisis</option>
-                {runs.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {dateLabel(r.created_at)} · {r.short_name} · {labels[r.status]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <SatAccess
-              state={state}
-              company={company}
-              shortName={shortName}
-              onRun={(runId) => {
-                setReload((n) => n + 1);
-                openRun(runId);
-              }}
-              notify={notify}
-              refresh={refresh}
-            />
-          </div>
-        </div>
-      </section>
-      {detail && (
-        <>
           <div className="recopila-status" role="status">
-            {working && <RefreshCw size={16} className="recopila-spinner" />}
-            <Badge tone={detail.run.status === 'error' ? 'red' : 'blue'}>{labels[detail.run.status]}</Badge>
+            {WORKING.includes(status) && <RefreshCw size={16} className="recopila-spinner" />}
+            <Badge tone={status === 'error' ? 'red' : generated ? 'green' : 'blue'}>
+              {RUN_LABELS[status] || status}
+            </Badge>
             <span>{detail.run.message}</span>
           </div>
-          <p className="muted declara-context">
-            Revisión: {detail.run.short_name} · RFC esperado {detail.run.expected_rfc} · Detectado{' '}
-            {summary.primary_rfc || 'Sin detectar'}
-          </p>
+        </div>
+      )}
+
+      {step === 1 && (
+        <StepSource
+          state={state}
+          company={company}
+          onCompany={changeCompany}
+          year={year}
+          onYear={setYear}
+          shortName={shortName}
+          onShortName={setShortName}
+          view={view}
+          mode={mode}
+          onMode={changeMode}
+          runs={runs}
+          busy={busy}
+          onAnalyze={analyze}
+          onOpenRun={openRun}
+          notify={notify}
+          refresh={refresh}
+        />
+      )}
+
+      {step !== 1 && detail && !reviewable && (
+        <section className={stitchCard + ' padded'}>
+          <p>{status === 'error' ? detail.run.message : 'Analizando los PDF…'}</p>
+          <button type="button" className={stitchButton} onClick={() => openRun('')}>
+            Volver a Empresa y PDF
+          </button>
+        </section>
+      )}
+
+      {step === 2 && detail && reviewable && (
+        <>
           {detail.run.warnings.map((w, i) => (
             <p className="recopila-warning" key={i}>
               {w}
             </p>
           ))}
-          <div className="kpi-grid four">
-            <Kpi label="PDF analizados" value={summary.total ?? '—'} detail="Archivos directos de la carpeta" />
+          <div className="kpi-grid six declara-kpis">
+            <Kpi label="PDF analizados" value={s.total ?? '—'} detail="Archivos directos" />
+            <Kpi label="Por renombrar" value={s.rename ?? '—'} detail="Nombres del plan" tone="blue" />
+            <Kpi label="Correctos" value={s.correct ?? '—'} detail="Ya con nombre estándar" tone="green" />
+            <Kpi label="Copias idénticas" value={s.identical ?? '—'} detail="Misma huella; no se copian" />
             <Kpi
-              label={detail.run.status === 'generated' ? 'PDF renombrados' : 'Para renombrar'}
-              value={(detail.run.status === 'generated' ? summary.renamed : summary.rename) ?? '—'}
-              detail={
-                detail.run.status === 'generated' ? 'Nombres aplicados a las copias' : 'Nombres propuestos por el motor'
-              }
-              tone="blue"
-            />
-            <Kpi label="Ya correctos" value={summary.correct ?? '—'} detail="Con nombre estándar" tone="green" />
-            <Kpi
-              label="Omitidos / revisar"
-              value={summary.excluded ?? '—'}
-              detail="Errores, no reconocidos u otro RFC"
+              label="Omitidos o con error"
+              value={(s.omitted ?? 0) + (s.rfc_other ?? 0)}
+              detail="Revísalos con «Resolver»"
               tone="amber"
             />
+            <Kpi
+              label="RFC"
+              value={s.rfc_matches ? '✓' : '!'}
+              detail={
+                s.rfc_matches
+                  ? 'Coincide con la empresa'
+                  : `Detectado ${s.primary_rfc || 'sin RFC'}: no coincide con la empresa`
+              }
+              tone={s.rfc_matches ? 'green' : 'red'}
+            />
           </div>
-          <section className={stitchCard + ' padded declara-months'}>
+          <section className={stitchCard + ' padded'}>
             <div className="receipt-section-title">
-              <h2>Control mensual documental</h2>
-              <Field label="Ejercicio de revisión">
-                <select value={activeYear} onChange={(e) => setYear(e.target.value)}>
-                  {years.map((y) => (
-                    <option key={y}>{y}</option>
-                  ))}
-                </select>
-              </Field>
+              <h2>Control mensual {activeYear}</h2>
+              <small className="muted">
+                Un mes se completa con declaración normal y acuse normal. Vence el día {s.due_day || 17} del mes
+                siguiente. Seguimiento documental: no acredita cumplimiento ante el SAT.
+              </small>
             </div>
-            <p className="muted">
-              Un mes se completa con declaración normal y acuse normal. Las complementarias se conservan y no completan
-              el mes. Evaluación: {detail.run.evaluated_on || 'Pendiente'}.
-            </p>
-            <div className="declara-month-grid">
-              {Object.entries(detail.run.months?.[activeYear] || {}).map(([month, m]) => {
-                const complete = m.declaracion && m.acuse;
-                const text = !m.aplicable
-                  ? m.razon_no_aplica === 'ALTA'
-                    ? 'Anterior al alta'
-                    : 'Aún no exigible'
-                  : complete
-                    ? 'Completo'
-                    : 'Faltante';
-                return (
-                  <div key={month} className="declara-month">
-                    <strong>{month}</strong>
-                    <Badge tone={!m.aplicable ? 'neutral' : complete ? 'green' : 'amber'}>{text}</Badge>
-                    <small>Declaración: {m.declaracion ? 'Disponible' : 'Sin documento'}</small>
-                    <small>Acuse: {m.acuse ? 'Disponible' : 'Sin documento'}</small>
-                  </div>
-                );
-              })}
-            </div>
-            {!years.length && (
-              <Empty title="Sin periodos válidos para evaluar">
-                Revisa los PDF, sus ejercicios y el RFC de la empresa.
-              </Empty>
+            {months ? (
+              <MonthMatrix months={months} />
+            ) : (
+              <MonthMatrix placeholder="Sin control: el RFC no coincide con la empresa" />
             )}
-            <small className="muted">
-              Seguimiento de los documentos cargados; no acredita cumplimiento ante SAT. El mes actual y los futuros aún
-              no se marcan como faltantes.
-            </small>
           </section>
-          <div className="declara-workspace">
-            <section className={stitchCard + ' padded'}>
-              <div className="receipt-section-title">
-                <h2>Revisión de declaraciones y acuses</h2>
-                <Badge>{filtered.length}</Badge>
-              </div>
-              <div className="declara-filters">
-                <Field label="Buscar archivo, RFC, mes u operación">
-                  <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar documentos…" />
-                </Field>
-                <Field label="Estado">
-                  <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-                    <option value="">Todos los estados</option>
-                    {Array.from(new Set(records.map((d) => d.status))).map((s) => (
-                      <option key={s} value={s}>
-                        {readable[s] || s}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Filtrar ejercicio">
-                  <select value={year} onChange={(e) => setYear(e.target.value)}>
-                    <option value="">Todos</option>
-                    {Array.from(new Set(records.map((d) => d.year).filter(Boolean)))
-                      .sort()
-                      .map((y) => (
-                        <option key={y} value={y!}>
-                          {y}
-                        </option>
-                      ))}
-                  </select>
-                </Field>
-              </div>
-              <div className="receipt-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Archivo / nombre propuesto</th>
-                      <th>Periodo / tipo</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.slice(page * 50, page * 50 + 50).map((d) => (
-                      <tr key={d.index} className={selected === d.index ? 'receipt-selected' : ''}>
-                        <td>
-                          <button
-                            className="receipt-text-button"
-                            onClick={() => {
-                              setSelected(d.index);
-                              setChoice(
-                                choices.includes(`${d.document_kind} ${(d.declaration_type || '').toUpperCase()}`)
-                                  ? `${d.document_kind} ${(d.declaration_type || '').toUpperCase()}`
-                                  : choices[0],
-                              );
-                            }}
-                          >
-                            <strong>{d.path.split('/').pop()}</strong>
-                            <small>{d.expected_name || 'Sin nombre propuesto'}</small>
-                          </button>
-                        </td>
-                        <td>
-                          {d.month || 'Sin mes'} {d.year}
-                          <small>
-                            {d.document_kind} · {d.declaration_type}
-                          </small>
-                          <small>
-                            {d.is_resico ? 'RESICO ' : ''}
-                            {d.is_salarios ? 'SALARIOS' : ''}
-                            {d.manual_override ? ' · Revisión manual' : ''}
-                          </small>
-                        </td>
-                        <td>
-                          <Badge tone={d.status === 'CORRECTO' ? 'green' : d.status === 'RENOMBRAR' ? 'blue' : 'amber'}>
-                            {detail.run.status === 'generated' && d.status === 'RENOMBRAR'
-                              ? 'Renombrado'
-                              : readable[d.status] || d.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {!filtered.length && (
-                  <Empty title={working ? 'Analizando PDF…' : 'Sin documentos para mostrar'}>
-                    Revisa la entrada y los filtros.
-                  </Empty>
-                )}
-              </div>
-              <div className="recopila-pagination">
-                <button className={stitchButton} disabled={!page} onClick={() => setPage((p) => p - 1)}>
-                  Anterior
-                </button>
-                <span>
-                  {page + 1} / {Math.max(1, Math.ceil(filtered.length / 50))}
-                </span>
-                <button
-                  className={stitchButton}
-                  disabled={(page + 1) * 50 >= filtered.length}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Siguiente
-                </button>
-              </div>
-              {doc && (
-                <div className="declara-detail">
-                  <h3>Detalle y resolución</h3>
-                  <p>{doc.detail}</p>
-                  <p>
-                    RFC: {doc.rfc || 'Sin detectar'} · Operación: {doc.operation || 'Sin detectar'}
-                  </p>
-                  {doc.complement_type && <p>Tipo de complementaria: {doc.complement_type}</p>}
-                  <p className="declara-hash">SHA-256: {doc.sha256}</p>
-                  {detail.run.status === 'analyzed' && !['CORRECTO', 'RFC DIFERENTE'].includes(doc.status) && (
-                    <fieldset disabled={working}>
-                      <Field label="Tipo de documento revisado">
-                        <select value={choice} onChange={(e) => setChoice(e.target.value)}>
-                          {choices.map((c) => (
-                            <option key={c}>{c}</option>
-                          ))}
-                        </select>
-                      </Field>
-                      <div className="actions">
-                        <button className={stitchButton} disabled={!doc.month} onClick={() => resolve('type')}>
-                          Aplicar tipo al plan
-                        </button>
-                        <button
-                          className={stitchButton}
-                          disabled={!doc.expected_name}
-                          onClick={() => resolve('duplicate')}
-                        >
-                          Resolver como otra copia
-                        </button>
-                      </div>
-                      <small className="muted">
-                        Estas decisiones se guardan en el plan. Los nombres sólo se aplican al generar las copias.
-                      </small>
-                    </fieldset>
-                  )}
-                </div>
-              )}
-              {detail.run.status === 'generated' && (
-                <div className="actions declara-downloads">
-                  <button disabled={working} className={stitchPrimary} onClick={() => download('zip')}>
-                    <Download size={16} />
-                    Descargar PDF (ZIP)
-                  </button>
-                  <button disabled={working} className={stitchButton} onClick={() => download('csv')}>
-                    <Download size={16} />
-                    Auditoría CSV
-                  </button>
-                  <Badge tone="green">{summary.output || 0} copias verificadas</Badge>
-                </div>
-              )}
-            </section>
-            <aside className={stitchCard + ' receipt-preview'}>
-              <div className="receipt-preview-head">
-                <div>
-                  <h2>
-                    <Eye size={17} />
-                    Vista previa del original
-                  </h2>
-                  <small>{doc?.path.split('/').pop() || 'Selecciona un archivo de la tabla'}</small>
-                </div>
-              </div>
-              <div className="receipt-paper">
-                {pdf ? (
-                  <iframe title="PDF de Declara" src={pdf + '#toolbar=1&navpanes=0&zoom=page-fit'} />
-                ) : (
-                  <div className="empty">
-                    <FileText size={32} />
-                    <p>{pdfError || (selected === null ? 'Selecciona un PDF para revisarlo.' : 'Cargando PDF…')}</p>
-                  </div>
-                )}
-              </div>
-            </aside>
-          </div>
+          <section className={stitchCard + ' padded'}>
+            <div className="receipt-section-title">
+              <h2>PDF analizados</h2>
+              <button type="button" className={stitchPrimary} onClick={() => setStep(3)}>
+                Continuar a {steps[2].label.toLowerCase()}
+                <ArrowRight size={16} />
+              </button>
+            </div>
+            <PdfTable
+              records={detail.records}
+              generated={generated}
+              editable={status === 'analyzed'}
+              busy={working}
+              onOpen={setSelected}
+              onUndo={undo}
+            />
+          </section>
         </>
       )}
-      {!detail && (
-        <Empty title="Prepara las declaraciones de una empresa">
-          Carga los PDF para revisar nombres, normales, complementarias y documentos faltantes por mes.
-        </Empty>
+
+      {step === 3 && detail && reviewable && (
+        <StepApply detail={detail} busy={working} logVersion={logVersion} onGenerate={generate} onDownload={download} />
+      )}
+
+      {record && detail && (
+        <ResolveDrawer
+          key={record.index + ':' + detail.run.revision}
+          runId={id}
+          revision={detail.run.revision}
+          editable={status === 'analyzed'}
+          record={record}
+          records={detail.records}
+          onClose={() => setSelected(null)}
+          onApplied={(d, message) => {
+            setDetail(d);
+            setSelected(null);
+            setLogVersion((v) => v + 1);
+            notify(message);
+          }}
+        />
       )}
     </div>
   );

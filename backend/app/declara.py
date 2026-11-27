@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field as PydanticField
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from .database import DATA, SessionLocal, session
-from .models import Audit, Company, DeclaraCompanySettings, DeclaraLog, DeclaraRun, Setting
+from .models import Audit, Company, DeclaraCompanySettings, DeclaraLog, DeclaraRun, Setting, UserAccount
 from .organizador import safe_path
 from . import declara_engine as motor
 from . import declara_rules as rules
@@ -103,6 +103,9 @@ def declara_settings(db):
 
 def log(db, action, *, user_id=None, user_name=None, company_id=None, year=None, run_id=None, detail=None, path=None,
         machine=None):  # fmt: skip
+    if user_id and not user_name:
+        account = db.get(UserAccount, user_id)
+        user_name = account.display_name if account else None
     db.add(
         DeclaraLog(
             action=action,
